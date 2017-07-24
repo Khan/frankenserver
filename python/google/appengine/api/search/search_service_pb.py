@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -33,6 +30,7 @@ else:
 
 from google.appengine.datastore.document_pb import *
 import google.appengine.datastore.document_pb
+google_dot_storage_dot_onestore_dot_v3_dot_document__pb = __import__('google.appengine.datastore.document_pb', {}, {}, [''])
 class SearchServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -5795,6 +5793,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   facet_auto_detect_param_ = None
   has_facet_depth_ = 0
   facet_depth_ = 1000
+  has_enable_query_rewrite_ = 0
+  enable_query_rewrite_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
@@ -6047,6 +6047,19 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
 
   def has_facet_depth(self): return self.has_facet_depth_
 
+  def enable_query_rewrite(self): return self.enable_query_rewrite_
+
+  def set_enable_query_rewrite(self, x):
+    self.has_enable_query_rewrite_ = 1
+    self.enable_query_rewrite_ = x
+
+  def clear_enable_query_rewrite(self):
+    if self.has_enable_query_rewrite_:
+      self.has_enable_query_rewrite_ = 0
+      self.enable_query_rewrite_ = 0
+
+  def has_enable_query_rewrite(self): return self.has_enable_query_rewrite_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6067,6 +6080,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.facet_refinement_size()): self.add_facet_refinement().CopyFrom(x.facet_refinement(i))
     if (x.has_facet_auto_detect_param()): self.mutable_facet_auto_detect_param().MergeFrom(x.facet_auto_detect_param())
     if (x.has_facet_depth()): self.set_facet_depth(x.facet_depth())
+    if (x.has_enable_query_rewrite()): self.set_enable_query_rewrite(x.enable_query_rewrite())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6107,6 +6121,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if self.has_facet_auto_detect_param_ and self.facet_auto_detect_param_ != x.facet_auto_detect_param_: return 0
     if self.has_facet_depth_ != x.has_facet_depth_: return 0
     if self.has_facet_depth_ and self.facet_depth_ != x.facet_depth_: return 0
+    if self.has_enable_query_rewrite_ != x.has_enable_query_rewrite_: return 0
+    if self.has_enable_query_rewrite_ and self.enable_query_rewrite_ != x.enable_query_rewrite_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6153,6 +6169,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSize())
     if (self.has_facet_auto_detect_param_): n += 2 + self.lengthString(self.facet_auto_detect_param_.ByteSize())
     if (self.has_facet_depth_): n += 2 + self.lengthVarInt64(self.facet_depth_)
+    if (self.has_enable_query_rewrite_): n += 3
     return n + 2
 
   def ByteSizePartial(self):
@@ -6181,6 +6198,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.facet_refinement_)): n += self.lengthString(self.facet_refinement_[i].ByteSizePartial())
     if (self.has_facet_auto_detect_param_): n += 2 + self.lengthString(self.facet_auto_detect_param_.ByteSizePartial())
     if (self.has_facet_depth_): n += 2 + self.lengthVarInt64(self.facet_depth_)
+    if (self.has_enable_query_rewrite_): n += 3
     return n
 
   def Clear(self):
@@ -6201,6 +6219,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     self.clear_facet_refinement()
     self.clear_facet_auto_detect_param()
     self.clear_facet_depth()
+    self.clear_enable_query_rewrite()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -6259,6 +6278,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_facet_depth_):
       out.putVarInt32(152)
       out.putVarInt32(self.facet_depth_)
+    if (self.has_enable_query_rewrite_):
+      out.putVarInt32(160)
+      out.putBoolean(self.enable_query_rewrite_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
@@ -6319,6 +6341,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_facet_depth_):
       out.putVarInt32(152)
       out.putVarInt32(self.facet_depth_)
+    if (self.has_enable_query_rewrite_):
+      out.putVarInt32(160)
+      out.putBoolean(self.enable_query_rewrite_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6395,6 +6420,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
       if tt == 152:
         self.set_facet_depth(d.getVarInt32())
         continue
+      if tt == 160:
+        self.set_enable_query_rewrite(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6453,6 +6481,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
       res+=self.facet_auto_detect_param_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_facet_depth_: res+=prefix+("facet_depth: %s\n" % self.DebugFormatInt32(self.facet_depth_))
+    if self.has_enable_query_rewrite_: res+=prefix+("enable_query_rewrite: %s\n" % self.DebugFormatBool(self.enable_query_rewrite_))
     return res
 
 
@@ -6476,6 +6505,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   kfacet_refinement = 17
   kfacet_auto_detect_param = 18
   kfacet_depth = 19
+  kenable_query_rewrite = 20
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6496,7 +6526,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     17: "facet_refinement",
     18: "facet_auto_detect_param",
     19: "facet_depth",
-  }, 19)
+    20: "enable_query_rewrite",
+  }, 20)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6517,7 +6548,8 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     17: ProtocolBuffer.Encoder.STRING,
     18: ProtocolBuffer.Encoder.STRING,
     19: ProtocolBuffer.Encoder.NUMERIC,
-  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
+    20: ProtocolBuffer.Encoder.NUMERIC,
+  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

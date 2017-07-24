@@ -19,16 +19,7 @@
 
 
 
-"""Python datastore class User to be used as a datastore data type.
-
-Classes defined here:
-  User: object representing a user. A user could be a Google Accounts user
-        or a federated user.
-  Error: base exception type
-  UserNotFoundError: UserService exception
-  RedirectTooLongError: UserService exception
-  NotAllowedError: UserService exception
-"""
+"""The User Python datastore class to be used as a datastore data type."""
 
 
 
@@ -52,33 +43,28 @@ class Error(Exception):
 
 
 class UserNotFoundError(Error):
-  """Raised by User.__init__() when there's no email argument and no user is
-  logged in."""
+  """No email argument was specified, and no user is logged in."""
 
 
 class RedirectTooLongError(Error):
-  """Raised by UserService calls if the generated redirect URL was too long.
-  """
+  """The generated redirect URL was too long."""
 
 
 class NotAllowedError(Error):
-  """Raised by UserService calls if the requested redirect URL is not allowed.
-  """
+  """The requested redirect URL is not allowed."""
 
 
 class User(object):
-  """A user.
+  """Provides the email address, nickname, and ID for a user.
 
-  We provide the email address, nickname, and id for a user.
+  A nickname is a human-readable string that uniquely identifies a Google user,
+  akin to a username. For some users, this nickname is an email address, but for
+  other users, a different nickname is used.
 
-  A nickname is a human-readable string which uniquely identifies a Google
-  user, akin to a username. It will be an email address for some users, but
-  not all.
+  A user is a Google Accounts user.
 
-  A user could be a Google Accounts user or a federated login user.
-
-  federated_identity and federated_provider are only avaliable for
-  federated users.
+  `federated_identity` and `federated_provider` are decommissioned and should
+  not be used.
   """
 
 
@@ -97,13 +83,12 @@ class User(object):
     Args:
       email: An optional string of the user's email address. It defaults to
           the current user's email address.
-      federated_identity: federated identity of user. It defaults to the current
-          user's federated identity.
-      federated_provider: federated provider url of user.
+      federated_identity: Decommissioned, don't use.
+      federated_provider: Decommissioned, don't use.
 
     Raises:
-      UserNotFoundError: Raised if the user is not logged in and both email
-          and federated identity are empty.
+      UserNotFoundError: If the user is not logged in and both `email` and
+          `federated_identity` are empty.
     """
 
 
@@ -144,12 +129,14 @@ class User(object):
 
 
   def nickname(self):
-    """Return this user's nickname.
+    """Returns the user's nickname.
 
-    The nickname will be a unique, human readable identifier for this user
-    with respect to this application. It will be an email address for some
-    users, part of the email address for some users, and the federated identity
-    for federated users who have not asserted an email address.
+    The nickname will be a unique, human readable identifier for this user with
+    respect to this application. It will be an email address for some users,
+    and part of the email address for some users.
+
+    Returns:
+      The nickname of the user as a string.
     """
     if (self.__email and self.__auth_domain and
         self.__email.endswith('@' + self.__auth_domain)):
@@ -161,29 +148,43 @@ class User(object):
       return self.__email
 
   def email(self):
-    """Return this user's email address."""
+    """Returns the user's email address."""
     return self.__email
 
   def user_id(self):
-    """Return either a permanent unique identifying string or None.
+    """Obtains the user ID of the user.
 
-    If the email address was set explicity, this will return None.
+    Returns:
+      A permanent unique identifying string or `None`. If the email address was
+      set explicity, this will return `None`.
     """
     return self.__user_id
 
   def auth_domain(self):
-    """Return this user's auth domain.
+    """Obtains the user's authentication domain.
 
-    This method is internal and should not be used by client applications.
+    Returns:
+      A string containing the authentication domain. This method is internal and
+      should not be used by client applications.
     """
     return self.__auth_domain
 
   def federated_identity(self):
-    """Return this user's federated identity, None if not a federated user."""
+    """Decommissioned, don't use.
+
+    Returns:
+      A string containing the federated identity of the user. If the user is not
+      a federated user, `None` is returned.
+    """
     return self.__federated_identity
 
   def federated_provider(self):
-    """Return this user's federated provider, None if not a federated user."""
+    """Decommissioned, don't use.
+
+    Returns:
+      A string containing the federated provider. If the user is not a federated
+      user, `None` is returned.
+    """
     return self.__federated_provider
 
   def __unicode__(self):
@@ -225,16 +226,16 @@ def create_login_url(dest_url=None, _auth_domain=None,
 
   Args:
     dest_url: String that is the desired final destination URL for the user
-              once login is complete. If 'dest_url' does not have a host
-              specified, we will use the host from the current request.
-    federated_identity: federated_identity is used to trigger OpenId Login
-                        flow, an empty value will trigger Google OpenID Login
-                        by default.
+        once login is complete. If `dest_url` does not specify a host, the host
+        from the current request is used.
+    federated_identity: Decommissioned, don't use. Setting this to a non-None
+        value raises a NotAllowedError
 
   Returns:
-       Login URL as a string. If federated_identity is set, this will be
-       a federated login using the specified identity. If not, this
-       will use Google Accounts.
+       Login URL as a string. The login URL will use Google Accounts.
+
+  Raises:
+      NotAllowedError: If federated_identity is not None.
   """
   req = user_service_pb.CreateLoginURLRequest()
   resp = user_service_pb.CreateLoginURLResponse()
@@ -245,7 +246,7 @@ def create_login_url(dest_url=None, _auth_domain=None,
   if _auth_domain:
     req.set_auth_domain(_auth_domain)
   if federated_identity:
-    req.set_federated_identity(federated_identity)
+    raise NotAllowedError('OpenID 2.0 support is decomissioned')
 
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLoginURL', req, resp)
@@ -264,17 +265,21 @@ def create_login_url(dest_url=None, _auth_domain=None,
 CreateLoginURL = create_login_url
 
 
+
+
+
 def create_logout_url(dest_url, _auth_domain=None):
-  """Computes the logout URL for this request and specified destination URL,
-     for both federated login App and Google Accounts App.
+  """Computes the logout URL and specified destination URL for the request.
+
+  This function works for Google Accounts applications.
 
   Args:
     dest_url: String that is the desired final destination URL for the user
-              once logout is complete. If 'dest_url' does not have a host
-              specified, we will use the host from the current request.
+        after the user has logged out. If `dest_url` does not specify a host,
+        the host from the current request is used.
 
   Returns:
-    Logout URL as a string
+    Logout URL as a string.
   """
   req = user_service_pb.CreateLogoutURLRequest()
   resp = user_service_pb.CreateLogoutURLResponse()
@@ -297,6 +302,11 @@ CreateLogoutURL = create_logout_url
 
 
 def get_current_user():
+  """Retrieves information associated with the user that is making a request.
+
+  Returns:
+
+  """
   try:
     return User()
   except UserNotFoundError:
@@ -307,12 +317,15 @@ GetCurrentUser = get_current_user
 
 
 def is_current_user_admin():
-  """Return true if the user making this request is an admin for this
-  application, false otherwise.
+  """Specifies whether the user making a request is an application admin.
 
-  We specifically make this a separate function, and not a member function of
-  the User class, because admin status is not persisted in the datastore. It
-  only exists for the user making this request right now.
+  Because administrator status is not persisted in the datastore,
+  `is_current_user_admin()` is a separate function rather than a member function
+  of the `User` class. The status only exists for the user making the current
+  request.
+
+  Returns:
+    `True` if the user is an administrator; all other user types return `False`.
   """
   return (os.environ.get('USER_IS_ADMIN', '0')) == '1'
 

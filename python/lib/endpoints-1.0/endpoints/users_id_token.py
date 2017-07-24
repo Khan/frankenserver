@@ -81,6 +81,7 @@ _EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 _TOKENINFO_URL = 'https://www.googleapis.com/oauth2/v1/tokeninfo'
 _MAX_AGE_REGEX = re.compile(r'\s*max-age\s*=\s*(\d+)\s*')
 _CERT_NAMESPACE = '__verify_jwt'
+_ISSUERS = ('accounts.google.com', 'https://accounts.google.com')
 
 
 class _AppIdentityError(Exception):
@@ -400,7 +401,7 @@ def _is_local_dev():
 
 def _verify_parsed_token(parsed_token, audiences, allowed_client_ids):
 
-  if parsed_token.get('iss') != 'accounts.google.com':
+  if parsed_token.get('iss') not in _ISSUERS:
     logging.warning('Issuer was not valid: %s', parsed_token.get('iss'))
     return False
 

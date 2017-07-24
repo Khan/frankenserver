@@ -464,6 +464,9 @@ class InstanceFactory(object):
   SUPPORTS_INTERACTIVE_REQUESTS = False
   # Controls how instances are restarted when a file relevant to the application
   # is changed. Possible values: NEVER, AFTER_FIRST_RESTART, ALWAYS.
+  # TODO: This attribute is nearly ignored by the devappserver.
+  #   There is one check that this is not None, but otherwise there is no logic
+  #   based on this value.
   FILE_CHANGE_INSTANCE_RESTART_POLICY = None
 
   def __init__(self, request_data, max_concurrent_requests,

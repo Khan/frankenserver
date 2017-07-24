@@ -1,4 +1,4 @@
-# $Id: cee003fb7c38cb61af6bf2d036245576cfc8cf44 $
+# $Id: 76837ac5135704058a325b2e6be5ced7de650a50 $
 
 """
 File Locking
@@ -88,8 +88,11 @@ class FileLock(object):
             self.lock = cls(fd)
 
         except KeyError:
-            raise NotImplementedError, \
-                  '''Don't know how to lock files on "%s" systems.''' % os.name
+            raise NotImplementedError(
+                      r'''Can't lock files on "{0}" systems.'''.format(
+                          os.name
+                      )
+                  )
 
     def acquire(self, no_wait=False):
         """

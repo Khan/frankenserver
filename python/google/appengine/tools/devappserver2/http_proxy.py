@@ -78,21 +78,22 @@ class HttpProxy:
                     ('Content-Length', str(len(message)))])
     return message
 
-  def wait_for_connection(self, retries=100000):
+  def wait_for_connection(self, process, retries=100000):
     """Waits while instance is booting.
 
     Args:
+      process: subprocess.Popen, the process we are trying to connect to.
       retries: int, Number of connection retries.
 
     Raises:
       http_utils.HostNotReachable: if host:port can't be reached after given
-          number of retries.
+          number of retries or the process dies.
     """
     # If there was a prior error, we don't need to wait for a connection.
     if self._prior_error:
       return
 
-    http_utils.wait_for_connection(self._host, self._port, retries)
+    http_utils.wait_for_connection(self._host, self._port, process, retries)
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):

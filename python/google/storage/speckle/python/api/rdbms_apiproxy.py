@@ -16,8 +16,6 @@
 #
 
 
-
-
 """SQL Service connection module for ApiProxy."""
 
 

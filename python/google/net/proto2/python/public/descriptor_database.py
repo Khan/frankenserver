@@ -42,9 +42,9 @@ class DescriptorDatabase(object):
     Args:
       file_desc_proto: The FileDescriptorProto to add.
     Raises:
-      DescriptorDatabaseException: if an attempt is made to add a proto
-        with the same name but different definition than an exisiting
-        proto in the database.
+      DescriptorDatabaseConflictingDefinitionError: if an attempt is made to
+        add a proto with the same name but different definition than an
+        exisiting proto in the database.
     """
     proto_name = file_desc_proto.name
     if proto_name not in self._file_desc_protos_by_file:
@@ -60,6 +60,9 @@ class DescriptorDatabase(object):
     for enum in file_desc_proto.enum_type:
       self._file_desc_protos_by_symbol[
           '.'.join((package, enum.name))] = file_desc_proto
+    for service in file_desc_proto.service:
+      self._file_desc_protos_by_symbol[
+          '.'.join((package, service.name))] = file_desc_proto
 
   def FindFileByName(self, name):
     """Finds the file descriptor proto by file name.

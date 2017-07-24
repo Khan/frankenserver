@@ -90,6 +90,7 @@ class DescriptorPool(object):
     self._descriptor_db = descriptor_db
     self._descriptors = {}
     self._enum_descriptors = {}
+    self._service_descriptors = {}
     self._file_descriptors = {}
 
   def Add(self, file_desc_proto):
@@ -134,7 +135,7 @@ class DescriptorPool(object):
   def AddEnumDescriptor(self, enum_desc):
     """Adds an EnumDescriptor to the pool.
 
-    This method also registers the FileDescriptor associated with the message.
+    This method also registers the FileDescriptor associated with the enum.
 
     Args:
       enum_desc: An EnumDescriptor.
@@ -145,6 +146,18 @@ class DescriptorPool(object):
 
     self._enum_descriptors[enum_desc.full_name] = enum_desc
     self.AddFileDescriptor(enum_desc.file)
+
+  def AddServiceDescriptor(self, service_desc):
+    """Adds a ServiceDescriptor to the pool.
+
+    Args:
+      service_desc: A ServiceDescriptor.
+    """
+
+    if not isinstance(service_desc, descriptor.ServiceDescriptor):
+      raise TypeError('Expected instance of descriptor.ServiceDescriptor.')
+
+    self._service_descriptors[service_desc.full_name] = service_desc
 
   def AddFileDescriptor(self, file_desc):
     """Adds a FileDescriptor to the pool, non-recursively.
@@ -255,6 +268,23 @@ class DescriptorPool(object):
     if full_name not in self._enum_descriptors:
       self.FindFileContainingSymbol(full_name)
     return self._enum_descriptors[full_name]
+
+  def FindServiceByName(self, full_name):
+    """Loads the named service descriptor from the pool.
+
+    Args:
+      full_name: The full name of the service descriptor to load.
+
+    Returns:
+      The service descriptor for the named service.
+
+    Raises:
+      KeyError: if the service cannot be found in the pool.
+    """
+    full_name = _NormalizeFullyQualifiedName(full_name)
+    if full_name not in self._service_descriptors:
+      self.FindFileContainingSymbol(full_name)
+    return self._service_descriptors[full_name]
 
   def _ConvertFileProtoToFileDescriptor(self, file_proto):
     """Creates a FileDescriptor from a proto or returns a cached copy.

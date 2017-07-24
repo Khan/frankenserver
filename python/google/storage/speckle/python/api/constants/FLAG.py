@@ -16,8 +16,6 @@
 #
 
 
-
-
 """MySQL FLAG Constants.
 
 These flags are used along with the FIELD_TYPE to indicate various

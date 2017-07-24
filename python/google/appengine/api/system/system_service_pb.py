@@ -19,10 +19,27 @@
 
 from google.net.proto import ProtocolBuffer
 import array
+import base64
 import dummy_thread as thread
-
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+try:
+  from google3.net.proto import _net_proto___parse__python
+except ImportError:
+  _net_proto___parse__python = None
+import sys
+try:
+  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.pywraprpc_lite')
+  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
+  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
+except ImportError:
+  _client_stub_base_class = object
+try:
+  __import__('google.net.rpc.python.rpcserver')
+  rpcserver = sys.modules.get('google.net.rpc.python.rpcserver')
+  _server_stub_base_class = rpcserver.BaseRpcServer
+except ImportError:
+  _server_stub_base_class = object
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -57,6 +74,33 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.SystemServiceError', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.SystemServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.SystemServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.SystemServiceError', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.SystemServiceError', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.SystemServiceError', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -113,6 +157,12 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SystemServiceError'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSARBCQUNLRU5EX1JFUVVJUkVEmAECjAGLAZIBDUxJTUlUX1JFQUNIRUSYAQOMAXS6AYcGCiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8SCmFwcGhvc3RpbmciZgoSU3lzdGVtU2VydmljZUVycm9yIlAKCUVycm9yQ29kZRIGCgJPSxAAEhIKDklOVEVSTkFMX0VSUk9SEAESFAoQQkFDS0VORF9SRVFVSVJFRBACEhEKDUxJTUlUX1JFQUNIRUQQAyJ0CgpTeXN0ZW1TdGF0Eg8KB2N1cnJlbnQYASABKAESEQoJYXZlcmFnZTFtGAMgASgBEhIKCmF2ZXJhZ2UxMG0YBCABKAESDQoFdG90YWwYAiABKAESDgoGcmF0ZTFtGAUgASgBEg8KB3JhdGUxMG0YBiABKAEiFwoVR2V0U3lzdGVtU3RhdHNSZXF1ZXN0ImUKFkdldFN5c3RlbVN0YXRzUmVzcG9uc2USIwoDY3B1GAEgASgLMhYuYXBwaG9zdGluZy5TeXN0ZW1TdGF0EiYKBm1lbW9yeRgCIAEoCzIWLmFwcGhvc3RpbmcuU3lzdGVtU3RhdCIfCh1TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVxdWVzdCI0Ch5TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCTLdAQoNU3lzdGVtU2VydmljZRJZCg5HZXRTeXN0ZW1TdGF0cxIhLmFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXF1ZXN0GiIuYXBwaG9zdGluZy5HZXRTeXN0ZW1TdGF0c1Jlc3BvbnNlIgAScQoWU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdBIpLmFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlcXVlc3QaKi5hcHBob3N0aW5nLlN0YXJ0QmFja2dyb3VuZFJlcXVlc3RSZXNwb25zZSIAQjgKH2NvbS5nb29nbGUuYXBwZW5naW5lLmFwaS5zeXN0ZW0QAiABKAJCD1N5c3RlbVNlcnZpY2VQYg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class SystemStat(ProtocolBuffer.ProtocolMessage):
   has_current_ = 0
   current_ = 0.0
@@ -217,6 +267,33 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     if (x.has_total()): self.set_total(x.total())
     if (x.has_rate1m()): self.set_rate1m(x.rate1m())
     if (x.has_rate10m()): self.set_rate10m(x.rate10m())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.SystemStat', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.SystemStat')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.SystemStat')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.SystemStat', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.SystemStat', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.SystemStat', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -378,6 +455,12 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SystemStat'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KFWFwcGhvc3RpbmcuU3lzdGVtU3RhdBMaB2N1cnJlbnQgASgBMAE4ARQTGglhdmVyYWdlMW0gAygBMAE4ARQTGgphdmVyYWdlMTBtIAQoATABOAEUExoFdG90YWwgAigBMAE4ARQTGgZyYXRlMW0gBSgBMAE4ARQTGgdyYXRlMTBtIAYoATABOAEUwgEdYXBwaG9zdGluZy5TeXN0ZW1TZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -387,6 +470,33 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.GetSystemStatsRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.GetSystemStatsRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.GetSystemStatsRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.GetSystemStatsRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.GetSystemStatsRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.GetSystemStatsRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -443,6 +553,12 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSystemStatsRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXF1ZXN0wgEdYXBwaG9zdGluZy5TeXN0ZW1TZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   has_cpu_ = 0
   cpu_ = None
@@ -496,6 +612,33 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_cpu()): self.mutable_cpu().MergeFrom(x.cpu())
     if (x.has_memory()): self.mutable_memory().MergeFrom(x.memory())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.GetSystemStatsResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.GetSystemStatsResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.GetSystemStatsResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.GetSystemStatsResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.GetSystemStatsResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.GetSystemStatsResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -603,6 +746,12 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSystemStatsResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KIWFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXNwb25zZRMaA2NwdSABKAIwCzgBShVhcHBob3N0aW5nLlN5c3RlbVN0YXSjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoGbWVtb3J5IAIoAjALOAFKFWFwcGhvc3RpbmcuU3lzdGVtU3RhdKMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLlN5c3RlbVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -612,6 +761,33 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.StartBackgroundRequestRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.StartBackgroundRequestRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.StartBackgroundRequestRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.StartBackgroundRequestRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.StartBackgroundRequestRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.StartBackgroundRequestRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -668,6 +844,12 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StartBackgroundRequestRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlcXVlc3TCAR1hcHBob3N0aW5nLlN5c3RlbVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   has_request_id_ = 0
   request_id_ = ""
@@ -692,6 +874,33 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_request_id()): self.set_request_id(x.request_id())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.StartBackgroundRequestResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.StartBackgroundRequestResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.StartBackgroundRequestResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.StartBackgroundRequestResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.StartBackgroundRequestResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.StartBackgroundRequestResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -763,7 +972,217 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StartBackgroundRequestResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KKWFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlc3BvbnNlExoKcmVxdWVzdF9pZCABKAIwCTgBFMIBHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+
+
+class _SystemService_ClientBaseStub(_client_stub_base_class):
+  """Makes Stubby RPC calls to a SystemService server."""
+
+  __slots__ = (
+      '_protorpc_GetSystemStats', '_full_name_GetSystemStats',
+      '_protorpc_StartBackgroundRequest', '_full_name_StartBackgroundRequest',
+  )
+
+  def __init__(self, rpc_stub, rpc_factory=None):
+    super(_SystemService_ClientBaseStub, self).__init__(
+        None, inject_stub=rpc_stub, rpc_factory=rpc_factory)
+
+    self._protorpc_GetSystemStats = pywraprpc.RPC()
+    self._full_name_GetSystemStats = self._stub.GetFullMethodName(
+        'GetSystemStats')
+
+    self._protorpc_StartBackgroundRequest = pywraprpc.RPC()
+    self._full_name_StartBackgroundRequest = self._stub.GetFullMethodName(
+        'StartBackgroundRequest')
+
+  def GetSystemStats(self, request, rpc=None, callback=None, response=None):
+    """Make a GetSystemStats RPC call.
+
+    Args:
+      request: a GetSystemStatsRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetSystemStatsResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = GetSystemStatsResponse
+    return self._MakeCall(rpc,
+                          self._full_name_GetSystemStats,
+                          'GetSystemStats',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_GetSystemStats,
+                          package_name='apphosting')
+
+  def StartBackgroundRequest(self, request, rpc=None, callback=None, response=None):
+    """Make a StartBackgroundRequest RPC call.
+
+    Args:
+      request: a StartBackgroundRequestRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The StartBackgroundRequestResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = StartBackgroundRequestResponse
+    return self._MakeCall(rpc,
+                          self._full_name_StartBackgroundRequest,
+                          'StartBackgroundRequest',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_StartBackgroundRequest,
+                          package_name='apphosting')
+
+
+class _SystemService_ClientStub(_SystemService_ClientBaseStub):
+  __slots__ = ('_params',)
+  def __init__(self, rpc_stub_parameters, service_name, rpc_factory=None):
+    if service_name is None:
+      service_name = 'SystemService'
+    stub = pywraprpc.RPC_GenericStub(service_name, rpc_stub_parameters)
+    super(_SystemService_ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
+    self._params = rpc_stub_parameters
+
+
+class _SystemService_RPC2ClientStub(_SystemService_ClientBaseStub):
+  __slots__ = ()
+  def __init__(self, server, channel, service_name, rpc_factory=None):
+    if service_name is None:
+      service_name = 'SystemService'
+    if channel is None:
+      if server is None:
+        raise RuntimeError('Invalid argument combination to create a stub')
+      channel = pywraprpc.NewClientChannel(server)
+    elif channel.version() == 1:
+      raise RuntimeError('Expecting an RPC2 channel to create the stub')
+    stub = pywraprpc.RPC_GenericStub(service_name, channel)
+    super(_SystemService_RPC2ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
+
+
+class SystemService(_server_stub_base_class):
+  """Base class for SystemService Stubby servers."""
+
+  @classmethod
+  def _MethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <response-type>)}."""
+    return {
+      'GetSystemStats': (GetSystemStatsRequest, GetSystemStatsResponse),
+      'StartBackgroundRequest': (StartBackgroundRequestRequest, StartBackgroundRequestResponse),
+      }
+
+  @classmethod
+  def _StreamMethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <stream-type>, <response-type>)}."""
+    return {
+      }
+
+  def __init__(self, *args, **kwargs):
+    """Creates a Stubby RPC server.
+
+    The arguments to this constructor are the same as the arguments to
+    BaseRpcServer.__init__ in rpcserver.py *MINUS* export_name. This
+    constructor passes its own value for export_name to
+    BaseRpcServer.__init__, so callers of this constructor should only
+    pass to this constructor values corresponding to
+    BaseRpcServer.__init__'s remaining arguments.
+    """
+    if _server_stub_base_class is object:
+      raise NotImplementedError('Add //net/rpc/python:rpcserver as a '
+                                'dependency for Stubby server support.')
+    _server_stub_base_class.__init__(self, 'apphosting.SystemService', *args, **kwargs)
+
+  @staticmethod
+  def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
+    """Creates a new SystemService Stubby client stub.
+
+    Args:
+      rpc_stub_parameters: an RPC_StubParameters instance.
+      service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
+    """
+
+    if _client_stub_base_class is object:
+      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+    return _SystemService_ClientStub(
+        rpc_stub_parameters, service_name, rpc_factory=rpc_factory)
+
+  @staticmethod
+  def NewRPC2Stub(
+      server=None, channel=None, service_name=None, rpc_factory=None):
+    """Creates a new SystemService Stubby2 client stub.
+
+    Args:
+      server: host:port or bns address.
+      channel: directly use a channel to create a stub. Will ignore server
+          argument if this is specified.
+      service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
+    """
+
+    if _client_stub_base_class is object:
+      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+    return _SystemService_RPC2ClientStub(
+        server, channel, service_name, rpc_factory=rpc_factory)
+
+  def GetSystemStats(self, rpc, request, response):
+    """Handles a GetSystemStats RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a GetSystemStatsRequest that contains the client request
+      response: a GetSystemStatsResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def StartBackgroundRequest(self, rpc, request, response):
+    """Handles a StartBackgroundRequest RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a StartBackgroundRequestRequest that contains the client request
+      response: a StartBackgroundRequestResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+  def _AddMethodAttributes(self):
+    """Sets attributes on Python RPC handlers.
+
+    See BaseRpcServer in rpcserver.py for details.
+    """
+    rpcserver._GetHandlerDecorator(
+        getattr(self.GetSystemStats, '__func__'),
+        GetSystemStatsRequest,
+        GetSystemStatsResponse,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.StartBackgroundRequest, '__func__'),
+        StartBackgroundRequestRequest,
+        StartBackgroundRequestResponse,
+        None,
+        'INTEGRITY')
+
 if _extension_runtime:
   pass
 
-__all__ = ['SystemServiceError','SystemStat','GetSystemStatsRequest','GetSystemStatsResponse','StartBackgroundRequestRequest','StartBackgroundRequestResponse']
+__all__ = ['SystemServiceError','SystemStat','GetSystemStatsRequest','GetSystemStatsResponse','StartBackgroundRequestRequest','StartBackgroundRequestResponse','SystemService']

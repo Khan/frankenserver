@@ -130,7 +130,7 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
                                   script=r'\1.py')
 
     self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
-    http_proxy.HttpProxy.wait_for_connection()
+    http_proxy.HttpProxy.wait_for_connection(self.process)
     self._saved_quit_with_sigterm = None
 
 
@@ -259,7 +259,7 @@ class HttpRuntimeProxyFileFlavorTest(wsgi_test_utils.WSGITestCase):
                                   script=r'\1.py')
 
     self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
-    http_proxy.HttpProxy.wait_for_connection()
+    http_proxy.HttpProxy.wait_for_connection(self.process)
 
   def tearDown(self):
     shutil.rmtree(self.tmpdir)
@@ -426,7 +426,7 @@ class HttpRuntimeProxyReverseFlavorTest(wsgi_test_utils.WSGITestCase):
 
     self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
     self.mox.StubOutWithMock(portpicker, 'PickUnusedPort')
-    http_proxy.HttpProxy.wait_for_connection()
+    http_proxy.HttpProxy.wait_for_connection(self.process)
 
   def tearDown(self):
     shutil.rmtree(self.tmpdir)

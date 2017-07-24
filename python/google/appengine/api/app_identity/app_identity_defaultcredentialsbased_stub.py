@@ -44,6 +44,11 @@ from google.appengine.api.app_identity import app_identity_service_pb
 from google.appengine.api.app_identity import app_identity_stub
 from google.appengine.runtime import apiproxy_errors
 
+if not hasattr(service_account, '_ServiceAccountCredentials'):
+
+  service_account._ServiceAccountCredentials = (
+      service_account.ServiceAccountCredentials)
+
 
 def BitStringToByteString(bs):
   """Convert a pyasn1.type.univ.BitString object to a string of bytes."""

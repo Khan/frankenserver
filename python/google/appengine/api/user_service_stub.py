@@ -186,17 +186,6 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       for scope in authorized_scopes:
         response.add_scopes(scope)
 
-  def _Dynamic_CheckOAuthSignature(self, unused_request, response, request_id):
-    """Trivial implementation of UserService.CheckOAuthSignature().
-
-    Args:
-      unused_request: a CheckOAuthSignatureRequest
-      response: a CheckOAuthSignatureResponse
-      request_id: A unique string identifying the request associated with the
-          API call.
-    """
-    response.set_oauth_consumer_key(_OAUTH_CONSUMER_KEY)
-
   def _AddHostToContinueURL(self, continue_url, request_id):
     """Adds the request host to the continue url if no host is specified.
 

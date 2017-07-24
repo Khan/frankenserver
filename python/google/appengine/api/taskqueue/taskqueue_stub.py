@@ -2023,6 +2023,10 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
   display on a console, where the user may manually execute the tasks.
   """
 
+
+
+  THREADSAFE = False
+
   def __init__(self,
                service_name='taskqueue',
                root_path=None,

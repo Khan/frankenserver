@@ -16,8 +16,6 @@
 #
 
 
-
-
 """A request-local environment and logging stream."""
 
 
@@ -95,6 +93,9 @@ class RequestLocalStream(object):
 
   def writelines(self, data):
     self._request.errors.writelines(data)
+
+  def isatty(self):
+    return False
 
 
 class RequestLocalEnviron(collections.MutableMapping):

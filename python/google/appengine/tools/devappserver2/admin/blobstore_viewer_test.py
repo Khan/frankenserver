@@ -62,6 +62,8 @@ class BlobstoreRequestHandlerTest(unittest.TestCase):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(
         admin_request_handler.AdminRequestHandler, 'render')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'get')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
     self.mox.StubOutWithMock(blobstore_viewer, '_get_blobs')
 
   def tearDown(self):
@@ -74,6 +76,7 @@ class BlobstoreRequestHandlerTest(unittest.TestCase):
 
     blob_infos = [object() for _ in range(10)]
     blobstore_viewer._get_blobs(0, BLOBS_PER_PAGE+1).AndReturn(blob_infos)
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render('blobstore_viewer.html',
                    {'previous': None,
                     'next': None,
@@ -93,6 +96,7 @@ class BlobstoreRequestHandlerTest(unittest.TestCase):
 
     blob_infos = [object() for _ in range(10)]
     blobstore_viewer._get_blobs(40, BLOBS_PER_PAGE+1).AndReturn(blob_infos)
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render('blobstore_viewer.html',
                    {'previous': 20,
                     'next': None,
@@ -112,6 +116,7 @@ class BlobstoreRequestHandlerTest(unittest.TestCase):
 
     blob_infos = [object() for _ in range(BLOBS_PER_PAGE+1)]
     blobstore_viewer._get_blobs(0, BLOBS_PER_PAGE+1).AndReturn(blob_infos)
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render('blobstore_viewer.html',
                    {'previous': None,
                     'next': 20,
@@ -132,7 +137,7 @@ class BlobstoreRequestHandlerTest(unittest.TestCase):
                                   ('blob_key', 'b')]))
     response = webapp2.Response()
     handler = blobstore_viewer.BlobstoreRequestHandler(request, response)
-
+    admin_request_handler.AdminRequestHandler(handler).post()
     self.mox.StubOutWithMock(blobstore, 'delete')
     blobstore.delete(['a', 'b'])
 

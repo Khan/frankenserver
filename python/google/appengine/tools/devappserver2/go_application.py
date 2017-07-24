@@ -29,16 +29,22 @@ import sys
 import tempfile
 
 import google
+from google.appengine.tools import goroots
 from google.appengine.tools.devappserver2 import go_errors
 from google.appengine.tools.devappserver2 import safe_subprocess
 
-
-_SDKROOT = os.path.dirname(os.path.dirname(google.__file__))
-GOROOT = os.path.join(_SDKROOT, 'goroot')
-
-_GAB_PATH = os.path.join(GOROOT, 'bin', 'go-app-builder')
-if sys.platform.startswith('win'):
-  _GAB_PATH += '.exe'
+# The location of devappserver2 changes infrequently enough we can be fairly
+# confident depending on the goroot and gopath being in the same place relative
+# to it.
+#
+# This gopath will be used in the event that the user does not already have a
+# GOPATH in their os.environ.
+#
+# devappserver2: $HOME/go_appengine/google/appengine/tools/devappserver2
+# gopath:        $HOME/go_appengine/gopath
+ROOT_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+GOPATH = os.path.join(ROOT_PATH, 'gopath')
 
 
 def _rmtree(directory):
@@ -58,63 +64,6 @@ def _escape_tool_flags(*flags):
     A single escaped string.
   """
   return ','.join([f.replace('\\', r'\\').replace(',', r'\,') for f in flags])
-
-
-def _get_base_gab_args(application_root, nobuild_files, arch):
-  """Returns the base arguments for invoking go-app-builder.
-
-  Args:
-    application_root: string path to the root dir of the application.
-    nobuild_files: regexp identifying which files to not build.
-    arch: The one-character architecture designator (5, 6, or 8).
-
-  Returns:
-    List of strings of arguments for invoking go-app-builder.
-  """
-  # Go's regexp package does not implicitly anchor to the start.
-  gab_args = [
-      _GAB_PATH,
-      '-app_base', application_root,
-      '-arch', arch,
-      '-dynamic',
-      '-goroot', GOROOT,
-      '-nobuild_files', '^' + str(nobuild_files),
-      '-unsafe',
-  ]
-  if 'GOPATH' in os.environ:
-    gab_args.extend(['-gopath', os.environ['GOPATH']])
-  return gab_args
-
-
-def _run_gab(application_root, nobuild_files, arch, gab_extra_args, env):
-  """Run go-app-builder.
-
-  Args:
-    application_root: string path to the root dir of the application.
-    nobuild_files: regexp identifying which files to not build.
-    arch: The one-character architecture designator (5, 6, or 8).
-    gab_extra_args: additional arguments (i.e. other than the standard base
-      arguments) for go-app-builder.
-    env: A dict containing environment variables for the subprocess.
-
-  Returns:
-    A tuple of the (stdout, stderr) from the go-app-builder process.
-
-  Raises:
-    BuildError: if the go application builder fails.
-  """
-  gab_args = _get_base_gab_args(application_root, nobuild_files, arch)
-  gab_args.extend(gab_extra_args)
-  gab_process = safe_subprocess.start_process(gab_args,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.PIPE,
-                                              env=env)
-  gab_stdout, gab_stderr = gab_process.communicate()
-  if gab_process.returncode:
-    raise go_errors.BuildError(
-        '(Executed command: %s)\n%s\n%s' % (' '.join(gab_args),
-                                            gab_stdout, gab_stderr))
-  return gab_stdout, gab_stderr
 
 
 def list_go_files(application_root, nobuild_files, skip_files):
@@ -148,20 +97,23 @@ def list_go_files(application_root, nobuild_files, skip_files):
 class GoApplication(object):
   """An abstraction around the source and executable for a Go application."""
 
-  def __init__(self, module_configuration):
+  def __init__(self, module_configuration, work_dir):
     """Initializer for Module.
 
     Args:
       module_configuration: An application_configuration.ModuleConfiguration
           instance storing the configuration data for a module.
+      work_dir: Directory to store intermediate files.
     """
     self._module_configuration = module_configuration
     self._go_file_to_mtime = {}
     self._extras_hash = None
     self._go_executable = None
-    self._work_dir = None
-    self._arch = self._get_architecture()
-    self._pkg_path = self._get_pkg_path()
+    self._work_dir = work_dir
+    self._goroot = os.path.join(
+        ROOT_PATH, goroots.GOROOTS[self._module_configuration.api_version])
+    self._arch = self._get_architecture(self._goroot)
+    self._pkg_path = self._get_pkg_path(self._goroot)
 
   @property
   def go_executable(self):
@@ -169,14 +121,56 @@ class GoApplication(object):
     return self._go_executable
 
   def _run_gab(self, gab_extra_args, env):
-    return _run_gab(
-        self._module_configuration.application_root,
-        self._module_configuration.nobuild_files, self._arch,
-        gab_extra_args, env)
+    """Run go-app-builder.
+
+    Args:
+      gab_extra_args: additional arguments (i.e. other than the standard base
+        arguments) for go-app-builder.
+      env: A dict containing environment variables for the subprocess.
+
+    Returns:
+      A tuple of the (stdout, stderr) from the go-app-builder process.
+
+    Raises:
+      BuildError: if the go application builder fails.
+    """
+    gab_path = os.path.join(self._goroot, 'bin', 'go-app-builder')
+    if sys.platform.startswith('win'):
+      gab_path += '.exe'
+
+    if not os.path.exists(gab_path):
+      # TODO: This message should be more useful i.e. point the
+      # user to an SDK that does have the right components.
+      raise go_errors.BuildError(
+          'Required Go components are missing from the SDK.')
+
+    # Go's regexp package does not implicitly anchor to the start.
+    gab_args = [
+        gab_path,
+        '-app_base', self._module_configuration.application_root,
+        '-arch', self._arch,
+        '-dynamic',
+        '-goroot', self._goroot,
+        '-gopath', os.environ.get('GOPATH', GOPATH),
+        '-nobuild_files', '^' + str(self._module_configuration.nobuild_files),
+        '-incremental_rebuild',
+        '-unsafe',
+    ]
+    gab_args.extend(gab_extra_args)
+    gab_process = safe_subprocess.start_process(gab_args,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE,
+                                                env=env)
+    gab_stdout, gab_stderr = gab_process.communicate()
+    if gab_process.returncode:
+      raise go_errors.BuildError(
+          '(Executed command: %s)\n%s\n%s' % (' '.join(gab_args),
+                                              gab_stdout, gab_stderr))
+    return gab_stdout, gab_stderr
 
   def get_environment(self):
     """Return the environment that used be used to run the Go executable."""
-    environ = {'GOROOT': GOROOT,
+    environ = {'GOROOT': self._goroot,
                'PWD': self._module_configuration.application_root,
                'TZ': 'UTC',
                'RUN_WITH_DEVAPPSERVER': '1'}
@@ -187,13 +181,24 @@ class GoApplication(object):
     return environ
 
   @staticmethod
-  def _get_architecture():
+  def _get_architecture(goroot):
+    """Get the architecture number for the go compiler.
+
+    Args:
+      goroot: The string path to goroot.
+
+    Returns:
+      The architecture number, as a string, for the go compiler.
+
+    Raises:
+      BuildError: If the arch for the goroot isn't one we support.
+    """
     architecture_map = {
         'arm': '5',
         'amd64': '6',
         '386': '8',
     }
-    for platform in os.listdir(os.path.join(GOROOT, 'pkg', 'tool')):
+    for platform in os.listdir(os.path.join(goroot, 'pkg', 'tool')):
       # Look for 'linux_amd64', 'windows_386', etc.
       if '_' not in platform:
         continue
@@ -201,15 +206,26 @@ class GoApplication(object):
       if architecture in architecture_map:
         return architecture_map[architecture]
     raise go_errors.BuildError(
-        'No known compiler found in goroot (%s)' % GOROOT)
+        'No known compiler found in goroot (%s)' % goroot)
 
   @staticmethod
-  def _get_pkg_path():
-    for n in os.listdir(os.path.join(GOROOT, 'pkg')):
+  def _get_pkg_path(goroot):
+    """The the path to the go pkg dir for appengine.
+
+    Args:
+      goroot: The path to goroot.
+
+    Returns:
+      The path to the go appengine pkg dir.
+
+    Raises:
+      BuildError: If the no package dir was found.
+    """
+    for n in os.listdir(os.path.join(goroot, 'pkg')):
       # Look for 'linux_amd64_appengine', 'windows_386_appengine', etc.
       if n.endswith('_appengine'):
-        return os.path.join(GOROOT, 'pkg', n)
-    raise go_errors.BuildError('No package path found in goroot (%s)' % GOROOT)
+        return os.path.join(goroot, 'pkg', n)
+    raise go_errors.BuildError('No package path found in goroot (%s)' % goroot)
 
   def _get_go_files_to_mtime(self):
     """Returns a dict mapping all Go files to their mtimes.
@@ -283,12 +299,6 @@ class GoApplication(object):
     if not self._work_dir:
       self._work_dir = tempfile.mkdtemp('appengine-go-bin')
       atexit.register(_rmtree, self._work_dir)
-
-    if not os.path.exists(_GAB_PATH):
-      # TODO: This message should be more useful i.e. point the
-      # user to an SDK that does have the right components.
-      raise go_errors.BuildError(
-          'Required Go components are missing from the SDK.')
 
     if self._go_executable and not maybe_modified_since_last_build:
       return False

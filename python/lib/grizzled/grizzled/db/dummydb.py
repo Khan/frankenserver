@@ -1,4 +1,4 @@
-# $Id: 5e4fe45ea4436e0dc7d3743bff9679e052071746 $
+# $Id: eee6313b9d846dbc8da4efda2cfb8f833c877491 $
 # ---------------------------------------------------------------------------
  
 """
@@ -37,13 +37,13 @@ class DummyCursor(object):
         return None
 
     def fetchone(self):
-        raise ValueError, "No results"
+        raise ValueError("No results")
 
     def fetchall(self):
-        raise ValueError, "No results"
+        raise ValueError("No results")
 
     def fetchmany(self, n):
-        raise ValueError, "No results"
+        raise ValueError("No results")
 
 class DummyDB(object):
 

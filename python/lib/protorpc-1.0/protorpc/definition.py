@@ -123,7 +123,11 @@ def define_field(field_descriptor):
   elif field_descriptor.label == descriptor.FieldDescriptor.Label.REPEATED:
     params['repeated'] = True
 
-  message_type_field = _MESSAGE_TYPE_MAP.get(field_descriptor.type_name)
+  type_name = field_descriptor.type_name
+  if type_name and type_name.startswith('.'):
+    # Proto absolute paths are prepended with a dot.
+    type_name = type_name[1:]
+  message_type_field = _MESSAGE_TYPE_MAP.get(type_name)
   if message_type_field:
     return message_type_field(**params)
   elif field_class in (messages.EnumField, messages.MessageField):

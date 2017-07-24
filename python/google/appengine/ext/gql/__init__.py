@@ -39,13 +39,22 @@ import calendar
 import datetime
 import itertools
 import logging
+import os
 import re
 import time
 
-from google.appengine.api import datastore
-from google.appengine.api import datastore_errors
-from google.appengine.api import datastore_types
-from google.appengine.api import users
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import datastore
+  from google.appengine.api import datastore_errors
+  from google.appengine.api import datastore_types
+  from google.appengine.api import users
+else:
+  from google.appengine.api import datastore
+  from google.appengine.api import datastore_errors
+  from google.appengine.api import datastore_types
+  from google.appengine.api import users
+
 
 
 

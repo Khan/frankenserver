@@ -9,7 +9,7 @@ The ``grizzled.forwarder`` module contain classes that make building proxies
 easier.
 """
 
-from __future__ import absolute_import
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -65,7 +65,7 @@ class Forwarder(object):
 
         w = MyFileWrapper(open('/tmp/foo'))
         for line in w.readlines():
-            print line
+            print(line)
 
     Forward all unimplemented calls, *except* ``name``, to the specified
     object. Calls to ``name`` will raise an ``AttributeError``:

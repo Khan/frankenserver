@@ -25,6 +25,7 @@ from google.appengine.tools.devappserver2.admin import admin_request_handler
 class DatastoreIndexesViewer(admin_request_handler.AdminRequestHandler):
 
   def get(self):
+    super(DatastoreIndexesViewer, self).get()
     indexes = collections.defaultdict(list)
     for index, _ in datastore.GetIndexes():
       properties = []

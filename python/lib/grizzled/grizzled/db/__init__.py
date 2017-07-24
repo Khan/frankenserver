@@ -1,4 +1,4 @@
-# $Id: fa873c96e7b5ed23437473a2b6d0b9a3871d4a18 $
+# $Id: 5408f22b01d7403979d66005fd3ba932ec0e92f4 $
 
 """
 Introduction
@@ -21,7 +21,7 @@ To get a list of all drivers currently registered with this module, use the
     import db
 
     for driver_name in db.get_driver_names():
-        print driver_name
+        print(driver_name)
 
 Currently, this module provides the following bundled drivers:
 
@@ -74,6 +74,8 @@ with this API, you use:
     db = driver.connect(...)
     blob = db.Binary(some_string)
 """
+
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -149,8 +151,9 @@ def add_driver(key, driver_class, force=False):
     try:
         drivers[key]
         if not force:
-            raise ValueError, 'A DB driver named "%s" is already installed' %\
-                  key
+            raise ValueError('DB driver "{0}" is already installed'.format(
+                key
+	    ))
     except KeyError:
         pass
 
@@ -165,7 +168,7 @@ def get_drivers():
     .. python::
 
         for driver in db.get_drivers():
-            print driver.__doc__
+            print(driver.__doc__)
 
     :rtype:  list
     :return: list of ``DBDriver`` class names
@@ -202,4 +205,4 @@ def get_driver(driver_name):
             d = o()
         return d
     except KeyError:
-        raise ValueError, 'Unknown driver name: "%s"' % driver_name
+        raise ValueError('Unknown driver name: "{0}"'.format(driver_name))

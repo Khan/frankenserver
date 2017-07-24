@@ -18,6 +18,18 @@
 
 
 
-"""App identity API Provides access functions for the app identity service ."""
+"""The App Identity API lets an application discover its application ID.
+
+Using the ID, an App Engine application can assert its identity to other App
+Engine Apps, Google APIs, and third-party applications and services. The
+application ID can also be used to generate a URL or email address, or to make a
+run-time decision.
+
+The application ID is the same as the project ID. To learn more about the App
+Identity API, read the `App Identity Python Overview`_.
+
+.. _App Identity Python Overview:
+   https://cloud.google.com/appengine/docs/python/appidentity/
+"""
 
 from app_identity import *

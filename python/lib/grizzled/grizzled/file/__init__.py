@@ -11,7 +11,6 @@ __docformat__ = "restructuredtext en"
 # ---------------------------------------------------------------------------
 
 import os as _os
-import sys
 import shutil
 
 # ---------------------------------------------------------------------------
@@ -79,7 +78,7 @@ def list_recursively(dir):
                        but is not a directory.
     """
     if not _os.path.isdir(dir):
-        raise ValueError, "%s is not a directory." % dir
+        raise ValueError("{0} is not a directory.".format(dir))
 
     for f in _os.listdir(dir):
         if _os.path.isdir(f):
@@ -123,7 +122,7 @@ def copy(files, target_dir, create_target=False):
             If ``True``, ``copy()`` will attempt to create the target directory
             if it does not exist. If ``False``, ``copy()`` will throw an
             exception if the target directory does not exist.
-            
+
     :raise OSError: ``target_dir`` does not exist, and ``create_target`` is
                     ``False``
     """
@@ -135,7 +134,9 @@ def copy(files, target_dir, create_target=False):
             _os.mkdir(target_dir)
 
     if _os.path.exists(target_dir) and (not _os.path.isdir(target_dir)):
-        raise OSError, 'Cannot copy files to non-directory "%s"' % target_dir
+        raise OSError(
+	    'Cannot copy files to non-directory "{0}"'.format(target_dir)
+	)
 
     for f in files:
         targetFile = _os.path.join(target_dir, _os.path.basename(f))
@@ -167,7 +168,7 @@ def touch(files, times=None):
     for f in files:
         if _os.path.exists(f):
             if not _os.path.isfile(f):
-                raise OSError, "Can't touch non-file \"%s\"" % f
+                raise OSError('Cannot touch non-file "{0}"'.format(f))
             _os.utime(f, times)
 
         else:
@@ -205,7 +206,7 @@ def pathsplit(path):
 
     return result
 
-def __find_matches(pattern_pieces, directory):
+def _find_matches(pattern_pieces, directory):
     """
     Used by eglob.
     """
@@ -213,10 +214,11 @@ def __find_matches(pattern_pieces, directory):
 
     result = []
     if not _os.path.isdir(directory):
-        return []
+        return
 
     piece = pattern_pieces[0]
     last = len(pattern_pieces) == 1
+    remaining_pieces = []
     if piece == '**':
         if not last:
             remaining_pieces = pattern_pieces[1:]
@@ -225,13 +227,13 @@ def __find_matches(pattern_pieces, directory):
             if last:
                 # At the end of a pattern, "**" just recursively matches
                 # directories.
-                result += [root]
+                yield _os.path.normpath(root)
             else:
                 # Recurse downward, trying to match the rest of the
                 # pattern.
-                sub_result = __find_matches(remaining_pieces, root)
+                sub_result = _find_matches(remaining_pieces, root)
                 for partial_path in sub_result:
-                    result += [partial_path]
+                    yield _os.path.normpath(partial_path)
 
     else:
         # Regular glob pattern.
@@ -240,27 +242,20 @@ def __find_matches(pattern_pieces, directory):
         if len(matches) > 0:
             if last:
                 for match in matches:
-                    result += [match]
+                    yield _os.path.normpath(match)
             else:
                 remaining_pieces = pattern_pieces[1:]
                 for match in matches:
-                    sub_result = __find_matches(remaining_pieces, match)
+                    sub_result = _find_matches(remaining_pieces, match)
                     for partial_path in sub_result:
-                        result += [partial_path]
-
-    # Normalize the paths.
-
-    for i in range(len(result)):
-        result[i] = _os.path.normpath(result[i])
-
-    return result
+                        yield _os.path.normpath(partial_path)
 
 def eglob(pattern, directory='.'):
     """
     Extended glob function that supports the all the wildcards supported
     by the Python standard ``glob`` routine, as well as a special "**"
     wildcard that recursively matches any directory. Examples:
-    
+
       +--------------+--------------------------------------------------------+
       | \*\*/\*.py   | all files ending in '.py' under the current directory  |
       +--------------+--------------------------------------------------------+
@@ -278,7 +273,7 @@ def eglob(pattern, directory='.'):
     :return: A list of matched files, or an empty list for no match
     """
     pieces = pathsplit(pattern)
-    return __find_matches(pieces, directory)
+    return _find_matches(pieces, directory)
 
 def universal_path(path):
     """

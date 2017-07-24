@@ -1,6 +1,7 @@
 """
 This module contains various Python decorators.
 """
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -141,8 +142,11 @@ def unimplemented(func):
                 pass
     """
     def wrapper(*__args, **__kw):
-        raise NotImplementedError('Method or function "%s" is not implemented',
-                                  func.__name__)
+        raise NotImplementedError(
+	    'Method or function "{0}" is not implemented'.format(
+                func.__name__
+            )
+	)
     wrapper.__name__ = func.__name__
     wrapper.__dict__ = func.__dict__
     wrapper.__doc__ = func.__doc__
@@ -177,5 +181,5 @@ if __name__ == '__main__':
     try:
         b.foo()
         assert False
-    except NotImplementedError, ex:
-        print ex.message
+    except NotImplementedError as ex:
+        print(ex.message)

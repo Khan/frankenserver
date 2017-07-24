@@ -29,6 +29,7 @@ import os.path
 import random
 import re
 import string
+import thread
 import threading
 import time
 import urllib
@@ -51,6 +52,7 @@ from google.appengine.tools.devappserver2 import endpoints
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
 from google.appengine.tools.devappserver2 import gcs_server
+from google.appengine.tools.devappserver2 import grpc_port
 from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
@@ -119,20 +121,11 @@ _CHANGE_POLLING_MS = 1000
 _QUIETER_RESOURCES = ('/_ah/health',)
 
 # TODO: Remove after the Files API is really gone.
-_FILESAPI_DEPRECATION_WARNING_PYTHON = (
+_FILESAPI_DEPRECATION_WARNING = (
     'The Files API is deprecated and will soon be removed. Further information'
     ' is available here: https://cloud.google.com/appengine/docs/deprecations'
     '/files_api')
-_FILESAPI_DEPRECATION_WARNING_JAVA = (
-    'The Files API is deprecated and will soon be removed. Further information'
-    ' is available here: https://cloud.google.com/appengine/docs/deprecations'
-    '/files_api')
-_FILESAPI_DEPRECATION_WARNING_GO = (
-    'The Files API is deprecated and will soon be removed. Further information'
-    ' is available here: https://cloud.google.com/appengine/docs/deprecations'
-    '/files_api')
-
-_ALLOWED_RUNTIMES_ENV2 = (
+_ALLOWED_RUNTIMES_ENV_FLEX = (
     'python-compat', 'java', 'java7', 'go', 'custom')
 
 def _static_files_regex_from_handlers(handlers):
@@ -215,11 +208,12 @@ class Module(object):
       runtime = module_configuration.effective_runtime
       # NOTE(bryanmau): b/24139391
       # If in env: 2, users either use a compat runtime or custom.
-      if module_configuration.env == '2':
-        if runtime not in _ALLOWED_RUNTIMES_ENV2:
+      if util.is_env_flex(module_configuration.env):
+        if runtime not in _ALLOWED_RUNTIMES_ENV_FLEX:
           raise errors.InvalidAppConfigError(
-              'In env: 2, only the following runtimes '
-              'are allowed: {0}'.format(allowed_runtimes))
+              'In env: {0}, only the following runtimes '
+              'are allowed: {1}'
+              .format(module_configuration.env, _ALLOWED_RUNTIMES_ENV_FLEX))
 
     if runtime not in runtime_factories.FACTORIES:
       raise RuntimeError(
@@ -264,10 +258,21 @@ class Module(object):
     handlers.append(
         wsgi_handler.WSGIHandler(gcs_server.Application(), url_pattern))
 
-    url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
-    handlers.append(
-        wsgi_handler.WSGIHandler(
-            endpoints.EndpointsDispatcher(self._dispatcher), url_pattern))
+    # Add a handler for Endpoints, only if version == 1.0
+    runtime_config = self._get_runtime_config()
+    for library in runtime_config.libraries:
+      if library.name == 'endpoints' and library.version == '1.0':
+        url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
+        handlers.append(
+            wsgi_handler.WSGIHandler(
+                endpoints.EndpointsDispatcher(self._dispatcher), url_pattern))
+
+    # Add a handler for getting the port running gRPC, only if there are APIs
+    # speaking gRPC.
+    if runtime_config.grpc_apis:
+      url_pattern = '/%s' % grpc_port.GRPC_PORT_URL_PATTERN
+      handlers.append(
+          wsgi_handler.WSGIHandler(grpc_port.Application(), url_pattern))
 
     found_start_handler = False
     found_warmup_handler = False
@@ -327,6 +332,7 @@ class Module(object):
           self._module_configuration.handlers)
     runtime_config.api_host = self._api_host
     runtime_config.api_port = self._api_port
+    runtime_config.grpc_apis.extend(self._grpc_apis)
     runtime_config.server_port = self._balanced_port
     runtime_config.stderr_log_level = self._runtime_stderr_loglevel
     runtime_config.datacenter = 'us1'
@@ -346,6 +352,12 @@ class Module(object):
     if (self._php_config and
         self._module_configuration.runtime.startswith('php')):
       runtime_config.php_config.CopyFrom(self._php_config)
+
+
+
+
+
+
     if (self._python_config and
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
@@ -353,6 +365,9 @@ class Module(object):
         (self._module_configuration.runtime.startswith('java') or
          self._module_configuration.effective_runtime.startswith('java'))):
       runtime_config.java_config.CopyFrom(self._java_config)
+    if (self._go_config and
+        self._module_configuration.runtime.startswith('go')):
+      runtime_config.go_config.CopyFrom(self._go_config)
 
     if self._vm_config:
       runtime_config.vm_config.CopyFrom(self._vm_config)
@@ -372,13 +387,12 @@ class Module(object):
       config_changed: True if the configuration for the application has changed.
       file_changed: True if any file relevant to the application has changed.
     """
-    if not config_changed and not file_changed:
+    policy = self._instance_factory.FILE_CHANGE_INSTANCE_RESTART_POLICY
+    assert policy is not None, 'FILE_CHANGE_INSTANCE_RESTART_POLICY not set'
+    if policy == instance.NEVER or (not config_changed and not file_changed):
       return
 
     logging.debug('Restarting instances.')
-    policy = self._instance_factory.FILE_CHANGE_INSTANCE_RESTART_POLICY
-    assert policy is not None, 'FILE_CHANGE_INSTANCE_RESTART_POLICY not set'
-
     with self._condition:
       instances_to_quit = set()
       for inst in self._instances:
@@ -394,7 +408,8 @@ class Module(object):
   def _handle_changes(self, timeout=0):
     """Handle file or configuration changes."""
     # Check for file changes first, because they can trigger config changes.
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
+
     if file_changes:
       logging.info(
           '[%s] Detected file changes:\n  %s', self.name,
@@ -404,12 +419,6 @@ class Module(object):
     # Always check for config and file changes because checking also clears
     # pending changes.
     config_changes = self._module_configuration.check_for_updates()
-
-    if application_configuration.SKIP_FILES_CHANGED in config_changes:
-      self._watcher.set_skip_files_re(
-        self._module_configuration.skip_files,
-        self._module_configuration.application_root)
-
     if application_configuration.HANDLERS_CHANGED in config_changes:
       handlers = self._create_url_handlers()
       with self._handler_lock:
@@ -430,9 +439,15 @@ class Module(object):
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
+
+
+
+
+
                php_config,
                python_config,
                java_config,
+               go_config,
                custom_config,
                cloud_sql_config,
                vm_config,
@@ -442,9 +457,11 @@ class Module(object):
                dispatcher,
                max_instances,
                use_mtime_file_watcher,
+               watcher_ignore_re,
                automatic_restarts,
                allow_skipped_files,
-               threadsafe_override):
+               threadsafe_override,
+               grpc_apis=None):
     """Initializer for Module.
     Args:
       module_configuration: An application_configuration.ModuleConfiguration
@@ -460,12 +477,19 @@ class Module(object):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
+
+
+
+
+
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are used.
       java_config: A runtime_config_pb2.JavaConfig instance containing
           Java runtime-specific configuration. If None then defaults are used.
+      go_config: A runtime_config_pb2.GoConfig instances containing Go
+          runtime-specific configuration. If None then defaults are used.
       custom_config: A runtime_config_pb2.CustomConfig instance. If 'runtime'
           is set then we switch to another runtime.  Otherwise, we use the
           custom_entrypoint to start the app.  If neither or both are set,
@@ -487,6 +511,8 @@ class Module(object):
       use_mtime_file_watcher: A bool containing whether to use mtime polling to
           monitor file changes even if other options are available on the
           current platform.
+      watcher_ignore_re: A regex that optionally defines a pattern for the file
+          watcher to ignore.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
       allow_skipped_files: If True then all files in the application's directory
@@ -494,6 +520,7 @@ class Module(object):
           directive.
       threadsafe_override: If not None, ignore the YAML file value of threadsafe
           and use this value instead.
+      grpc_apis: a list of apis that use grpc.
 
     Raises:
       errors.InvalidAppConfigError: For runtime: custom, either mistakenly set
@@ -506,12 +533,18 @@ class Module(object):
     self._host = host
     self._api_host = api_host
     self._api_port = api_port
+    self._grpc_apis = grpc_apis or []
     self._auth_domain = auth_domain
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._balanced_port = balanced_port
+
+
+
+
     self._php_config = php_config
     self._python_config = python_config
     self._java_config = java_config
+    self._go_config = go_config
     self._custom_config = custom_config
     self._cloud_sql_config = cloud_sql_config
     self._vm_config = vm_config
@@ -522,6 +555,7 @@ class Module(object):
     self._max_instances = max_instances
     self._automatic_restarts = automatic_restarts
     self._use_mtime_file_watcher = use_mtime_file_watcher
+    self._watcher_ignore_re = watcher_ignore_re
     self._default_version_port = default_version_port
     self._port_registry = port_registry
 
@@ -546,9 +580,10 @@ class Module(object):
           [self._module_configuration.application_root] +
           self._instance_factory.get_restart_directories(),
           self._use_mtime_file_watcher)
-      self._watcher.set_skip_files_re(
-        self._module_configuration.skip_files,
-        self._module_configuration.application_root)
+      if hasattr(self._watcher, 'set_watcher_ignore_re'):
+        self._watcher.set_watcher_ignore_re(self._watcher_ignore_re)
+      if hasattr(self._watcher, 'set_skip_files_re'):
+        self._watcher.set_skip_files_re(self._module_configuration.skip_files)
     else:
       self._watcher = None
     self._handler_lock = threading.Lock()
@@ -558,14 +593,15 @@ class Module(object):
     self._quit_event = threading.Event()  # Set when quit() has been called.
 
     # TODO: Remove after the Files API is really gone.
-    if self._module_configuration.runtime.startswith('python'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_PYTHON
-    elif self._module_configuration.runtime.startswith('java'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_JAVA
-    elif self._module_configuration.runtime.startswith('go'):
-      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_GO
+    if (self._module_configuration.runtime.startswith('python') or
+        self._module_configuration.runtime.startswith('java') or
+        self._module_configuration.runtime.startswith('go')):
+      self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING
     else:
       self._filesapi_warning_message = None
+
+    self._total_file_change_time = 0.0
+    self._file_change_count = 0
 
   @property
   def name(self):
@@ -1056,9 +1092,15 @@ class Module(object):
                                       self._api_port,
                                       self._auth_domain,
                                       self._runtime_stderr_loglevel,
+
+
+
+
+
                                       self._php_config,
                                       self._python_config,
                                       self._java_config,
+                                      self._go_config,
                                       self._custom_config,
                                       self._cloud_sql_config,
                                       self._vm_config,
@@ -1067,6 +1109,7 @@ class Module(object):
                                       self._request_data,
                                       self._dispatcher,
                                       self._use_mtime_file_watcher,
+                                      self._watcher_ignore_re,
                                       self._allow_skipped_files,
                                       self._threadsafe_override)
     else:
@@ -1079,7 +1122,7 @@ class Module(object):
 
     url = urlparse.urlsplit(relative_url)
     if port != 80:
-      if ":" in self.host:
+      if ':' in self.host:
         host = '[%s]:%s' % (self.host, port)
       else:
         host = '%s:%s' % (self.host, port)
@@ -1105,6 +1148,42 @@ class Module(object):
     util.put_headers_in_environ(headers, environ)
     environ['HTTP_HOST'] = host
     return environ
+
+  def _get_file_changes(self, timeout):
+    """Returns a set of paths that have changed and update metrics information.
+
+    Args:
+      timeout: Integer milliseconds on which this watcher will be allowed to
+      wait for a change.
+
+    Returns:
+      A set of string paths that have changed since the last call to this
+      function.
+    """
+    t1 = time.time()
+    res = self._watcher.changes(timeout)
+    t2 = time.time()
+
+
+
+
+
+    if res:
+      self._total_file_change_time += t2 - t1
+      self._file_change_count += 1
+    return res
+
+  def get_watcher_result(self):
+    """Returns a tuple of file watcher cumulated results for google analytics.
+
+    Returns:
+      A 3-tuple of:
+        An int representing total time spent detecting file changes in seconds.
+        An int representing total number of file change events detected.
+        The class of file watcher.
+    """
+    return (self._total_file_change_time, self._file_change_count,
+            self._watcher.__class__.__name__) if self._watcher else None
 
 
 class AutoScalingModule(Module):
@@ -1494,7 +1573,15 @@ class AutoScalingModule(Module):
           self._handle_changes(_CHANGE_POLLING_MS)
         else:
           time.sleep(_CHANGE_POLLING_MS/1000.0)
-        self._adjust_instances()
+        try:
+          self._adjust_instances()
+        except Exception as e:  # pylint: disable=broad-except
+          logging.error(e.message)
+          # thread.interrupt_main() throws a KeyboardInterrupt error in the main
+          # thread, which triggers devappserver.stop() and shuts down all other
+          # processes.
+          thread.interrupt_main()
+          break
 
   def __call__(self, environ, start_response):
     return self._handle_request(environ, start_response)
@@ -1773,7 +1860,7 @@ class ManualScalingModule(Module):
       with self._handler_lock:
         self._handlers = handlers
 
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
     if file_changes:
       logging.info(
           '[%s] Detected file changes:\n  %s', self.name,
@@ -2576,7 +2663,7 @@ class BasicScalingModule(Module):
       with self._handler_lock:
         self._handlers = handlers
 
-    file_changes = self._watcher.changes(timeout)
+    file_changes = self._get_file_changes(timeout)
     if file_changes:
       self._instance_factory.files_changed()
 
@@ -2675,9 +2762,15 @@ class InteractiveCommandModule(Module):
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
+
+
+
+
+
                php_config,
                python_config,
                java_config,
+               go_config,
                custom_config,
                cloud_sql_config,
                vm_config,
@@ -2686,6 +2779,7 @@ class InteractiveCommandModule(Module):
                request_data,
                dispatcher,
                use_mtime_file_watcher,
+               watcher_ignore_re,
                allow_skipped_files,
                threadsafe_override):
     """Initializer for InteractiveCommandModule.
@@ -2706,12 +2800,19 @@ class InteractiveCommandModule(Module):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
+
+
+
+
+
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are used.
       java_config: A runtime_config_pb2.JavaConfig instance containing
           Java runtime-specific configuration. If None then defaults are used.
+      go_config: A runtime_config_pb2.GoConfig instances containing Go
+          runtime-specific configuration. If None then defaults are used.
       custom_config: A runtime_config_pb2.CustomConfig instance. If None, or
           'custom_entrypoint' is not set, then attempting to instantiate a
           custom runtime module will result in an error.
@@ -2730,6 +2831,8 @@ class InteractiveCommandModule(Module):
       use_mtime_file_watcher: A bool containing whether to use mtime polling to
           monitor file changes even if other options are available on the
           current platform.
+      watcher_ignore_re: A regex that optionally defines a pattern for the file
+          watcher to ignore.
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
@@ -2744,9 +2847,15 @@ class InteractiveCommandModule(Module):
         api_port,
         auth_domain,
         runtime_stderr_loglevel,
+
+
+
+
+
         php_config,
         python_config,
         java_config,
+        go_config,
         custom_config,
         cloud_sql_config,
         vm_config,
@@ -2756,6 +2865,7 @@ class InteractiveCommandModule(Module):
         dispatcher,
         max_instances=1,
         use_mtime_file_watcher=use_mtime_file_watcher,
+        watcher_ignore_re=watcher_ignore_re,
         automatic_restarts=True,
         allow_skipped_files=allow_skipped_files,
         threadsafe_override=threadsafe_override)

@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -1086,6 +1083,8 @@ class CreateSocketReply(_ExtendableProtocolMessage):
   server_address_ = None
   has_proxy_external_ip_ = 0
   proxy_external_ip_ = None
+  has_gateway_address_ = 0
+  gateway_address_ = ""
 
   def __init__(self, contents=None):
     if _extension_runtime:
@@ -1144,12 +1143,26 @@ class CreateSocketReply(_ExtendableProtocolMessage):
 
   def has_proxy_external_ip(self): return self.has_proxy_external_ip_
 
+  def gateway_address(self): return self.gateway_address_
+
+  def set_gateway_address(self, x):
+    self.has_gateway_address_ = 1
+    self.gateway_address_ = x
+
+  def clear_gateway_address(self):
+    if self.has_gateway_address_:
+      self.has_gateway_address_ = 0
+      self.gateway_address_ = ""
+
+  def has_gateway_address(self): return self.has_gateway_address_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_socket_descriptor()): self.set_socket_descriptor(x.socket_descriptor())
     if (x.has_server_address()): self.mutable_server_address().MergeFrom(x.server_address())
     if (x.has_proxy_external_ip()): self.mutable_proxy_external_ip().MergeFrom(x.proxy_external_ip())
+    if (x.has_gateway_address()): self.set_gateway_address(x.gateway_address())
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -1160,6 +1173,8 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if self.has_server_address_ and self.server_address_ != x.server_address_: return 0
     if self.has_proxy_external_ip_ != x.has_proxy_external_ip_: return 0
     if self.has_proxy_external_ip_ and self.proxy_external_ip_ != x.proxy_external_ip_: return 0
+    if self.has_gateway_address_ != x.has_gateway_address_: return 0
+    if self.has_gateway_address_ and self.gateway_address_ != x.gateway_address_: return 0
     if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
@@ -1174,6 +1189,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if (self.has_socket_descriptor_): n += 1 + self.lengthString(len(self.socket_descriptor_))
     if (self.has_server_address_): n += 1 + self.lengthString(self.server_address_.ByteSize())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSize())
+    if (self.has_gateway_address_): n += 1 + self.lengthString(len(self.gateway_address_))
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n
@@ -1183,6 +1199,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     if (self.has_socket_descriptor_): n += 1 + self.lengthString(len(self.socket_descriptor_))
     if (self.has_server_address_): n += 1 + self.lengthString(self.server_address_.ByteSizePartial())
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSizePartial())
+    if (self.has_gateway_address_): n += 1 + self.lengthString(len(self.gateway_address_))
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -1191,6 +1208,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
     self.clear_socket_descriptor()
     self.clear_server_address()
     self.clear_proxy_external_ip()
+    self.clear_gateway_address()
     if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
@@ -1208,6 +1226,9 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       out.putVarInt32(34)
       out.putVarInt32(self.proxy_external_ip_.ByteSize())
       self.proxy_external_ip_.OutputUnchecked(out)
+    if (self.has_gateway_address_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.gateway_address_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
@@ -1226,6 +1247,9 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       out.putVarInt32(34)
       out.putVarInt32(self.proxy_external_ip_.ByteSizePartial())
       self.proxy_external_ip_.OutputPartial(out)
+    if (self.has_gateway_address_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.gateway_address_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
@@ -1246,6 +1270,9 @@ class CreateSocketReply(_ExtendableProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_proxy_external_ip().TryMerge(tmp)
+        continue
+      if tt == 42:
+        self.set_gateway_address(d.getPrefixedString())
         continue
       if _extension_runtime:
         if (1000 <= tt):
@@ -1268,6 +1295,7 @@ class CreateSocketReply(_ExtendableProtocolMessage):
       res+=prefix+"proxy_external_ip <\n"
       res+=self.proxy_external_ip_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_gateway_address_: res+=prefix+("gateway_address: %s\n" % self.DebugFormatString(self.gateway_address_))
     if _extension_runtime:
       res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
@@ -1281,20 +1309,23 @@ class CreateSocketReply(_ExtendableProtocolMessage):
   ksocket_descriptor = 1
   kserver_address = 3
   kproxy_external_ip = 4
+  kgateway_address = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "socket_descriptor",
     3: "server_address",
     4: "proxy_external_ip",
-  }, 4)
+    5: "gateway_address",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

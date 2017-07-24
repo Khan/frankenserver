@@ -31,6 +31,7 @@ import google
 
 try:
   import lxml
+  import cssselect
 except ImportError:
   raise unittest.SkipTest('sandbox_test could not import lxml')
 
@@ -244,6 +245,7 @@ class ModuleOverrideImportHookTest(unittest.TestCase):
     self.assertEqual(stubs.return_minus_one, hooked_os.getpid)
     self.assertNotIn('execv', hooked_os.__dict__)
     self.assertEqual(stubs.os_error_not_implemented, hooked_os.unlink)
+    self.assertEqual(stubs.os_error_not_implemented, hooked_os.readlink)
     self.assertEqual(os.walk, hooked_os.walk)
 
 
@@ -286,6 +288,7 @@ class PathOverrideImportHookTest(unittest.TestCase):
 
   def setUp(self):
     self.saved_lxml = lxml
+    self.saved_cssselect = cssselect
     self.saved_pil = PIL
     self.saved_urllib = urllib
 
@@ -295,19 +298,21 @@ class PathOverrideImportHookTest(unittest.TestCase):
     sys.modules['lxml'] = self.saved_lxml
 
   def test_package_success(self):
-    hook = sandbox.PathOverrideImportHook(['lxml'])
+    hook = sandbox.PathOverrideImportHook({'lxml'})
     self.assertEqual(hook, hook.find_module('lxml'))
     del sys.modules['lxml']
     hooked_lxml = hook.load_module('lxml')
     self.assertEqual(hooked_lxml.__file__, lxml.__file__)
     self.assertEqual(hooked_lxml.__path__, lxml.__path__)
     self.assertEqual(hooked_lxml.__loader__, hook)
-    self.assertEqual([os.path.dirname(self.saved_lxml.__file__)],
-                     hook.extra_accessible_paths)
+    self.assertItemsEqual(
+        [os.path.dirname(self.saved_lxml.__file__),
+         os.path.dirname(self.saved_cssselect.__file__)],
+        hook.extra_accessible_paths)
     self.assertFalse(hook.extra_sys_paths)
 
   def test_package_success_pil_in_sys_path(self):
-    hook = sandbox.PathOverrideImportHook(['PIL'])
+    hook = sandbox.PathOverrideImportHook({'PIL'})
     self.assertEqual(hook, hook.find_module('PIL'))
     del sys.modules['PIL']
     hooked_pil = hook.load_module('PIL')
@@ -319,7 +324,7 @@ class PathOverrideImportHookTest(unittest.TestCase):
                      hook.extra_sys_paths)
 
   def test_module_success(self):
-    hook = sandbox.PathOverrideImportHook(['urllib'])
+    hook = sandbox.PathOverrideImportHook({'urllib'})
     self.assertEqual(hook, hook.find_module('urllib'))
     del sys.modules['urllib']
     hooked_urllib = hook.load_module('urllib')
@@ -331,19 +336,19 @@ class PathOverrideImportHookTest(unittest.TestCase):
     self.assertFalse(hook.extra_sys_paths)
 
   def test_disabled_modules(self):
-    hook = sandbox.PathOverrideImportHook(['lxml'])
+    hook = sandbox.PathOverrideImportHook({'lxml'})
     self.assertFalse(hook.find_module('lxml.foo'))
     self.assertFalse(hook.find_module('numpy'))
     self.assertFalse(hook.find_module('os'))
 
   def test_module_not_installed(self):
-    hook = sandbox.PathOverrideImportHook(['foo'])
+    hook = sandbox.PathOverrideImportHook({'foo'})
     self.assertFalse(hook.find_module('foo'))
     self.assertFalse(hook.extra_accessible_paths)
     self.assertFalse(hook.extra_sys_paths)
 
   def test_import_alread_in_sys_modules(self):
-    hook = sandbox.PathOverrideImportHook(['lxml'])
+    hook = sandbox.PathOverrideImportHook({'lxml'})
     self.assertEqual(os, hook.load_module('os'))
 
 

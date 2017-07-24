@@ -24,11 +24,22 @@ Library for parsing client_deploy.yaml files and working with these in memory.
 
 
 
-from google.appengine.api import appinfo
-from google.appengine.api import validation
-from google.appengine.api import yaml_builder
-from google.appengine.api import yaml_listener
-from google.appengine.api import yaml_object
+import os
+
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+else:
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+
 
 RUNTIME = 'runtime'
 START_TIME_USEC = 'start_time_usec'

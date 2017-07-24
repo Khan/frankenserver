@@ -113,6 +113,12 @@ class RequestHandler(object):
   _PYTHON_LIB_DIR = os.path.dirname(os.path.dirname(google.__file__))
 
   def __init__(self, config):
+    """Initializes a RequestHandler.
+
+    Args:
+      config: An instance of runtime_config_pb2.Config containing the
+        configuration for the Python runtime.
+    """
     self.config = config
     if appinfo.MODULE_SEPARATOR not in config.version_id:
       module_id = appinfo.DEFAULT_MODULE
@@ -175,10 +181,7 @@ class RequestHandler(object):
     user_environ = self.get_user_environ(environ)
     script = environ.pop(http_runtime_constants.SCRIPT_HEADER)
     body = environ['wsgi.input'].read(int(environ.get('CONTENT_LENGTH', 0)))
-    server_name = user_environ['SERVER_NAME']
-    if ':' in user_environ['SERVER_NAME']:
-      server_name = '[' + server_name + ']'
-    url = 'http://%s:%s%s?%s' % (server_name,
+    url = 'http://%s:%s%s?%s' % (self._get_request_host(user_environ),
                                  user_environ['SERVER_PORT'],
                                  urllib.quote(environ['PATH_INFO']),
                                  environ['QUERY_STRING'])
@@ -205,7 +208,7 @@ class RequestHandler(object):
     if 'HTTP_CONTENT_LENGTH' in user_environ:
       del user_environ['HTTP_CONTENT_LENGTH']
     user_environ['REQUEST_METHOD'] = 'GET'
-    url = 'http://%s:%s%s?%s' % (user_environ['SERVER_NAME'],
+    url = 'http://%s:%s%s?%s' % (self._get_request_host(user_environ),
                                  user_environ['SERVER_PORT'],
                                  urllib.quote(environ['PATH_INFO']),
                                  environ['QUERY_STRING'])
@@ -258,6 +261,25 @@ class RequestHandler(object):
     if content_length:
       user_environ['HTTP_CONTENT_LENGTH'] = content_length
     return user_environ
+
+  def _get_request_host(self, user_environ):
+    """Returns the host to send the request to.
+
+    IPv4 addresses are returned with host as eg, '127.0.0.1'. IPv6 addresses
+    are returned with host as eg, '[::]'.
+
+    Args:
+      user_environ: A dict containing the environ representing an HTTP request,
+        eg from get_user_environ.
+
+    Returns:
+      The string host to send the request to.
+    """
+    host = user_environ['SERVER_NAME']
+    if ':' in user_environ['SERVER_NAME']:
+      host = '[' + host + ']'
+
+    return host
 
   def _flush_logs(self, logs):
     """Flushes logs using the LogService API.

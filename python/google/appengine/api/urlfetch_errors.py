@@ -17,9 +17,7 @@
 
 
 
-"""Errors used in the urlfetch API
-developers.
-"""
+"""Errors used in the urlfetch API."""
 
 
 
@@ -37,70 +35,69 @@ class Error(Exception):
 
 
 class DownloadError(Error):
-  """Raised when we could not fetch the URL for any reason.
+  """The URL could not be retrieved.
 
-  Note that this exception is only raised when we cannot contact the
-  server. HTTP errors (e.g., 404) are returned in the status_code field
-  in the return value of fetch, and no exception is raised.
+  This exception is only raised when we cannot contact the server. HTTP errors
+  (such as 404) are returned in the `status_code` field in the return value of
+  `fetch`, and no exception is raised.
   """
 
 
 class MalformedReplyError(DownloadError):
-  """Raised when the target server returns an invalid HTTP response.
+  """The target server returned an invalid HTTP response.
 
-     Responses are invalid if they contain no headers, malformed or
-     incomplete headers, or have content missing.
+  Responses are invalid if they contain no headers, malformed or incomplete
+  headers, or have content missing.
   """
 
 
 class TooManyRedirectsError(DownloadError):
-  """Raised when follow_redirects input parameter was set to true and the
-     redirect limit was hit."""
+  """`follow_redirects` was set to True, and the redirect limit was hit."""
 
 
 class InternalTransientError(Error):
-  """Raised when an internal transient error occurs."""
+  """An internal transient error occurred."""
 
 
 class ConnectionClosedError(DownloadError):
-  """Raised when the target server prematurely closes the connection."""
+  """The target server prematurely closed the connection."""
 
 
 class InvalidURLError(Error):
-  """Raised when the URL given is empty or invalid.
+  """The URL given was empty or invalid.
 
-  Only http: and https: URLs are allowed. The maximum URL length
-  allowed is 2048 characters. The login/pass portion is not
-  allowed. In deployed applications, only ports 80 and 443 for http
-  and https respectively are allowed.
+  Only HTTP and HTTPS URLs are allowed. The maximum URL length is 2048
+  characters. The login and password portion is not allowed. In deployed
+  applications, only ports 80 and 443 for HTTP and HTTPS respectively are
+  allowed.
   """
 
 
 class PayloadTooLargeError(InvalidURLError):
-  """Raised when the request payload exceeds the limit."""
+  """The request payload exceeds the limit."""
 
 
 class DNSLookupFailedError(DownloadError):
-  """Raised when the DNS lookup for a URL failed."""
+  """The DNS lookup for a URL failed."""
 
 
 class DeadlineExceededError(DownloadError):
-  """Raised when we could not fetch the URL because the deadline was exceeded.
+  """The URL was not fetched because the deadline was exceeded.
 
-  This can occur with either the client-supplied 'deadline' or the system
-  default, if the client does not supply a 'deadline' parameter.
+  This can occur with either the client-supplied `deadline`, or the system
+  default if the client does not supply a `deadline` parameter.
   """
 
 
 class ResponseTooLargeError(Error):
-  """Raised when the response was too large and was truncated."""
+  """The response was too large and was truncated."""
   def __init__(self, response):
     self.response = response
 
 
 class InvalidMethodError(Error):
-  """Raised when an invalid value for 'method' is provided"""
+  """An invalid value was provided for `method`."""
 
 
 class SSLCertificateError(Error):
-  """Raised when an invalid server certificate is presented."""
+  """An invalid server certificate was presented."""

@@ -1,22 +1,13 @@
-#!/usr/bin/python2.4
-# $Id: 528e646aad5388398e2cfcb7a2cb6af49473c630 $
-#
-# Nose program for testing grizzled.file classes/functions
+# Nose program for testing (some) grizzled.file classes/functions
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.file import *
-from cStringIO import StringIO
 import os
 import tempfile
 import atexit
-
-# ---------------------------------------------------------------------------
-# Globals
-# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Classes
@@ -38,7 +29,7 @@ class TestFilePackage(object):
 
     def testRecursivelyRemove(self):
         path = tempfile.mkdtemp()
-        print 'Created directory "%s"' % path
+        print('Created directory "{0}"'.format(path))
 
         # Create some files underneath
 

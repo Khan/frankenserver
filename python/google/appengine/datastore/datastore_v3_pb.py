@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -33,10 +30,13 @@ else:
 
 from google.appengine.datastore.action_pb import *
 import google.appengine.datastore.action_pb
+google_dot_storage_dot_onestore_dot_v3_dot_action__pb = __import__('google.appengine.datastore.action_pb', {}, {}, [''])
 from google.appengine.datastore.entity_pb import *
 import google.appengine.datastore.entity_pb
+google_dot_storage_dot_onestore_dot_v3_dot_entity__pb = __import__('google.appengine.datastore.entity_pb', {}, {}, [''])
 from google.appengine.datastore.snapshot_pb import *
 import google.appengine.datastore.snapshot_pb
+google_dot_storage_dot_onestore_dot_v3_dot_snapshot__pb = __import__('google.appengine.datastore.snapshot_pb', {}, {}, [''])
 class Transaction(ProtocolBuffer.ProtocolMessage):
   has_handle_ = 0
   handle_ = 0
@@ -649,6 +649,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kind_ = ""
   has_ancestor_ = 0
   ancestor_ = None
+  has_shallow_ = 0
+  shallow_ = 0
   has_search_query_ = 0
   search_query_ = ""
   has_hint_ = 0
@@ -762,6 +764,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if self.ancestor_ is not None: self.ancestor_.Clear()
 
   def has_ancestor(self): return self.has_ancestor_
+
+  def shallow(self): return self.shallow_
+
+  def set_shallow(self, x):
+    self.has_shallow_ = 1
+    self.shallow_ = x
+
+  def clear_shallow(self):
+    if self.has_shallow_:
+      self.has_shallow_ = 0
+      self.shallow_ = 0
+
+  def has_shallow(self): return self.has_shallow_
 
   def filter_size(self): return len(self.filter_)
   def filter_list(self): return self.filter_
@@ -1090,6 +1105,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (x.has_name_space()): self.set_name_space(x.name_space())
     if (x.has_kind()): self.set_kind(x.kind())
     if (x.has_ancestor()): self.mutable_ancestor().MergeFrom(x.ancestor())
+    if (x.has_shallow()): self.set_shallow(x.shallow())
     for i in xrange(x.filter_size()): self.add_filter().CopyFrom(x.filter(i))
     if (x.has_search_query()): self.set_search_query(x.search_query())
     for i in xrange(x.order_size()): self.add_order().CopyFrom(x.order(i))
@@ -1125,6 +1141,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_kind_ and self.kind_ != x.kind_: return 0
     if self.has_ancestor_ != x.has_ancestor_: return 0
     if self.has_ancestor_ and self.ancestor_ != x.ancestor_: return 0
+    if self.has_shallow_ != x.has_shallow_: return 0
+    if self.has_shallow_ and self.shallow_ != x.shallow_: return 0
     if len(self.filter_) != len(x.filter_): return 0
     for e1, e2 in zip(self.filter_, x.filter_):
       if e1 != e2: return 0
@@ -1202,6 +1220,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     if (self.has_kind_): n += 1 + self.lengthString(len(self.kind_))
     if (self.has_ancestor_): n += 2 + self.lengthString(self.ancestor_.ByteSize())
+    if (self.has_shallow_): n += 3
     n += 2 * len(self.filter_)
     for i in xrange(len(self.filter_)): n += self.filter_[i].ByteSize()
     if (self.has_search_query_): n += 1 + self.lengthString(len(self.search_query_))
@@ -1241,6 +1260,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     if (self.has_kind_): n += 1 + self.lengthString(len(self.kind_))
     if (self.has_ancestor_): n += 2 + self.lengthString(self.ancestor_.ByteSizePartial())
+    if (self.has_shallow_): n += 3
     n += 2 * len(self.filter_)
     for i in xrange(len(self.filter_)): n += self.filter_[i].ByteSizePartial()
     if (self.has_search_query_): n += 1 + self.lengthString(len(self.search_query_))
@@ -1277,6 +1297,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_name_space()
     self.clear_kind()
     self.clear_ancestor()
+    self.clear_shallow()
     self.clear_filter()
     self.clear_search_query()
     self.clear_order()
@@ -1388,6 +1409,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_database_id_):
       out.putVarInt32(338)
       out.putPrefixedString(self.database_id_)
+    if (self.has_shallow_):
+      out.putVarInt32(344)
+      out.putBoolean(self.shallow_)
 
   def OutputPartial(self, out):
     if (self.has_app_):
@@ -1478,6 +1502,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_database_id_):
       out.putVarInt32(338)
       out.putPrefixedString(self.database_id_)
+    if (self.has_shallow_):
+      out.putVarInt32(344)
+      out.putBoolean(self.shallow_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1578,6 +1605,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 338:
         self.set_database_id(d.getPrefixedString())
         continue
+      if tt == 344:
+        self.set_shallow(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1594,6 +1624,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"ancestor <\n"
       res+=self.ancestor_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_shallow_: res+=prefix+("shallow: %s\n" % self.DebugFormatBool(self.shallow_))
     cnt=0
     for e in self.filter_:
       elm=""
@@ -1672,6 +1703,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kname_space = 29
   kkind = 3
   kancestor = 17
+  kshallow = 43
   kFilterGroup = 4
   kFilterop = 6
   kFilterproperty = 14
@@ -1734,7 +1766,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     37: "persist_offset",
     40: "geo_region",
     42: "database_id",
-  }, 42)
+    43: "shallow",
+  }, 43)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1770,7 +1803,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     37: ProtocolBuffer.Encoder.NUMERIC,
     40: ProtocolBuffer.Encoder.STRING,
     42: ProtocolBuffer.Encoder.STRING,
-  }, 42, ProtocolBuffer.Encoder.MAX_TYPE)
+    43: ProtocolBuffer.Encoder.NUMERIC,
+  }, 43, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2988,6 +3022,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   keys_only_ = 0
   has_distinct_infix_size_ = 0
   distinct_infix_size_ = 0
+  has_key_path_length_ = 0
+  key_path_length_ = 0
   has_entityfilter_ = 0
   entityfilter_ = None
   has_plan_label_ = 0
@@ -3110,6 +3146,19 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
 
   def has_distinct_infix_size(self): return self.has_distinct_infix_size_
 
+  def key_path_length(self): return self.key_path_length_
+
+  def set_key_path_length(self, x):
+    self.has_key_path_length_ = 1
+    self.key_path_length_ = x
+
+  def clear_key_path_length(self):
+    if self.has_key_path_length_:
+      self.has_key_path_length_ = 0
+      self.key_path_length_ = 0
+
+  def has_key_path_length(self): return self.has_key_path_length_
+
   def entityfilter(self):
     if self.entityfilter_ is None:
       self.lazy_init_lock_.acquire()
@@ -3153,6 +3202,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     for i in xrange(x.property_name_size()): self.add_property_name(x.property_name(i))
     if (x.has_distinct_infix_size()): self.set_distinct_infix_size(x.distinct_infix_size())
+    if (x.has_key_path_length()): self.set_key_path_length(x.key_path_length())
     if (x.has_entityfilter()): self.mutable_entityfilter().MergeFrom(x.entityfilter())
     if (x.has_plan_label()): self.set_plan_label(x.plan_label())
 
@@ -3176,6 +3226,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_distinct_infix_size_ != x.has_distinct_infix_size_: return 0
     if self.has_distinct_infix_size_ and self.distinct_infix_size_ != x.distinct_infix_size_: return 0
+    if self.has_key_path_length_ != x.has_key_path_length_: return 0
+    if self.has_key_path_length_ and self.key_path_length_ != x.key_path_length_: return 0
     if self.has_entityfilter_ != x.has_entityfilter_: return 0
     if self.has_entityfilter_ and self.entityfilter_ != x.entityfilter_: return 0
     if self.has_plan_label_ != x.has_plan_label_: return 0
@@ -3210,6 +3262,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.property_name_)
     for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_distinct_infix_size_): n += 2 + self.lengthVarInt64(self.distinct_infix_size_)
+    if (self.has_key_path_length_): n += 2 + self.lengthVarInt64(self.key_path_length_)
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSize()
     if (self.has_plan_label_): n += 2 + self.lengthString(len(self.plan_label_))
     return n + 4
@@ -3229,6 +3282,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.property_name_)
     for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_distinct_infix_size_): n += 2 + self.lengthVarInt64(self.distinct_infix_size_)
+    if (self.has_key_path_length_): n += 2 + self.lengthVarInt64(self.key_path_length_)
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSizePartial()
     if (self.has_plan_label_): n += 2 + self.lengthString(len(self.plan_label_))
     return n
@@ -3242,6 +3296,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     self.clear_keys_only()
     self.clear_property_name()
     self.clear_distinct_infix_size()
+    self.clear_key_path_length()
     self.clear_entityfilter()
     self.clear_plan_label()
 
@@ -3278,6 +3333,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_plan_label_):
       out.putVarInt32(210)
       out.putPrefixedString(self.plan_label_)
+    if (self.has_key_path_length_):
+      out.putVarInt32(216)
+      out.putVarInt32(self.key_path_length_)
 
   def OutputPartial(self, out):
     if (self.has_primaryscan_):
@@ -3314,6 +3372,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_plan_label_):
       out.putVarInt32(210)
       out.putPrefixedString(self.plan_label_)
+    if (self.has_key_path_length_):
+      out.putVarInt32(216)
+      out.putVarInt32(self.key_path_length_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3351,6 +3412,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       if tt == 210:
         self.set_plan_label(d.getPrefixedString())
         continue
+      if tt == 216:
+        self.set_key_path_length(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3385,6 +3449,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       res+=prefix+("property_name%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     if self.has_distinct_infix_size_: res+=prefix+("distinct_infix_size: %s\n" % self.DebugFormatInt32(self.distinct_infix_size_))
+    if self.has_key_path_length_: res+=prefix+("key_path_length: %s\n" % self.DebugFormatInt32(self.key_path_length_))
     if self.has_entityfilter_:
       res+=prefix+"EntityFilter {\n"
       res+=self.entityfilter_.__str__(prefix + "  ", printElemNumber)
@@ -3415,6 +3480,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   kkeys_only = 12
   kproperty_name = 24
   kdistinct_infix_size = 25
+  kkey_path_length = 27
   kEntityFilterGroup = 13
   kEntityFilterdistinct = 14
   kEntityFilterkind = 17
@@ -3447,7 +3513,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     24: "property_name",
     25: "distinct_infix_size",
     26: "plan_label",
-  }, 26)
+    27: "key_path_length",
+  }, 27)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3475,7 +3542,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     24: ProtocolBuffer.Encoder.STRING,
     25: ProtocolBuffer.Encoder.NUMERIC,
     26: ProtocolBuffer.Encoder.STRING,
-  }, 26, ProtocolBuffer.Encoder.MAX_TYPE)
+    27: ProtocolBuffer.Encoder.NUMERIC,
+  }, 27, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4237,6 +4305,11 @@ class Error(ProtocolBuffer.ProtocolMessage):
   TRY_ALTERNATE_BACKEND =   10
   SAFE_TIME_TOO_OLD =   11
   RESOURCE_EXHAUSTED =   12
+  NOT_FOUND    =   13
+  ALREADY_EXISTS =   14
+  FAILED_PRECONDITION =   15
+  UNAUTHENTICATED =   16
+  ABORTED      =   17
 
   _ErrorCode_NAMES = {
     1: "BAD_REQUEST",
@@ -4251,6 +4324,11 @@ class Error(ProtocolBuffer.ProtocolMessage):
     10: "TRY_ALTERNATE_BACKEND",
     11: "SAFE_TIME_TOO_OLD",
     12: "RESOURCE_EXHAUSTED",
+    13: "NOT_FOUND",
+    14: "ALREADY_EXISTS",
+    15: "FAILED_PRECONDITION",
+    16: "UNAUTHENTICATED",
+    17: "ABORTED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -8535,14 +8613,34 @@ class AddActionsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AddActionsResponse'
 class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
+
+
+  UNKNOWN      =    0
+  READ_ONLY    =    1
+  READ_WRITE   =    2
+
+  _TransactionMode_NAMES = {
+    0: "UNKNOWN",
+    1: "READ_ONLY",
+    2: "READ_WRITE",
+  }
+
+  def TransactionMode_Name(cls, x): return cls._TransactionMode_NAMES.get(x, "")
+  TransactionMode_Name = classmethod(TransactionMode_Name)
+
   has_app_ = 0
   app_ = ""
   has_allow_multiple_eg_ = 0
   allow_multiple_eg_ = 0
   has_database_id_ = 0
   database_id_ = ""
+  has_mode_ = 0
+  mode_ = 0
+  has_previous_transaction_ = 0
+  previous_transaction_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def app(self): return self.app_
@@ -8584,12 +8682,46 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_database_id(self): return self.has_database_id_
 
+  def mode(self): return self.mode_
+
+  def set_mode(self, x):
+    self.has_mode_ = 1
+    self.mode_ = x
+
+  def clear_mode(self):
+    if self.has_mode_:
+      self.has_mode_ = 0
+      self.mode_ = 0
+
+  def has_mode(self): return self.has_mode_
+
+  def previous_transaction(self):
+    if self.previous_transaction_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.previous_transaction_ is None: self.previous_transaction_ = Transaction()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.previous_transaction_
+
+  def mutable_previous_transaction(self): self.has_previous_transaction_ = 1; return self.previous_transaction()
+
+  def clear_previous_transaction(self):
+
+    if self.has_previous_transaction_:
+      self.has_previous_transaction_ = 0;
+      if self.previous_transaction_ is not None: self.previous_transaction_.Clear()
+
+  def has_previous_transaction(self): return self.has_previous_transaction_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_app()): self.set_app(x.app())
     if (x.has_allow_multiple_eg()): self.set_allow_multiple_eg(x.allow_multiple_eg())
     if (x.has_database_id()): self.set_database_id(x.database_id())
+    if (x.has_mode()): self.set_mode(x.mode())
+    if (x.has_previous_transaction()): self.mutable_previous_transaction().MergeFrom(x.previous_transaction())
 
   def Equals(self, x):
     if x is self: return 1
@@ -8599,6 +8731,10 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_allow_multiple_eg_ and self.allow_multiple_eg_ != x.allow_multiple_eg_: return 0
     if self.has_database_id_ != x.has_database_id_: return 0
     if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
+    if self.has_mode_ != x.has_mode_: return 0
+    if self.has_mode_ and self.mode_ != x.mode_: return 0
+    if self.has_previous_transaction_ != x.has_previous_transaction_: return 0
+    if self.has_previous_transaction_ and self.previous_transaction_ != x.previous_transaction_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -8607,6 +8743,7 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: app not set.')
+    if (self.has_previous_transaction_ and not self.previous_transaction_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -8614,6 +8751,8 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.app_))
     if (self.has_allow_multiple_eg_): n += 2
     if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
+    if (self.has_mode_): n += 1 + self.lengthVarInt64(self.mode_)
+    if (self.has_previous_transaction_): n += 1 + self.lengthString(self.previous_transaction_.ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -8623,12 +8762,16 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
       n += self.lengthString(len(self.app_))
     if (self.has_allow_multiple_eg_): n += 2
     if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
+    if (self.has_mode_): n += 1 + self.lengthVarInt64(self.mode_)
+    if (self.has_previous_transaction_): n += 1 + self.lengthString(self.previous_transaction_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_app()
     self.clear_allow_multiple_eg()
     self.clear_database_id()
+    self.clear_mode()
+    self.clear_previous_transaction()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -8639,6 +8782,13 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_database_id_):
       out.putVarInt32(34)
       out.putPrefixedString(self.database_id_)
+    if (self.has_mode_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.mode_)
+    if (self.has_previous_transaction_):
+      out.putVarInt32(58)
+      out.putVarInt32(self.previous_transaction_.ByteSize())
+      self.previous_transaction_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_app_):
@@ -8650,6 +8800,13 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_database_id_):
       out.putVarInt32(34)
       out.putPrefixedString(self.database_id_)
+    if (self.has_mode_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.mode_)
+    if (self.has_previous_transaction_):
+      out.putVarInt32(58)
+      out.putVarInt32(self.previous_transaction_.ByteSizePartial())
+      self.previous_transaction_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -8663,6 +8820,15 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_database_id(d.getPrefixedString())
         continue
+      if tt == 40:
+        self.set_mode(d.getVarInt32())
+        continue
+      if tt == 58:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_previous_transaction().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -8674,6 +8840,11 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
     if self.has_allow_multiple_eg_: res+=prefix+("allow_multiple_eg: %s\n" % self.DebugFormatBool(self.allow_multiple_eg_))
     if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
+    if self.has_mode_: res+=prefix+("mode: %s\n" % self.DebugFormatInt32(self.mode_))
+    if self.has_previous_transaction_:
+      res+=prefix+"previous_transaction <\n"
+      res+=self.previous_transaction_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -8683,20 +8854,26 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
   kapp = 1
   kallow_multiple_eg = 2
   kdatabase_id = 4
+  kmode = 5
+  kprevious_transaction = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "app",
     2: "allow_multiple_eg",
     4: "database_id",
-  }, 4)
+    5: "mode",
+    7: "previous_transaction",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.NUMERIC,
+    7: ProtocolBuffer.Encoder.STRING,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

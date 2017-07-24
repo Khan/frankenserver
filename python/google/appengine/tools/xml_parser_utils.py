@@ -42,9 +42,14 @@ def GetChildNodeText(node, child_tag, default=''):
   """Finds child xml node with desired tag and returns its text."""
   for child in node.getchildren():
     if GetTag(child) == child_tag:
-
-      return child.text or default
+      return GetNodeText(child) or default
   return default
+
+
+def GetNodeText(node):
+  """Returns the node text after stripping whitespace."""
+
+  return node.text.strip() if node.text else ''
 
 
 def GetNodes(node, match_tag):

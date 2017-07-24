@@ -402,7 +402,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
           error_handler_file=application_configuration.get_app_error_file(
               self._module_configuration),
           prior_error=error)
-      self._proxy.wait_for_connection()
+      self._proxy.wait_for_connection(self._process)
 
   def quit(self):
     """Causes the runtime process to exit."""

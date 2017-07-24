@@ -20,16 +20,16 @@
 
 """Task Queue API.
 
-Enables an application to queue background work for itself. Work is done
-through webhooks that process tasks pushed from a queue, or workers that
-manually pull tasks from a queue. In push queues, Tasks will execute in
-best-effort order of ETA. Webhooks that fail will cause tasks to be retried
-at a later time. In pull queues, workers are responsible of leasing tasks for
-processing and deleting the tasks when completed. Multiple queues may exist
-with independent throttling controls.
+Enables an application to queue background work for itself. Work is done through
+webhooks that process tasks pushed from a queue, or workers that manually pull
+tasks from a queue. In push queues, tasks will execute in best-effort order of
+ETA. Webhooks that fail will cause tasks to be retried at a later time. In pull
+queues, workers are responsible of leasing tasks for processing and deleting the
+tasks when completed. Multiple queues cab exist with independent throttling
+controls.
 
-Webhook URLs may be specified directly for push Tasks, or the default URL scheme
-may be used, which will translate Task names into URLs relative to a Queue's
+Webhook URLs can be specified directly for push tasks, or the default URL scheme
+can be used, which will translate task names into URLs relative to a queue's
 base path. A default queue is also provided for simple usage.
 """
 
@@ -82,6 +82,7 @@ import urlparse
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import app_identity
+from google.appengine.api import modules
 from google.appengine.api import namespace_manager
 from google.appengine.api import urlfetch
 from google.appengine.api.taskqueue import taskqueue_service_pb
@@ -89,7 +90,7 @@ from google.appengine.runtime import apiproxy_errors
 
 
 class Error(Exception):
-  """Base-class for exceptions in this module."""
+  """Base class for exceptions in this module."""
 
 
 class UnknownQueueError(Error):
@@ -97,26 +98,23 @@ class UnknownQueueError(Error):
 
 
 class TransientError(Error):
-  """There was a transient error while accessing the queue.
-
-  Please Try again later.
-  """
+  """A transient error occurred while accessing the queue. Try again later."""
 
 
 class InternalError(Error):
-  """There was an internal error while accessing this queue.
+  """An internal error occurred while accessing this queue.
 
-  If this problem continues, please contact the App Engine team through
-  our support forum with a description of your problem.
+  If the problem continues, contact the App Engine team through the support
+  forum. Be sure to include a description of your problem.
   """
 
 
 class InvalidTaskError(Error):
-  """The task's parameters, headers, or method is invalid."""
+  """The parameters, headers, or method of the task is invalid."""
 
 
 class InvalidTaskNameError(InvalidTaskError):
-  """The task's name is invalid."""
+  """The name of the task is invalid."""
 
 
 class TaskTooLargeError(InvalidTaskError):
@@ -124,15 +122,19 @@ class TaskTooLargeError(InvalidTaskError):
 
 
 class TaskAlreadyExistsError(InvalidTaskError):
-  """Task already exists. It has not yet run."""
+  """The task already exists. It has not yet run."""
 
 
 class TombstonedTaskError(InvalidTaskError):
-  """Task has been tombstoned."""
+  """The task has been tombstoned.
+
+  A task with the same name was previously executed in the queue; names should
+  be unique within a queue.
+  """
 
 
 class InvalidUrlError(InvalidTaskError):
-  """The task's relative URL is invalid."""
+  """The relative URL used for the task is invalid."""
 
 
 class InvalidEtaError(InvalidTaskError):
@@ -144,11 +146,11 @@ class BadTaskStateError(Error):
 
 
 class InvalidQueueError(Error):
-  """The Queue's configuration is invalid."""
+  """The queue's configuration is invalid."""
 
 
 class InvalidQueueNameError(InvalidQueueError):
-  """The Queue's name is invalid."""
+  """The name of the queue is invalid."""
 
 
 class _RelativeUrlError(Error):
@@ -160,7 +162,11 @@ class PermissionDeniedError(Error):
 
 
 class DuplicateTaskNameError(Error):
-  """The add arguments contain tasks with identical names."""
+  """Two tasks have the same name.
+
+  When adding multiple tasks to a queue in a batch, more than one task cannot
+  have the same name.
+  """
 
 
 class TooManyTasksError(Error):
@@ -184,15 +190,15 @@ class InvalidLeaseTimeError(Error):
 
 
 class InvalidMaxTasksError(Error):
-  """The requested max tasks in lease_tasks is invalid."""
+  """The requested maximum number of tasks in `lease_tasks` is invalid."""
 
 
 class InvalidDeadlineError(Error):
-  """The requested deadline in lease_tasks is invalid."""
+  """The requested deadline in `lease_tasks` is invalid."""
 
 
 class InvalidQueueModeError(Error):
-  """Invoking PULL queue operation on a PUSH queue or vice versa."""
+  """Invokes a pull queue operation on a push queue or vice versa."""
 
 
 class TransactionalRequestTooLargeError(TaskTooLargeError):
@@ -332,7 +338,7 @@ _PRESERVE_ENVIRONMENT_HEADERS = (
 
 
 class _UTCTimeZone(datetime.tzinfo):
-  """UTC timezone."""
+  """UTC time zone."""
 
   ZERO = datetime.timedelta(0)
 
@@ -356,25 +362,25 @@ def _parse_relative_url(relative_url):
   """Parses a relative URL and splits it into its path and query string.
 
   Args:
-    relative_url: The relative URL, starting with a '/'.
+      relative_url: The relative URL, starting with a '/'.
 
   Returns:
-    Tuple (path, query) where:
-      path: The path in the relative URL.
-      query: The query string in the URL without the '?' character.
+      Tuple (path, query) where:
+        path: The path in the relative URL.
+        query: The query string in the URL without the '?'' character.
 
   Raises:
-    _RelativeUrlError if the relative_url is invalid for whatever reason.
+     _RelativeUrlError: If the `relative_url` is invalid for any reason.
   """
   if not relative_url:
-    raise _RelativeUrlError('Relative URL is empty')
+    raise _RelativeUrlError('The relative URL is empty')
   (scheme, netloc, path, query, fragment) = urlparse.urlsplit(relative_url)
   if scheme or netloc:
-    raise _RelativeUrlError('Relative URL may not have a scheme or location')
+    raise _RelativeUrlError('Relative URL cannot have a scheme or location')
   if fragment:
-    raise _RelativeUrlError('Relative URL may not specify a fragment')
+    raise _RelativeUrlError('Relative URL cannot specify a fragment')
   if not path or path[0] != '/':
-    raise _RelativeUrlError('Relative URL path must start with "/"')
+    raise _RelativeUrlError('The relative URL path must start with "/"')
   return path, query
 
 
@@ -384,13 +390,13 @@ def _flatten_params(params):
   Any unicode strings in keys or values will be encoded as UTF-8.
 
   Args:
-    params: Dictionary mapping parameter keys to values. Values will be
-      converted to a string and added to the list as tuple (key, value). If
-      a values is iterable and not a string, each contained value will be
-      added as a separate (key, value) tuple.
+      params: Dictionary mapping parameter keys to values. Values will be
+          converted to a string and added to the list as tuple (key, value). If
+          a values is iterable and not a string, each contained value will be
+          added as a separate (key, value) tuple.
 
   Returns:
-    List of (key, value) tuples.
+      List of (key, value) tuples.
   """
 
   def get_string(value):
@@ -423,17 +429,17 @@ def _MakeAsyncCall(method, request, response, get_result_hook=None, rpc=None):
   """Internal helper to schedule an asynchronous RPC.
 
   Args:
-    method: The name of the taskqueue_service method that should be called,
-      e.g. 'BulkAdd'.
-    request: The protocol buffer containing the request argument.
-    response: The protocol buffer to be populated with the response.
-    get_result_hook: An optional hook function used to process results
-      (See UserRPC.make_call() for more info).
-    rpc: An optional UserRPC object that will be used to make the call.
+      method: The name of the taskqueue_service method that should be called,
+          for example: `BulkAdd`.
+      request: The protocol buffer that contains the request argument.
+      response: The protocol buffer to be populated with the response.
+      get_result_hook: An optional hook function used to process results. See
+          `UserRPC.make_call()` for more information.
+      rpc: An optional UserRPC object that will be used to make the call.
 
   Returns:
-    A UserRPC object; either the one passed in as the rpc argument,
-    or a new one if no rpc was passed in.
+      A UserRPC object; either the object that was passed in as the RPC
+      argument, or a new object if no RPC was passed in.
   """
   if rpc is None:
     rpc = create_rpc()
@@ -443,14 +449,14 @@ def _MakeAsyncCall(method, request, response, get_result_hook=None, rpc=None):
 
 
 def _TranslateError(error, detail=''):
-  """Translates a TaskQueueServiceError into an exception.
+  """Translates a `TaskQueueServiceError` into an exception.
 
   Args:
-    error: Value from TaskQueueServiceError enum.
-    detail: A human-readable description of the error.
+      error: Value from TaskQueueServiceError enum.
+      detail: A human-readable description of the error.
 
   Returns:
-    The corresponding Exception sub-class for that error code.
+      The corresponding Exception sub-class for that error code.
   """
   if (error >= taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR
       and isinstance(error, int)):
@@ -491,11 +497,18 @@ def create_rpc(deadline=None, callback=None):
 
   Args:
     deadline: Optional deadline in seconds for the operation; the default
-      is a system-specific deadline (typically 5 seconds).
-    callback: Optional callable to invoke on completion.
+        value is a system-specific deadline, which is typically 5 seconds. After
+        the deadline, a `DeadlineExceededError` error will be returned.
+    callback: Optional function to be called with the Task Queue service
+        returns results successfully when `get_result()`, `check_success()`,
+        or `wait()` is invoked on the RPC object. The function is
+        called without arguments. The function is not called in a background
+        process or thread; the function is only called when one of the above
+        methods is called by the application. The function is called even if
+        the request fails or the RPC deadline elapses.
 
   Returns:
-    An apiproxy_stub_map.UserRPC object specialized for this service.
+    An `apiproxy_stub_map.UserRPC` object specialized for this service.
   """
   if deadline is not None:
     _ValidateDeadline(deadline)
@@ -503,7 +516,19 @@ def create_rpc(deadline=None, callback=None):
 
 
 class TaskRetryOptions(object):
-  """The options used to decide when a failed Task will be retried."""
+  """The options used to decide when a failed task will be retried.
+
+  Tasks executing in the task queue can fail for many reasons. If a task fails
+  to execute, which is indicated by returning any HTTP status code outside of
+  the range 200-299, App Engine retries the task until it succeeds. By default,
+  the system gradually reduces the retry rate to avoid flooding your application
+  with too many requests, but schedules retry attempts to recur at a maximum of
+  once per hour until the task succeeds. 503 errors, however, are treated as
+  special cases and should not be returned by user code.
+
+  The `TaskRetryOptions` class provides the properties that you can use to
+  decide when to retry a failed task at runtime.
+  """
 
   __CONSTRUCTOR_KWARGS = frozenset(
       ['min_backoff_seconds', 'max_backoff_seconds',
@@ -513,24 +538,26 @@ class TaskRetryOptions(object):
     """Initializer.
 
     Args:
-      min_backoff_seconds: The minimum number of seconds to wait before retrying
-        a task after failure. (optional)
-      max_backoff_seconds: The maximum number of seconds to wait before retrying
-        a task after failure. (optional)
-      task_age_limit: The number of seconds after creation afterwhich a failed
-        task will no longer be retried. The given value will be rounded up to
-        the nearest integer. If task_retry_limit is also specified then the task
-        will be retried until both limits are reached. (optional)
-      max_doublings: The maximum number of times that the interval between
-        failed task retries will be doubled before the increase becomes
-        constant. The constant will be:
-        2**(max_doublings - 1) * min_backoff_seconds. (optional)
-      task_retry_limit: The maximum number of times to retry a failed task
-        before giving up. If task_age_limit is specified then the task will be
-        retried until both limits are reached. (optional)
+      min_backoff_seconds: Optional; the minimum number of seconds to wait
+          before retrying a task after it fails.
+      max_backoff_seconds: Optional; the maximum number of seconds to wait
+          before retrying a task after it fails.
+      task_age_limit: Optional; the number of seconds after creation that a
+          failed task will no longer be retried. The given value is rounded up
+          to the nearest integer. If `task_retry_limit` is also specified, the
+          task will be retried until both limits are reached.
+      max_doublings: Optional; the maximum number of times that the interval
+          between failed task retries will be doubled before the increase
+          becomes constant. The constant is:
+          `2**(max_doublings - 1) * min_backoff_seconds`.
+      task_retry_limit: Optional; the maximum number of times to retry a
+          failed task before giving up. In push queues, the counter is
+          incremented each time App Engine tries the tasks, up to the
+          specified limit. If `task_age_limit` is also specified, the task
+          will be retried until both limits are reached.
 
     Raises:
-      InvalidTaskRetryOptionsError if any of the parameters are invalid.
+        InvalidTaskRetryOptionsError: If any of the parameters are invalid.
     """
     args_diff = set(kwargs.iterkeys()) - self.__CONSTRUCTOR_KWARGS
     if args_diff:
@@ -584,7 +611,7 @@ class TaskRetryOptions(object):
 
   @property
   def task_age_limit(self):
-    """The number of seconds afterwhich a failed task will not be retried."""
+    """The number of seconds after which a failed task will not be retried."""
     return self.__task_age_limit
 
   @property
@@ -604,7 +631,35 @@ class TaskRetryOptions(object):
 
 
 class Task(object):
-  """Represents a single Task on a queue."""
+  """Represents a single task on a queue.
+
+  The `Task` class enables an application to queue background work. Work is done
+  through webhooks that process tasks pushed from a push queue, or workers that
+  manually pull tasks from a pull queue.
+
+  In push queues, most tasks are delivered in best-effort order of ETA.
+
+  Note:
+      Occasionally, tasks might be delivered out of order of ETA. However, for
+      corner cases, tasks are delivered out of order for an extended period of
+      time. You should not rely on tasks being delivered in order, as the
+      results aren't always consistent.
+
+  Webhooks that fail cause tasks to be retried at a later time. You can
+  configure the rate and number of retries for failed tasks. You can specify
+  webhook URLs directly for push tasks. You can also use the default URL scheme,
+  which translates task names into URLs that are relative to a queue's base
+  path. A default queue is also provided for simple usage.
+
+  In pull queues, workers are responsible for leasing tasks, processing them,
+  and deleting them after processing. You can configure the number of task
+  retries, which is based on how many times the task has been leased. You can
+  define multiple queues with independent throttling controls.
+
+  You set the various properties for a task in the constructor. Once the `Task`
+  object is instantiated, you insert that task into a queue. A task instance can
+  be inserted into one queue only.
+  """
 
 
   __CONSTRUCTOR_KWARGS = frozenset([
@@ -619,50 +674,67 @@ class Task(object):
   def __init__(self, payload=None, **kwargs):
     """Initializer.
 
-    All parameters are optional.
-
     Args:
-      payload: The payload data for this Task that will either be delivered
-        to the webhook as the HTTP request body or fetched by workers for pull
-        queues. This is only allowed for POST, PUT and PULL methods.
-      name: Name to give the Task; if not specified, a name will be
-        auto-generated when added to a queue and assigned to this object. Must
-        match the _TASK_NAME_PATTERN regular expression.
-      method: Method to use when accessing the webhook. Defaults to 'POST'. If
-        set to 'PULL', task will not be automatically delivered to the webhook,
-        instead it stays in the queue until leased.
-      url: Relative URL where the webhook that should handle this task is
-        located for this application. May have a query string unless this is
-        a POST method. Must not be specified if method is PULL.
-      headers: Dictionary of headers to pass to the webhook. Values in the
-        dictionary may be iterable to indicate repeated header fields. Must not
-        be specified if method is PULL.
-      params: Dictionary of parameters to use for Task. For POST and PULL
-        requests these params will be encoded as
-        'application/x-www-form-urlencoded' and set to the payload. For all
-        other methods, the parameters will be converted to a query string. Must
-        not be specified if the URL already contains a query string, or the
-        task already has payload.
-      countdown: Time in seconds into the future that this Task should execute.
-        Defaults to zero.
-      eta: A datetime.datetime specifying the absolute time at which the task
-        should be executed. Must not be specified if 'countdown' is specified.
-        This may be timezone-aware or timezone-naive. If None, defaults to now.
-        For pull tasks, no worker will be able to lease this task before the
-        time indicated by eta.
-      retry_options: TaskRetryOptions used to control when the task will be
-        retried if it fails.
-      target: The alternate version/backend on which to execute this task, or
-        DEFAULT_APP_VERSION to execute on the application's default version.
-      tag: The tag to be used when grouping by tag (PULL tasks only).
+      payload: Optional; the payload data for this task. This argument is only
+          allowed for `POST` and `PUT` methods and pull tasks. In push queues,
+          the payload is delivered to the webhook or backend in the body of an
+          HTTP request. In pull queues, the payload is fetched by workers as
+          part of the response from `lease_tasks()`.
+      name: Optional; the name to give the task. If you do not specify a name,
+          a name is auto-generated when added to a queue and assigned to this
+          object. The name must match the `_TASK_NAME_PATTERN` regular
+          expression. Avoid sequential names, such as counters or timestamps, as
+          these names can lead to decreased availability and performance.
+      method: Optional; the HTTP method to use when accessing the webhook. The
+          default value is `POST`. This argument is not used for pull queues.
+      url: Optional; the relative URL where the webhook that should handle
+          this task is located for this application. You can include a query
+          string in this value unless it is being used in a `POST` method. You
+          cannot specify a URL for pull tasks.
+      headers: Optional; a dictionary of headers to pass to the webhook. The
+          values in the dictionary can be iterable to indicate repeated header
+          fields. You cannot specify headers for pull tasks. In a push task,
+          if you do not specify a `Content-Type` header, the default value of
+          `text/plain` will be used. In a push task, if you specify a `Host`
+          header, you cannot use the `target` keyword argument. Any headers that
+          use the `X-AppEngine` prefix will also be dropped.
+      params: Optional; a dictionary of parameters to use for the task. For
+          `POST` requests and PULL tasks, these parameters are encoded as
+          `application/x-www-form-urlencoded` and set to the payload. For both
+          `POST` and pull requests, you cannot specify parameters if you
+          already specified a `payload`. In `PUT` requests, parameters are
+          converted to a query string if the URL contains a query string, or if
+          the task already has a `payload`. Do not specify parameters if the URL
+          contains a query string and the method is `GET`.
+      countdown: Optional; time in seconds into the future that this task
+          should run or be leased. The default value is zero. Do not specify a
+          countdown if you also specified an `eta`, as it sets the ETA to a
+          value of now + `countdown`.
+      eta: Optional; a `datetime.datetime` specifying the absolute time at
+          which the task should be run or leased. The `eta` argument must not
+          be specified if `countdown` is specified. This value can be time
+          zone-aware or time zone-naive. If the value is set to None, the
+          default value is now. For pull tasks, no worker will be able to
+          lease this task before the time indicated by the `eta` argument.
+      retry_options: Optional; a `TaskRetryOptions` object used to control
+          how the task will be retried if it fails. For pull tasks, only the
+          `task_retry_limit` option is allowed. For push tasks, you can use
+          the `min_backoff_seconds`, `max_backoff_seconds`, `task_age_limit`,
+          `max_doublings`, and `task_retry_limit` options.
+      target: Optional; a string that names a module or version, a frontend
+          version, or a backend on which to run the task. The string is
+          prepended to the domain name of your app. If you set the `target`,
+          do not specify a `Host` header in the dictionary for the `headers`
+          argument. For pull tasks, do not specify a target.
+      tag: Optional; the tag to be used when grouping by tag (pull tasks only).
 
     Raises:
-      InvalidEtaError: if the ETA is too far into the future;
-      InvalidTagError: if the tag is too long;
-      InvalidTaskError: if any of the parameters are invalid;
-      InvalidTaskNameError: if the task name is invalid;
-      InvalidUrlError: if the task URL is invalid or too long;
-      TaskTooLargeError: if the task with its payload is too large.
+      InvalidEtaError: If the `eta` is too far into the future.
+      InvalidTagError: If the tag is too long.
+      InvalidTaskError: If any of the parameters are invalid.
+      InvalidTaskNameError: If the task name is invalid.
+      InvalidUrlError: If the task URL is invalid or too long.
+      TaskTooLargeError: If the task with its associated payload is too large.
     """
     args_diff = set(kwargs.iterkeys()) - self.__CONSTRUCTOR_KWARGS
     if args_diff:
@@ -671,7 +743,7 @@ class Task(object):
     self.__name = kwargs.get('name')
     if self.__name and not _TASK_NAME_RE.match(self.__name):
       raise InvalidTaskNameError(
-          'Task name does not match expression "%s"; found %s' %
+          'The task name does not match expression "%s"; found %s' %
           (_TASK_NAME_PATTERN, self.__name))
 
     self.__default_url, self.__relative_url, query = Task.__determine_url(
@@ -698,34 +770,34 @@ class Task(object):
                               namespace_manager.get_namespace())
     if query and params:
       raise InvalidTaskError('Query string and parameters both present; '
-                             'only one of these may be supplied')
+                             'only one of these can be supplied')
 
     if self.__method != 'PULL' and self.__tag is not None:
-      raise InvalidTaskError('tag may only be specified for PULL tasks')
+      raise InvalidTaskError('tag can only be specified for pull tasks')
 
     if self.__method == 'PULL':
       if not self.__default_url:
-        raise InvalidTaskError('url must not be specified for PULL tasks')
+        raise InvalidTaskError('url must not be specified for pull tasks')
       if kwargs.get('headers'):
-        raise InvalidTaskError('headers must not be specified for PULL tasks')
+        raise InvalidTaskError('headers must not be specified for pull tasks')
       if kwargs.get('target'):
-        raise InvalidTaskError('target must not be specified for PULL tasks')
+        raise InvalidTaskError('target must not be specified for pull tasks')
       if params:
         if payload:
           raise InvalidTaskError(
               'Message body and parameters both present for '
-              'PULL method; only one of these may be supplied')
+              'PULL method; only one of these can be supplied')
         payload = Task.__encode_params(params)
       if payload is None:
-        raise InvalidTaskError('payload must be specified for PULL task')
+        raise InvalidTaskError('payload must be specified for pull task')
       self.__payload = Task.__convert_payload(payload, self.__headers)
     elif self.__method == 'POST':
       if payload and params:
         raise InvalidTaskError('Message body and parameters both present for '
-                               'POST method; only one of these may be '
+                               'POST method; only one of these can be '
                                'supplied')
       elif query:
-        raise InvalidTaskError('POST method may not have a query string; '
+        raise InvalidTaskError('POST method cannot have a query string; '
                                'use the "params" keyword argument instead')
       elif params:
         self.__payload = Task.__encode_params(params)
@@ -736,7 +808,7 @@ class Task(object):
     elif self.__method in _NON_POST_HTTP_METHODS:
       if payload and self.__method not in _BODY_METHODS:
         raise InvalidTaskError(
-            'Payload may only be specified for methods %s' %
+            'Payload can only be specified for methods %s' %
             ', '.join(_BODY_METHODS))
       if payload:
         self.__payload = Task.__convert_payload(payload, self.__headers)
@@ -800,7 +872,7 @@ class Task(object):
 
     if self.__target is not None and 'Host' in self.__headers:
       raise InvalidTaskError(
-          'A host header may not be set when a target is specified.')
+          'A host header cannot be set when a target is specified.')
     elif self.__target is not None:
       host = self.__host_from_target(self.__target)
       if host:
@@ -827,11 +899,11 @@ class Task(object):
 
     Returns:
       A string containing the target of this task, or the constant
-      DEFAULT_APP_VERSION if it is the default version.
+      `DEFAULT_APP_VERSION` if it is the default version.
 
       If this code is running in a unit-test where the environment variable
-      `DEFAULT_VERSION_HOSTNAME' is not set then the constant
-      _UNKNOWN_APP_VERSION is returned.
+      `DEFAULT_VERSION_HOSTNAME` is not set then the constant
+      `_UNKNOWN_APP_VERSION` is returned.
     """
     default_hostname = app_identity.get_default_version_hostname()
     if default_hostname is None:
@@ -858,7 +930,7 @@ class Task(object):
 
     Args:
       target: A string representing the target hostname or the constant
-          DEFAULT_APP_VERSION.
+          `DEFAULT_APP_VERSION`.
 
     Returns:
       The string to be used as the host header, or None if it can not be
@@ -871,11 +943,28 @@ class Task(object):
 
       return None
 
+    server_software = os.environ.get('SERVER_SOFTWARE', '')
     if target is DEFAULT_APP_VERSION:
       return default_hostname
+    elif server_software.startswith(
+        'Dev') and server_software != 'Development/1.0 (testbed)':
+
+      target_components = target.rsplit('.', 3)
+      module = target_components[-1]
+      version = len(target_components) > 1 and target_components[-2] or None
+      instance = len(target_components) > 2 and target_components[-3] or None
+      try:
+        return modules.get_hostname(module=module, version=version,
+                                    instance=instance)
+      except modules.InvalidModuleError, e:
+
+
+        if not version:
+          return modules.get_hostname(module='default', version=module,
+                                      instance=instance)
+        else:
+          raise e
     else:
-
-
       return '%s.%s' % (target, default_hostname)
 
   @staticmethod
@@ -883,17 +972,17 @@ class Task(object):
     """Determines the URL of a task given a relative URL and a name.
 
     Args:
-      relative_url: The relative URL for the Task.
+      relative_url: The relative URL for the task.
 
     Returns:
       Tuple (default_url, relative_url, query) where:
-        default_url: True if this Task is using the default URL scheme;
-          False otherwise.
-        relative_url: String containing the relative URL for this Task.
-        query: The query string for this task.
+            default_url: `True` if this task is using the default URL scheme;
+                `False` otherwise.
+            relative_url: String containing the relative URL for this task.
+            query: The query string for this task.
 
     Raises:
-      InvalidUrlError if the relative_url is invalid.
+      InvalidUrlError: If the `relative_url` is invalid.
     """
     if not relative_url:
       default_url, query = True, ''
@@ -906,7 +995,7 @@ class Task(object):
 
     if len(relative_url) > MAX_URL_LENGTH:
       raise InvalidUrlError(
-          'Task URL must be less than %d characters; found %d' %
+          'The task URL must be less than %d characters; found %d' %
           (MAX_URL_LENGTH, len(relative_url)))
 
     return (default_url, relative_url, query)
@@ -915,28 +1004,28 @@ class Task(object):
   def __determine_eta_posix(eta=None, countdown=None, current_time=None):
     """Determines the ETA for a task.
 
-    If 'eta' and 'countdown' are both None, the current time will be used.
-    Otherwise, only one of them may be specified.
+    If `eta` and `countdown` are both None, the current time will be used.
+    Otherwise, only one of them can be specified.
 
     Args:
-      eta: A datetime.datetime specifying the absolute ETA or None;
-        this may be timezone-aware or timezone-naive.
+      eta: A `datetime.datetime` object specifying the absolute ETA or `None`;
+          this can be time zone-aware or time zone-naive.
       countdown: Count in seconds into the future from the present time that
-        the ETA should be assigned to.
-      current_time: Function that returns the current datetime. (Defaults to
-        time.time if None is provided.)
+          the `eta` should be assigned to.
+      current_time: Function that returns the current datetime. Defaults to
+          `time.time` if `None` is provided.
 
     Returns:
       A float giving a POSIX timestamp containing the ETA.
 
     Raises:
-      InvalidTaskError if the parameters are invalid.
+      InvalidTaskError: If the parameters are invalid.
     """
     if not current_time:
       current_time = time.time
 
     if eta is not None and countdown is not None:
-      raise InvalidTaskError('May not use a countdown and ETA together')
+      raise InvalidTaskError('Cannot use a countdown and ETA together')
     elif eta is not None:
       if not isinstance(eta, datetime.datetime):
         raise InvalidTaskError('ETA must be a datetime.datetime instance')
@@ -966,14 +1055,14 @@ class Task(object):
       params: Dictionary of parameters, possibly with iterable values.
 
     Returns:
-      URL-encoded version of the params, ready to be added to a query string or
-      POST body.
+      URL-encoded version of the parameters, ready to be added to a query string
+          or HTTP `POST` body.
     """
     return urllib.urlencode(_flatten_params(params))
 
   @staticmethod
   def __convert_payload(payload, headers):
-    """Converts a Task payload into UTF-8 and sets headers if necessary.
+    """Converts a task payload into UTF-8 and sets headers if necessary.
 
     Args:
       payload: The payload data to convert.
@@ -983,7 +1072,7 @@ class Task(object):
       The payload as a non-unicode string.
 
     Raises:
-      InvalidTaskError if the payload is not a string or unicode instance.
+      InvalidTaskError: If the payload is not a string or unicode instance.
     """
     if isinstance(payload, unicode):
       headers.setdefault('content-type', 'text/plain; charset=utf-8')
@@ -1015,7 +1104,7 @@ class Task(object):
 
   @property
   def eta_posix(self):
-    """Returns a POSIX timestamp giving when this Task will execute."""
+    """Returns a POSIX timestamp of when this task will run or be leased."""
     if self.__eta_posix is None and self.__eta is not None:
 
       self.__eta_posix = Task.__determine_eta_posix(self.__eta)
@@ -1023,14 +1112,14 @@ class Task(object):
 
   @property
   def eta(self):
-    """Returns a datetime when this Task will execute."""
+    """Returns a `datetime.datatime` when this task will run or be leased."""
     if self.__eta is None and self.__eta_posix is not None:
       self.__eta = datetime.datetime.fromtimestamp(self.__eta_posix, _UTC)
     return self.__eta
 
   @property
   def _eta_usec(self):
-    """Returns a int microseconds timestamp when this Task will execute."""
+    """Returns a int microseconds timestamp when this task will run."""
 
 
 
@@ -1043,49 +1132,42 @@ class Task(object):
 
   @property
   def headers(self):
-    """Returns a copy of the headers for this Task."""
+    """Returns a copy of the HTTP headers for this task (push tasks only)."""
     return self.__headers.copy()
 
   @property
   def method(self):
-    """Returns the method to use for this Task."""
+    """Returns the method to use for this task."""
     return self.__method
 
   @property
   def name(self):
-    """Returns the name of this Task.
-
-    Will be None if using auto-assigned Task names and this Task has not yet
-    been added to a Queue.
-    """
+    """Returns the name of this task."""
     return self.__name
 
   @property
   def on_queue_url(self):
-    """Returns True if this Task will run on the queue's URL."""
+    """Returns True if task runs on queue's default URL (push tasks only)."""
     return self.__default_url
 
   @property
   def payload(self):
-    """Returns the payload for this task, which may be None."""
+    """Returns the payload to be used when the task is invoked (can be None)."""
     return self.__payload
 
   @property
   def queue_name(self):
-    """Returns the name of the queue this Task is associated with.
-
-    Will be None if this Task has not yet been added to a queue.
-    """
+    """Returns the name of the queue with which this task is associated."""
     return self.__queue_name
 
   @property
   def retry_count(self):
-    """Returns the number of retries have been done on the task."""
+    """Returns the number of retries or leases attempted on the task."""
     return self.__retry_count
 
   @property
   def retry_options(self):
-    """Returns the TaskRetryOptions for this task, which may be None."""
+    """Returns any or all the `TaskRetryOptions` tasks."""
     return self.__retry_options
 
   @property
@@ -1099,55 +1181,58 @@ class Task(object):
 
   @property
   def tag(self):
-    """Returns the tag for this Task."""
+    """Returns the tag for this task."""
     return self.__tag
 
   @property
   def target(self):
-    """Returns the target for this Task."""
+    """Returns the target for this task."""
     return self.__target
 
   @property
   def url(self):
-    """Returns the relative URL for this Task."""
+    """Returns the relative URL for this task (push tasks only)."""
     return self.__relative_url
 
   @property
   def was_enqueued(self):
-    """Returns True if this Task has been enqueued.
-
-    Note: This will not check if this task already exists in the queue.
-    """
+    """Returns `True` if this task has been inserted into a queue."""
     return self.__enqueued
 
   @property
   def was_deleted(self):
-    """Returns True if this Task has been successfully deleted."""
+    """Returns `True` if this task was successfully deleted."""
     return self.__deleted
 
   def add_async(self, queue_name=_DEFAULT_QUEUE, transactional=False, rpc=None):
-    """Asynchronously adds this Task to a queue. See Queue.add_async."""
+    """Asynchronously adds this task to a queue. See `Queue.add_async`."""
     return Queue(queue_name).add_async(self, transactional, rpc)
 
   def add(self, queue_name=_DEFAULT_QUEUE, transactional=False):
-    """Adds this Task to a queue. See Queue.add."""
+    """Adds this task to a queue. See `Queue.add`."""
     return self.add_async(queue_name, transactional).get_result()
 
   def extract_params(self):
     """Returns the parameters for this task.
 
+    If the same name parameter has several values, then the value is a list of
+    strings. For `POST` requests and pull tasks, the parameters are extracted
+    from the task payload; for all other methods, the parameters are extracted
+    from the URL query string.
+
     Returns:
-      A dictionary of strings mapping parameter names to their values as
-      strings. If the same name parameter has several values then the value will
-      be a list of strings. For POST and PULL requests then the parameters are
-      extracted from the task payload. For all other methods, the parameters are
-      extracted from the url query string. An empty dictionary is returned if
-      the task contains an empty payload or query string.
+      A dictionary of strings that map parameter names to their values as
+      strings. If the same name parameter has several values, the value
+      will be a list of strings. For `POST` requests and pull tasks, the
+      parameters are extracted from the task payload. For all other
+      methods, the parameters are extracted from the URL query string. An
+      empty dictionary is returned if the task contains an empty payload
+      or query string.
 
     Raises:
-      ValueError: if the payload does not contain valid
-        'application/x-www-form-urlencoded' data (for POST and PULL) or the url
-        does not contain a valid query (all other methods).
+      ValueError: If the payload does not contain valid
+          `application/x-www-form-urlencoded` data (for `POST` requests and pull
+          tasks) or the URL does not contain a valid query (all other requests).
     """
     if self.__method in ('PULL', 'POST'):
 
@@ -1186,7 +1271,7 @@ class Task(object):
 
 
 class QueueStatistics(object):
-  """Represents the current state of a Queue."""
+  """Represents the current state of a queue."""
 
   _ATTRS = ['queue', 'tasks', 'oldest_eta_usec', 'executed_last_minute',
             'in_flight', 'enforced_rate']
@@ -1201,13 +1286,36 @@ class QueueStatistics(object):
     """Constructor.
 
     Args:
-      queue: The Queue instance this QueueStatistics is for.
-      tasks: The number of tasks left.
-      oldest_eta_usec: The eta of the oldest non-completed task for the queue;
-        None if unknown.
-      executed_last_minute: The number of tasks executed in the last minute.
-      in_flight: The number of tasks that are currently executing.
-      enforced_rate: The current enforced rate. In tasks/second.
+      queue: The queue instance for which you intend to use `QueueStatistics`.
+      tasks: The number of tasks remaining in the queue.
+
+          Note:
+              It is not always possible to accurately determine the value for
+              the `tasks` field. Use this field with caution.
+      oldest_eta_usec: The `eta` of the oldest non-completed task for the
+          queue; `None` if unknown or no incomplete tasks remain in the queue.
+          The value `None` indicates that the queue has no backlog; the queue
+          is empty or only contains tasks with an `eta` in the future. The
+          `eta` represents the time at which a push queue task is eligible to
+          run or a pull queue task can be leased. The value is expressed as
+          microseconds since January 1, 1970. App Engine will not run a task
+          before its `eta` time.
+
+          Note:
+              It is not always possible to accurately determine the value for
+              the `oldest_eta_usec` field. Use this field with caution.
+      executed_last_minute: The number of tasks ran or leased in the last
+          minute.
+      in_flight: For push queues, the number of tasks that are currently
+          running. This value is not relevant for pull queues.
+      enforced_rate: For push queues, the current enforced rate in tasks per
+          second. This value is not relevant for pull queues. The enforced
+          rate is the actual rate at which tasks are being processed after
+          any throttling done by App Engine to prevent the queue from
+          overwhelming your application. The enforced rate can be smaller than
+          the rate you specify in the queue configuration. If the enforced
+          rate is too small, you can change performance settings for your
+          application.
     """
     self.queue = queue
     self.tasks = tasks
@@ -1240,11 +1348,11 @@ class QueueStatistics(object):
 
   @classmethod
   def _ConstructFromFetchQueueStatsResponse(cls, queue, response):
-    """Helper for converting from a FetchQeueueStatsResponse_QueueStats proto.
+    """Helper for converting from a `FetchQueueStatsResponse_QueueStats` proto.
 
     Args:
-      queue: A Queue instance.
-      response: a FetchQeueueStatsResponse_QueueStats instance.
+      queue: A queue instance.
+      response: An instance of `FetchQueueStatsResponse_QueueStats`.
 
     Returns:
       A new QueueStatistics instance.
@@ -1268,26 +1376,36 @@ class QueueStatistics(object):
   def fetch_async(cls, queue_or_queues, rpc=None):
     """Asynchronously get the queue details for multiple queues.
 
+    Example::
+
+        rpc = taskqueue.create_rpc(deadline=1.0)
+        taskqueue.QueueStatistics.fetch_async([taskqueue.Queue("foo"),
+                                                taskqueue.Queue("bar")], rpc)
+        statsList = rpc.get_result()
+
+
     Args:
-      queue_or_queues: An iterable of Queue instances, or an iterable of
-          strings corresponding to queue names, or a Queue instance or a string
-          corresponding to a queue name.
+      queue_or_queues: The queue or list of queues for which you are obtaining
+          statistics. If you are retrieving statistics for a single queue,
+          you can supply either a queue instance or the name of the queue. If
+          you are retrieving a list of queues, you can supply an iterable
+          list of queue instances or an iterable list of queue names.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain the
       result.
 
       If an iterable (other than string) is provided as input, the result will
-      be a list of of QueueStatistics objects, one for each queue in the order
-      requested.
+      be a list of of `QueueStatistics` objects, one for each queue in the
+      order requested.
 
-      Otherwise, if a single item was provided as input, then the result will be
-      a single QueueStatistics object.
+      Otherwise, if a single item was provided as input, then the result will
+      be a single `QueueStatistics` object.
 
     Raises:
-      TypeError: If queue_or_queues is not one of: Queue instance, string, an
-          iterable containing only Queue instances or an iterable containing
+      TypeError: If `queue_or_queues` is not a queue instance, string, an
+          iterable containing only queue instances, or an iterable containing
           only strings.
     """
     wants_list = True
@@ -1307,7 +1425,7 @@ class QueueStatistics(object):
     contains_queues = any(isinstance(queue, Queue) for queue in queues_list)
 
     if contains_strs and contains_queues:
-      raise TypeError('queue_or_queues must contain either strings or Queue '
+      raise TypeError('queue_or_queues must contain either strings or queue '
                       'instances, not both.')
 
     if contains_strs:
@@ -1319,24 +1437,36 @@ class QueueStatistics(object):
   def fetch(cls, queue_or_queues, deadline=10):
     """Get the queue details for multiple queues.
 
+    Use `QueueStatistics.fetch()` to get `QueueStatistics` objects for the
+    queues you are interested in. You can specify one or more queues.
+
+    Example::
+
+        statsList = taskqueue.QueueStatistics.fetch([taskqueue.Queue("foo"),
+                                                     taskqueue.Queue("bar")])
+
+
     Args:
-      queue_or_queues: An iterable of Queue instances, or an iterable of
-          strings corresponding to queue names, or a Queue instance or a string
-          corresponding to a queue name.
+      queue_or_queues: The queue or list of queues for which you are obtaining
+          statistics. If you are retrieving statistics for a single queue,
+          you can supply either a queue instance or the name of the queue.
+          If you are retrieving statistics for a list of queues, you can
+          supply an iterable list of queue instances or an iterable list of
+          queue names.
       deadline: The maximum number of seconds to wait before aborting the
           method call.
 
     Returns:
       If an iterable (other than string) is provided as input, a list of of
-      QueueStatistics objects will be returned, one for each queue in the order
-      requested.
+      `QueueStatistics` objects will be returned, one for each queue in the
+      order requested.
 
       Otherwise, if a single item was provided as input, then a single
-      QueueStatistics object will be returned.
+      `QueueStatistics` object will be returned.
 
     Raises:
-      TypeError: If queue_or_queues is not one of: Queue instance, string, an
-          iterable containing only Queue instances or an iterable containing
+      TypeError: If `queue_or_queues` is not a queue instance, string, an
+          iterable containing only queue instances, or an iterable containing
           only strings.
       Error-subclass on application errors.
     """
@@ -1355,7 +1485,7 @@ class QueueStatistics(object):
     """Internal implementation of fetch stats where queues must be a list."""
 
     def ResultHook(rpc):
-      """Process the TaskQueueFetchQueueStatsResponse."""
+      """Processes the TaskQueueFetchQueueStatsResponse."""
       try:
         rpc.check_success()
       except apiproxy_errors.ApplicationError, e:
@@ -1393,16 +1523,30 @@ class QueueStatistics(object):
 
 
 class Queue(object):
-  """Represents a Queue."""
+  """Represents a queue.
+
+  The `Queue` class is used to prepare tasks for offline execution by App
+  Engine.
+
+  A queue object is instantiated by name. The name must correspond either to the
+  default queue (provided by the system) or a user-defined queue as specified in
+  the application's `queue.yaml` configuration file. The queue object can then
+  be used to insert new task instances for offline execution by App Engine.
+
+  Multiple queue objects can correspond to the same underlying system queue.
+  However, a single task object can only be added to one queue.
+  """
 
   def __init__(self, name=_DEFAULT_QUEUE):
     """Initializer.
 
     Args:
-      name: Name of this queue. If not supplied, defaults to the default queue.
+      name: Optional; name of this queue, which must correspond to a
+          user-defined queue name from `queue.yaml`. If not supplied, defaults
+          to the default queue.
 
     Raises:
-      InvalidQueueNameError if the queue name is invalid.
+      InvalidQueueNameError: If the queue name is invalid.
     """
 
 
@@ -1420,10 +1564,11 @@ class Queue(object):
     self._app = None
 
   def purge(self):
-    """Removes all the tasks in this Queue.
+    """Removes all of the tasks in this queue.
 
-    This function takes constant time to purge a Queue and some delay may apply
-    before the call is effective.
+    Purging the queue takes time, regardless of the queue size. Tasks continue
+    to run until the backends recognize that the queue has been purged. This
+    operation is permanent; purged tasks cannot be recovered.
 
     Raises:
       Error-subclass on application errors.
@@ -1444,31 +1589,32 @@ class Queue(object):
       raise _TranslateError(e.application_error, e.error_detail)
 
   def delete_tasks_by_name_async(self, task_name, rpc=None):
-    """Asynchronously deletes a Task or list of Tasks in this Queue, by name.
+    """Asynchronously deletes a task or list of tasks in this queue, by name.
 
-    This function is identical to delete_tasks_by_name() except that it returns
-    an asynchronous object. You can call get_result() on the return value to
-    block on the call.
+    This function is identical to `delete_tasks_by_name()` except that it
+    returns an asynchronous object. You can call `get_result()` on the return
+    value to block on the call.
 
     Args:
       task_name: A string corresponding to a task name, or an iterable of
-      strings corresponding to task names.
+          strings corresponding to task names.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the
-      result.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain
+      the result.
 
-      If an iterable (other than string) is provided as input, the result will
-      be a list of of Task objects, one for each task name in the order
-      requested. The Task.was_deleted property will be True for each task
-      deleted by this call, and will be False for unknown and tombstoned tasks.
+      If an iterable, other than string, is provided as input, the result will
+      be a list of of task objects, one for each task name in the order
+      requested. The `Task.was_deleted` property will be `True` for each
+      task deleted by this call, and will be `False` for unknown and
+      tombstoned tasks.
 
-      Otherwise, if a single string was provided as input, then the result will
-      be a single Task object.
+      Otherwise, if a single string was provided as input, then the result
+      will be a single task object.
 
     Raises:
-      DuplicateTaskNameError: if a Task name is repeated in the request.
+      DuplicateTaskNameError: If a task name is repeated in the request.
     """
     if isinstance(task_name, str):
       return self.delete_tasks_async(Task(name=task_name), rpc)
@@ -1477,49 +1623,53 @@ class Queue(object):
       return self.delete_tasks_async(tasks, rpc)
 
   def delete_tasks_by_name(self, task_name):
-    """Deletes a Task or list of Tasks in this Queue, by name.
+    """Deletes a task or list of tasks in this queue, by name.
 
     When multiple tasks are specified, an exception will be raised if any
     individual task fails to be deleted.
 
     Args:
       task_name: A string corresponding to a task name, or an iterable of
-      strings corresponding to task names.
+          strings corresponding to task names.
 
     Returns:
-      If an iterable (other than string) is provided as input,  a list of of
-      Task objects, one for each task name in the order requested. The
-      Task.was_deleted property will be True for each task deleted by this call,
-      and will be False for unknown and tombstoned tasks.
+      If an iterable, other than string, is provided as input, a list of task
+      objects is returned, one for each task name in the order requested.
+      The `Task.was_deleted` property will be `True` for each task deleted
+      by this call, and will be `False` for unknown and tombstoned tasks.
 
-      Otherwise, if a single string was provided as input, a single Task object.
+      Otherwise, if a single string was provided as input, a single task
+      object is returned.
 
     Raises:
-      DuplicateTaskNameError: if a Task name is repeated in the request.
+      DuplicateTaskNameError: If a task name is repeated in the request.
       Error-subclass on application errors.
     """
     return self.delete_tasks_by_name_async(task_name).get_result()
 
   def delete_tasks_async(self, task, rpc=None):
-    """Asynchronously deletes a Task or list of Tasks in this Queue.
+    """Asynchronously deletes a task or list of tasks in this queue.
 
-    This function is identical to delete_tasks() except that it returns an
-    asynchronous object. You can call get_result() on the return value to block
-    on the call.
+    The task name is the only task attribute that is used to select tasks for
+    deletion.
+
+    This function is identical to `delete_tasks()` except that it returns an
+    asynchronous object. You can call `get_result()` on the return value to
+    block on the call.
 
     Args:
-      task: A Task instance or a list of Task instances that will be deleted
-        from the Queue.
+      task: A task instance or a list of task instances that will be deleted
+          from the queue.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the Task
-        or list of tasks passed into this call.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain the
+      task or list of tasks passed into this call.
 
     Raises:
-      BadTaskStateError: if the Task(s) to be deleted do not have task names or
-        have already been deleted.
-      DuplicateTaskNameError: if a Task is repeated in the request.
+      BadTaskStateError: If the tasks to be deleted do not have task names or
+          have already been deleted.
+      DuplicateTaskNameError: If a task is repeated in the request.
     """
     try:
       tasks = list(iter(task))
@@ -1532,26 +1682,26 @@ class Queue(object):
     return self.__DeleteTasks(tasks, multiple, rpc)
 
   def delete_tasks(self, task):
-    """Deletes a Task or list of Tasks in this Queue.
+    """Deletes a task or list of tasks in this queue.
 
     When multiple tasks are specified, an exception will be raised if any
-    individual task fails to be deleted. Check the task.was_deleted property.
+    individual task fails to be deleted. Check the `task.was_deleted` property.
 
-    Task name is the only task attribute used to select tasks for deletion. If
-    there is any task with was_deleted property set to True, or without a task
-    name, a BadTaskStateError will be raised immediately.
+    The task name is the only task attribute that is used to select tasks for
+    deletion. If any task exists that is unnamed or with the `was_deleted`
+    property set to `True`, a `BadTaskStateError` will be raised immediately.
 
     Args:
-      task: A Task instance or a list of Task instances that will be deleted
-        from the Queue.
+      task: A task instance or a list of task instances that will be deleted
+          from the queue.
 
     Returns:
-      The Task or list of tasks passed into this call.
+      The task or list of tasks passed into this call.
 
     Raises:
-      BadTaskStateError: if the Task(s) to be deleted do not have task names or
-        have already been deleted.
-      DuplicateTaskNameError: if a Task is repeated in the request.
+      BadTaskStateError: If the tasks to be deleted do not have task names or
+          have already been deleted.
+      DuplicateTaskNameError: If a task is repeated in the request.
       Error-subclass on application errors.
     """
     return self.delete_tasks_async(task).get_result()
@@ -1560,7 +1710,7 @@ class Queue(object):
     """Internal implementation of delete_tasks_async(), tasks must be a list."""
 
     def ResultHook(rpc):
-      """Process the TaskQueueDeleteResponse."""
+      """Processes the TaskQueueDeleteResponse."""
       try:
         rpc.check_success()
       except apiproxy_errors.ApplicationError, e:
@@ -1601,9 +1751,10 @@ class Queue(object):
     task_names = set()
     for task in tasks:
       if not task.name:
-        raise BadTaskStateError('Task name must be specified for a task')
+        raise BadTaskStateError('A task name must be specified for a task')
       if task.was_deleted:
-        raise BadTaskStateError('Task %s has already been deleted' % task.name)
+        raise BadTaskStateError(
+            'The task %s has already been deleted' % task.name)
       if task.name in task_names:
         raise DuplicateTaskNameError(
             'The task name %r is used more than once in the request' %
@@ -1651,7 +1802,7 @@ class Queue(object):
   def _QueryAndOwnTasks(self, request, response, queue_name, rpc=None):
 
     def ResultHook(rpc):
-      """Process the TaskQueueQueryAndOwnTasksResponse."""
+      """Processes the TaskQueueQueryAndOwnTasksResponse."""
       try:
         rpc.check_success()
       except apiproxy_errors.ApplicationError, e:
@@ -1670,26 +1821,35 @@ class Queue(object):
                           rpc)
 
   def lease_tasks_async(self, lease_seconds, max_tasks, rpc=None):
-    """Asynchronously leases a number of tasks from the Queue.
+    """Asynchronously leases a number of tasks from the queue.
 
-    This function is identical to lease_tasks() except that it returns an
-    asynchronous object. You can call get_result() on the return value to block
-    on the call.
+    This method can only be performed on a pull queue. Attempts to lease tasks
+    from a push queue results in an `InvalidQueueModeError`. All non-pull tasks
+    in the pull queue will be converted into pull tasks when leased. If fewer
+    than the specified value of `max_tasks` are available, all available tasks
+    on a best-effort basis are returned. The `lease_tasks_async` method supports
+    leasing at most 1000 tasks for no longer than a week in a single call.
+
+    This function is identical to `lease_tasks()` except that it returns an
+    asynchronous object. You can call `get_result()` on the return value to
+    block on the call.
 
     Args:
-      lease_seconds: Number of seconds to lease the tasks.
-      max_tasks: Max number of tasks to lease from the pull Queue.
+      lease_seconds: Number of seconds to lease the tasks, up to one week
+          (604,800 seconds). Must be a positive integer.
+      max_tasks: Maximum number of tasks to lease from the pull queue, up to
+          1000 tasks.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the list
-        of tasks leased from the Queue.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain the
+      list of tasks leased from the queue.
 
     Raises:
-      InvalidLeaseTimeError: if lease_seconds is not a valid float or integer
-        number or is outside the valid range.
-      InvalidMaxTasksError: if max_tasks is not a valid integer or is outside
-        the valid range.
+      InvalidLeaseTimeError: If `lease_seconds` is not a valid float or
+          integer number or is outside the valid range.
+      InvalidMaxTasksError: If `max_tasks` is not a valid integer or is
+          outside the valid range.
     """
     lease_seconds = self._ValidateLeaseSeconds(lease_seconds)
     self._ValidateMaxTasks(max_tasks)
@@ -1704,29 +1864,31 @@ class Queue(object):
     return self._QueryAndOwnTasks(request, response, self.__name, rpc)
 
   def lease_tasks(self, lease_seconds, max_tasks, deadline=10):
-    """Leases a number of tasks from the Queue for a period of time.
+    """Leases a number of tasks from the queue for a period of time.
 
-    This method can only be performed on a pull Queue. Any non-pull tasks in
-    the pull Queue will be converted into pull tasks when being leased. If
-    fewer than max_tasks are available, all available tasks will be returned.
-    The lease_tasks method supports leasing at most 1000 tasks for no longer
-    than a week in a single call.
+    This method can only be performed on a pull queue. Any non-pull tasks in
+    the pull queue will be converted into pull tasks when being leased. If
+    fewer than the specified number of `max_tasks` are available, all available
+    tasks will be returned. The `lease_tasks` method supports leasing at most
+    1000 tasks for no longer than a week in a single call.
 
     Args:
-      lease_seconds: Number of seconds to lease the tasks.
-      max_tasks: Max number of tasks to lease from the pull Queue.
+      lease_seconds: Number of seconds to lease the tasks, up to one week
+          (604,800 seconds). Must be a positive integer.
+      max_tasks: The maximum number of tasks to lease from the pull queue, up
+          to 1000 tasks.
       deadline: The maximum number of seconds to wait before aborting the
-        method call.
+          method call.
 
     Returns:
-      A list of tasks leased from the Queue.
+      A list of tasks leased from the queue.
 
     Raises:
-      InvalidLeaseTimeError: if lease_seconds is not a valid float or integer
-        number or is outside the valid range.
-      InvalidMaxTasksError: if max_tasks is not a valid integer or is outside
-        the valid range.
-      InvalidQueueModeError: if invoked on a queue that is not in pull mode.
+      InvalidLeaseTimeError: If `lease_seconds` is not a valid float or
+          integer number or is outside the valid range.
+      InvalidMaxTasksError: If `max_tasks` is not a valid integer or is
+          outside the valid range.
+      InvalidQueueModeError: If invoked on a queue that is not in pull mode.
       Error-subclass on application errors.
     """
     _ValidateDeadline(deadline)
@@ -1739,27 +1901,31 @@ class Queue(object):
                                max_tasks,
                                tag=None,
                                rpc=None):
-    """Asynchronously leases a number of tasks from the Queue.
+    """Asynchronously leases tasks with the same tag from the queue.
 
-    This function is identical to lease_tasks_by_tag() except that it returns an
-    asynchronous object. You can call get_result() on the return value to block
-    on the call.
+    If a `tag` is specified, tasks with that tag are leased for a specified
+    period of time. If a `tag` is not specified, the best-effort oldest tag of
+    the queue's oldest task (specified by the `eta`) will be used.
+
+    This function is identical to `lease_tasks_by_tag()` except that it returns
+    an asynchronous object. You can call `get_result()` on the return value to
+    block on the call.
 
     Args:
       lease_seconds: Number of seconds to lease the tasks.
-      max_tasks: Max number of tasks to lease from the pull Queue.
-      tag: The to query for, or None to group by the first available tag.
+      max_tasks: The maximum number of tasks to lease from the pull queue.
+      tag: The tag to query for, or None to group by the first available tag.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the list
-        of tasks leased from the Queue.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain the
+      list of tasks leased from the queue.
 
     Raises:
-      InvalidLeaseTimeError: if lease_seconds is not a valid float or integer
-        number or is outside the valid range.
-      InvalidMaxTasksError: if max_tasks is not a valid integer or is outside
-        the valid range.
+      InvalidLeaseTimeError: If `lease_seconds` is not a valid float or
+          integer number or is outside the valid range.
+      InvalidMaxTasksError: If `max_tasks` is not a valid integer or is
+          outside the valid range.
     """
     lease_seconds = self._ValidateLeaseSeconds(lease_seconds)
     self._ValidateMaxTasks(max_tasks)
@@ -1777,30 +1943,35 @@ class Queue(object):
     return self._QueryAndOwnTasks(request, response, self.__name, rpc)
 
   def lease_tasks_by_tag(self, lease_seconds, max_tasks, tag=None, deadline=10):
-    """Leases a number of tasks from the Queue for a period of time.
+    """Leases tasks with the same tag from the queue.
 
-    This method can only be performed on a pull Queue. Any non-pull tasks in
-    the pull Queue will be converted into pull tasks when being leased. If
-    fewer than max_tasks are available, all available tasks will be returned.
-    The lease_tasks method supports leasing at most 1000 tasks for no longer
-    than a week in a single call.
+    If a `tag` is specified, tasks with that tag are leased for a specified
+    period of time. If a `tag` is not specified, the tag of the queue's oldest
+    task (specified by the `eta`) will be used.
+
+    This method can only be performed on a pull queue. Any non-pull tasks in
+    the pull queue will be converted into pull tasks when being leased. If
+    fewer than the specified value of `max_tasks` are available, all available
+    tasks will be returned. The `lease_tasks` method supports leasing at most
+    1000 tasks for no longer than a week in a single call.
 
     Args:
       lease_seconds: Number of seconds to lease the tasks.
-      max_tasks: Max number of tasks to lease from the pull Queue.
-      tag: The to query for, or None to group by the first available tag.
+      max_tasks: The maximum number of tasks to lease from the pull queue.
+      tag: The tag to query for, or None to group by the first available
+          tag.
       deadline: The maximum number of seconds to wait before aborting the
-        method call.
+          method call.
 
     Returns:
-      A list of tasks leased from the Queue.
+      A list of tasks leased from the queue.
 
     Raises:
-      InvalidLeaseTimeError: if lease_seconds is not a valid float or integer
-        number or is outside the valid range.
-      InvalidMaxTasksError: if max_tasks is not a valid integer or is outside
-        the valid range.
-      InvalidQueueModeError: if invoked on a queue that is not in pull mode.
+      InvalidLeaseTimeError: If `lease_seconds` is not a valid float or
+          integer number or is outside the valid range.
+      InvalidMaxTasksError: If `max_tasks` is not a valid integer or is
+          outside the valid range.
+      InvalidQueueModeError: If invoked on a queue that is not in pull mode.
       Error-subclass on application errors.
     """
     _ValidateDeadline(deadline)
@@ -1809,42 +1980,53 @@ class Queue(object):
     return rpc.get_result()
 
   def add_async(self, task, transactional=False, rpc=None):
-    """Asynchronously adds a Task or list of Tasks into this Queue.
+    """Asynchronously adds a task or list of tasks into this queue.
 
-    This function is identical to add() except that it returns an asynchronous
-    object. You can call get_result() on the return value to block on the call.
+    This function is identical to `add()` except that it returns an asynchronous
+    object. You can call `get_result()` on the return value to block on the
+    call.
 
     Args:
-      task: A Task instance or a list of Task instances that will be added to
-        the queue.
-      transactional: If True, transactional Tasks will be added to the queue but
-        cannot be run or leased until after the transaction succeeds.  If the
-        transaction fails then the Tasks will be removed from the queue (and
-        therefore never run).  If False, the added task(s) are available to run
-        immediately; any enclosing transaction's success or failure is ignored.
+      task: A task instance or a list of task instances that will be added to
+          the queue. If `task` is a list of task objects, all tasks are added
+          to the queue. If `Transactional=True`, then all of the tasks are
+          added in the same active Datastore transaction, and if any of the
+          tasks cannot be added to the queue, none of the tasks are added to
+          the queue and the Datastore transaction will fail. If
+          `transactional=False`, a failure to add a task to the queue will
+          raise an exception, but other tasks will be enqueued.
+      transactional: If `True`, transactional tasks will be added to the queue
+          but cannot be run or leased until after the transaction succeeds. If
+          the transaction fails, the tasks will be removed from the queue
+          (and therefore will never run). If `False`, the added tasks are
+          available to run immediately; any enclosing transaction's success or
+          failure is ignored.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object; call get_result to complete the RPC and obtain the Task
-        or list of Tasks that was supplied to this method. Successfully
-        queued Tasks will have a valid queue name and task name after the
-        call; such Task objects are marked as queued and cannot be added
-        again.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain the
+      task or list of tasks that was supplied to this method. Successfully
+      queued tasks will have a valid queue name and task name after the
+      call; such task objects are marked as queued and cannot be added
+      again.
 
-      Note: Task objects returned from transactional adds are not
-        notified or updated when the enclosing transaction succeeds or fails.
+      Note:
+          Task objects that are returned from transactional adds are not
+          notified or updated when the enclosing transaction succeeds or
+          fails.
 
     Raises:
-      BadTaskStateError: if the Task(s) has already been added to a queue.
-      BadTransactionStateError: if the transactional argument is true but this
-        call is being made outside of the context of a transaction.
-      DuplicateTaskNameError: if a Task name is repeated in the request.
-      InvalidTaskError: if both push and pull tasks exist in the task list.
-      InvalidTaskNameError: if a Task name is provided but is not legal.
-      TooManyTasksError: if task contains more than MAX_TASKS_PER_ADD tasks.
-      TransactionalRequestTooLargeError: if transactional is True and the total
-        size of the tasks and supporting request data exceeds
-        MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES.
+      BadTaskStateError: If the tasks have already been added to a queue.
+      BadTransactionStateError: If the transactional argument is `True` but
+          this call is being made outside of the context of a transaction.
+      DuplicateTaskNameError: If a task name is repeated in the request.
+      InvalidTaskError: If both push and pull tasks exist in the task list.
+      InvalidTaskNameError: If a task name is provided but is not valid.
+      TooManyTasksError: If the task contains more than `MAX_TASKS_PER_ADD`
+          tasks.
+      TransactionalRequestTooLargeError: If transactional is `True` and the
+          total size of the tasks and supporting request data exceeds the
+          `MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES` quota.
     """
     try:
       tasks = list(iter(task))
@@ -1867,7 +2049,7 @@ class Queue(object):
 
     if has_push_task and has_pull_task:
       raise InvalidTaskError(
-          'Can not add both push and pull tasks in a single call.')
+          'You cannot add both push and pull tasks in a single call.')
 
     if has_push_task:
       fill_function = self.__FillAddPushTasksRequest
@@ -1880,58 +2062,66 @@ class Queue(object):
                            rpc)
 
   def add(self, task, transactional=False):
-    """Adds a Task or list of Tasks into this Queue.
+    """Adds a task or list of tasks into this queue.
 
-    If a list of more than one Tasks is given, a raised exception does not
-    guarantee that no tasks were added to the queue (unless transactional is set
-    to True). To determine which tasks were successfully added when an exception
-    is raised, check the Task.was_enqueued property.
+    If a list of more than one tasks is given, a raised exception does not
+    guarantee that no tasks were added to the queue (unless `transactional` is
+    set to `True`). To determine which tasks were successfully added when an
+    exception is raised, check the `Task.was_enqueued` property.
 
-    Push tasks, i.e. those with method not equal to PULL, may not be added to
-    queues in pull mode. Similarly, pull tasks may not be added to queues in
+    Push tasks, or those with a method not equal to pull cannot be added to
+    queues in pull mode. Similarly, pull tasks cannot be added to queues in
     push mode.
 
-    If a TaskAlreadyExistsError or TombstonedTaskError is raised, the caller can
-    be guaranteed that for each one of the provided tasks, either the
+    If a `TaskAlreadyExistsError` or `TombstonedTaskError` is raised, the caller
+    can be guaranteed that for each one of the provided tasks, either the
     corresponding task was successfully added, or a task with the given name was
     successfully added in the past.
 
     Args:
-      task: A Task instance or a list of Task instances that will be added to
-        the queue.
-      transactional: If True, transactional Tasks will be added to the queue but
-        cannot be run or leased until after the transaction succeeds.  If the
-        transaction fails then the Tasks will be removed from the queue (and
-        therefore never run).  If False, the added task(s) are available to run
-        immediately; any enclosing transaction's success or failure is ignored.
+      task: A task instance or a list of task instances that will be added to
+          the queue. If `task` is set to a list of task objects, all tasks are
+          added to the queue. If `Transactional=True`, then all of the tasks
+          are added in the same active Datastore transaction, and if any of
+          the tasks cannot be added to the queue, none of the tasks are added
+          to the queue, and the Datastore transaction will fail. If
+          `transactional=False`, a failure to add any task to the queue will
+          raise an exception, but other tasks will be added to the queue.
+      transactional: If `True`, transactional tasks will be added to the queue
+          but cannot be run or leased until after the transaction succeeds. If
+          the transaction fails then the tasks will be removed from the queue
+          (and therefore will never run). If `False`, the added tasks are
+          available to run immediately; any enclosing transaction's success or
+          failure is ignored.
 
     Returns:
-      The Task or list of tasks that was supplied to this method. Successfully
-        queued Tasks will have a valid queue name and task name after the
-        call; such Task objects are marked as queued and cannot be added
-        again.
+      The task or list of tasks that was supplied to this method. Successfully
+      queued tasks will have a valid queue name and task name after the
+      call; these task objects are marked as queued and cannot be added
+      again.
 
-      Note: Task objects returned from transactional adds are not
-        notified or updated when the enclosing transaction succeeds or fails.
+      Note:
+          Task objects returned from transactional adds are not notified or
+          updated when the enclosing transaction succeeds or fails.
 
     Raises:
-      BadTaskStateError: if the Task(s) has already been added to a queue.
-      BadTransactionStateError: if the transactional argument is true but this
-        call is being made outside of the context of a transaction.
-      DuplicateTaskNameError: if a Task name is repeated in the request.
-      InvalidTaskNameError: if a Task name is provided but is not legal.
-      InvalidTaskError: if both push and pull tasks exist in the task list.
-      InvalidQueueModeError: if a task with method PULL is added to a queue in
-        push mode, or a task with method not equal to PULL is added to a queue
-        in pull mode.
-      TaskAlreadyExistsError: if a task with the same name as a given name has
-        previously been added to the queue.
-      TombstonedTaskError: if a task with the same name as a given name has
-        previously been added to the queue and deleted.
-      TooManyTasksError: if task contains more than MAX_TASKS_PER_ADD tasks.
-      TransactionalRequestTooLargeError: if transactional is True and the total
-        size of the tasks and supporting request data exceeds
-        MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES.
+      BadTaskStateError: If the task has already been added to a queue.
+      BadTransactionStateError: If the `transactional` argument is `True` but
+          this call is being made outside of the context of a transaction.
+      DuplicateTaskNameError: If a task name is repeated in the request.
+      InvalidTaskNameError: If a task name is provided but is not valid.
+      InvalidTaskError: If both push and pull tasks exist in the task list.
+      InvalidQueueModeError: If a pull task is added to a queue in push mode, or
+          if a push task is added to a queue in pull mode.
+      TaskAlreadyExistsError: If a task with the same name as a given name has
+          previously been added to the queue.
+      TombstonedTaskError: If a task with the same name as a given name has
+          previously been added to the queue and deleted.
+      TooManyTasksError: If a task contains more than `MAX_TASKS_PER_ADD`
+          tasks.
+      TransactionalRequestTooLargeError: If transactional is `True` and the
+          total size of the tasks and supporting request data exceeds the
+          `MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES` quota.
       Error-subclass on application errors.
     """
     if task:
@@ -1943,7 +2133,7 @@ class Queue(object):
     """Internal implementation of adding tasks where tasks must be a list."""
 
     def ResultHook(rpc):
-      """Process the TaskQueueBulkAddResponse."""
+      """Processes the TaskQueueBulkAddResponse."""
       try:
         rpc.check_success()
       except apiproxy_errors.ApplicationError, e:
@@ -1994,7 +2184,7 @@ class Queue(object):
               task.name)
         task_names.add(task.name)
       if task.was_enqueued:
-        raise BadTaskStateError('Task has already been enqueued.')
+        raise BadTaskStateError('The task has already been enqueued.')
 
       fill_request(task, request.add_add_request(), transactional)
 
@@ -2017,9 +2207,9 @@ class Queue(object):
 
     Args:
       retry_options: The TaskRetryOptions instance to use as a source for the
-        data to be added to retry_retry_parameters.
+          data to be added to retry_retry_parameters.
       retry_retry_parameters: A taskqueue_service_pb.TaskQueueRetryParameters
-        to populate.
+          to populate.
     """
     if retry_options.min_backoff_seconds is not None:
       retry_retry_parameters.set_min_backoff_sec(
@@ -2039,21 +2229,21 @@ class Queue(object):
       retry_retry_parameters.set_max_doublings(retry_options.max_doublings)
 
   def __FillAddPushTasksRequest(self, task, task_request, transactional):
-    """Populates a TaskQueueAddRequest with the data from a push Task instance.
+    """Populates a TaskQueueAddRequest with the data from a push task instance.
 
     Args:
-      task: The Task instance to use as a source for the data to be added to
-        task_request.
+      task: The task instance to use as a source for the data to be added to
+          task_request.
       task_request: The taskqueue_service_pb.TaskQueueAddRequest to populate.
-      transactional: If true then populates the task_request.transaction message
-        with information from the enclosing transaction (if any).
+      transactional: If True, the task_request.transaction message is
+          populated with information from the enclosing transaction, if any.
 
     Raises:
-      BadTaskStateError: If the task was already added to a Queue.
-      BadTransactionStateError: If the transactional argument is True and there
-        is no enclosing transaction.
+      BadTaskStateError: If the task was already added to a queue.
+      BadTransactionStateError: If the transactional argument is True and
+          an enclosing transaction does not exist.
       InvalidTaskNameError: If the transactional argument is True and the task
-        is named.
+          is named.
     """
     task_request.set_mode(taskqueue_service_pb.TaskQueueMode.PUSH)
     self.__FillTaskCommon(task, task_request, transactional)
@@ -2084,22 +2274,22 @@ class Queue(object):
           task.retry_options, task_request.mutable_retry_parameters())
 
   def __FillAddPullTasksRequest(self, task, task_request, transactional):
-    """Populates a TaskQueueAddRequest with the data from a pull Task instance.
+    """Populates a TaskQueueAddRequest with the data from a pull task instance.
 
     Args:
-      task: The Task instance to use as a source for the data to be added to
-        task_request.
+      task: The task instance to use as a source for the data to be added to
+          task_request.
       task_request: The taskqueue_service_pb.TaskQueueAddRequest to populate.
-      transactional: If true then populates the task_request.transaction message
-        with information from the enclosing transaction (if any).
+      transactional: If True, then populates the task_request.transaction
+          message with information from the enclosing transaction, if any.
 
     Raises:
-      BadTaskStateError: if the task doesn't have a payload, or has already been
-        added to a Queue.
-      BadTransactionStateError: if the transactional argument is True and there
-        is no enclosing transaction.
-      InvalidTaskNameError: if the transactional argument is True and the task
-        is named.
+      BadTaskStateError: If the task doesn't have a payload, or has already
+          been added to a queue.
+      BadTransactionStateError: If the transactional argument is True and
+          an enclosing transaction does not exist.
+      InvalidTaskNameError: If the transactional argument is True and the task
+          is named.
     """
     task_request.set_mode(taskqueue_service_pb.TaskQueueMode.PULL)
     self.__FillTaskCommon(task, task_request, transactional)
@@ -2131,7 +2321,7 @@ class Queue(object):
 
     if task_request.has_transaction() and task.name:
       raise InvalidTaskNameError(
-          'Task bound to a transaction cannot be named.')
+          'A task bound to a transaction cannot be named.')
 
   @property
   def name(self):
@@ -2144,13 +2334,13 @@ class Queue(object):
     Args:
       task: A task instance that will have its lease modified.
       lease_seconds: Number of seconds, from the current time, that the task
-        lease will be modified to. If lease_seconds is 0, then the task lease
-        is removed and the task will be available for leasing again using
-        the lease_tasks method.
+          lease will be modified to. If `lease_seconds` is `0`, the task lease
+          is removed and the task will be available for leasing again using
+          the `lease_tasks` method.
 
     Raises:
-      TypeError: if lease_seconds is not a valid float or integer.
-      InvalidLeaseTimeError: if lease_seconds is outside the valid range.
+      TypeError: If `lease_seconds` is not a valid float or integer.
+      InvalidLeaseTimeError: If `lease_seconds` is outside of the valid range.
       Error-subclass on application errors.
     """
     lease_seconds = self._ValidateLeaseSeconds(lease_seconds)
@@ -2175,26 +2365,26 @@ class Queue(object):
     task._Task__eta = None
 
   def fetch_statistics_async(self, rpc=None):
-    """Asynchronously get the current details about this queue.
+    """Asynchronously gets the current details about this queue.
 
     Args:
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain a
-          QueueStatistics instance containing information about this queue.
+      A UserRPC object. Call `get_result()` to complete the RPC and obtain a
+      `QueueStatistics` instance that contains information about this queue.
     """
     return QueueStatistics.fetch_async(self, rpc)
 
   def fetch_statistics(self, deadline=10):
-    """Get the current details about this queue.
+    """Gets the current details about this queue.
 
     Args:
       deadline: The maximum number of seconds to wait before aborting the
           method call.
 
     Returns:
-      A QueueStatistics instance containing information about this queue.
+      A `QueueStatistics` instance that contains information about this queue.
       Error-subclass on application errors.
     """
     _ValidateDeadline(deadline)
@@ -2222,75 +2412,102 @@ class Queue(object):
 
 
 
+
 def add(*args, **kwargs):
-  """Convenience method will create a Task and add it to a queue.
+  """Convenience method that creates a task and adds it to a queue.
 
   All parameters are optional.
 
-  Push tasks, i.e. those with method not equal to PULL, may not be added to
-  queues in pull mode. Similarly, pull tasks may not be added to queues in push
-  mode.
+  Push tasks cannot be added to queues in pull mode. Similarly, pull tasks
+  cannot be added to queues in push mode.
 
   Args:
-    payload: The payload data for this Task that will be delivered to the
-      webhook as the HTTP request body or fetched by workers for pull queues.
-      This is only allowed for POST, PUT, and PULL methods.
-    queue_name: Name of queue to insert task into. If not supplied, defaults to
-      the default queue.
-    name: Name to give the Task; if not specified, a name will be
-      auto-generated when added to a queue and assigned to this object. Must
-      match the _TASK_NAME_PATTERN regular expression.
-    method: Method to use when accessing the webhook. Defaults to 'POST'. If
-      set to 'PULL', task will not be automatiacally delivered to the webhook,
-      instead it stays in the queue until leased.
+    payload: The payload data for this task that will be delivered to the
+        webhook or backend as the HTTP request body (for push queues) or
+        fetched by workers as part of the response from `lease_tasks()` (for
+        pull queues). This argument is only allowed for `POST` and `PUT`
+        methods and pull tasks.
+    queue_name: Name of queue to insert task into. If a name is not supplied,
+        defaults to the default queue.
+    name: Name to give the task; if not specified, a name will be
+        auto-generated when added to a queue and assigned to this object. The
+        name must match the `_TASK_NAME_PATTERN` regular expression.
+    method: Method to use when accessing the webhook; the default value is
+        `POST`. Other accepted values are `GET`, `PUT`, `DELETE`, `HEAD`,
+        or `PULL`. Do not specify a method for push tasks, as the method will
+        default to `POST` and post assigned tasks to the web hook at the
+        `url` you specify. If you set the `method` to `PULL`, the task will not
+        be automatically delivered to the webhook; instead, it will remain in
+        the queue until leased.
     url: Relative URL where the webhook that should handle this task is
-      located for this application. May have a query string unless this is
-      a POST method. Must not be specified if method is PULL.
+        located for this application. You can use a query string unless this
+        argument is used in a `POST` method. You cannot use this argument in a
+        pull task.
     headers: Dictionary of headers to pass to the webhook. Values in the
-      dictionary may be iterable to indicate repeated header fields. Must not be
-      specified if method is PULL.
-    params: Dictionary of parameters to use for this Task. For POST and PULL
-      requests these params will be encoded as
-      'application/x-www-form-urlencoded' and set to the payload. For all other
-      methods, the parameters will be converted to a query string. Must not be
-      specified if the URL already contains a query string, or the task already
-      has a payload.
-    transactional: If True, adds the task(s) if and only if the enclosing
-      transaction is successfully committed. It is an error for transactional
-      to be True in the absence of an enclosing transaction. If False, adds
-      the task(s) immediately, ignoring any enclosing transaction's success or
-      failure.
-    countdown: Time in seconds into the future that this Task should execute.
-      Defaults to zero.
-    eta: A datetime.datetime specifying the absolute time at which the task
-      should be executed. Must not be specified if 'countdown' is specified.
-      This may be timezone-aware or timezone-naive. If None, defaults to now.
-      For pull tasks, no worker will be able to lease this task before the time
-      indicated by eta.
-    retry_options: TaskRetryOptions used to control when the task will be
-      retried if it fails.
-    tag: The tag to be used when grouping by tag (PULL tasks only).
-    target: The alternate version/backend on which to execute this task, or
-      DEFAULT_APP_VERSION to execute on the application's default version.
+        dictionary can be iterable to indicate repeated header fields. If you
+        do not specify a `Content-Type` header for a `PUSH` method, the
+        default header (`text/plain`) will be used. If you specify a `Host`
+        header for a `PUSH` method, do not specify a `target` argument. You
+        cannot use a `header` argument in a pull task. Any headers that use
+        the `X-AppEngine` prefix will also be dropped.
+    params: Dictionary of parameters to use for this task. For `POST` and
+        pull requests, the values in the dictionary can be iterable to
+        indicate repeated parameters, and these parameters will be encoded as
+        `application/x-www-form-urlencoded` and set to the payload. For both
+        `POST` and pull requests, do not specify parameters if you have
+        already specified a payload. For `PUT` requests, parameters are
+        converted to a query string if the URL contains a query string, or if
+        the task already has a payload. For `PUT` requests, do not specify
+        parameters if the URL already contains a query string and the method
+        is `GET`. For all other methods, the parameters will be converted to a
+        query string.
+    transactional: Optional. If `True`, adds tasks if and only if the
+        enclosing transaction is successfully committed. An error will be
+        returned if this argument is set to `True` in the absence of an
+        enclosing transaction. If `False`, adds the tasks immediately,
+        ignoring any enclosing transaction's success or failure.
+    countdown: Time in seconds into the future that this task should run or be
+        leased. Defaults to zero. Do not specify this argument if you
+        specified an `eta`.
+    eta: A `datetime.datetime` that specifies the absolute earliest time at
+        which the task should run. You cannot specify this argument if the
+        `countdown` argument is specified. This argument can be time
+        zone-aware or time zone-naive, or set to a time in the past. If the
+        argument is set to None, the default value is now. For pull tasks, no
+        worker can lease the task before the time indicated by the `eta`
+        argument.
+    retry_options: `TaskRetryOptions` used to control when the task will be
+        retried if it fails. For pull tasks, you can only specify the
+        `task_retry_limit` option to specify the number of times that a task
+        can be leased before it is deleted from the queue. For push tasks,
+        you can specify the `min_backoff_seconds`, `max_backoff_seconds`,
+        `task_age_limit`, `max_doublings`, and `task_retry_limit` options.
+    tag: The tag to be used when grouping by tag (pull tasks only).
+    target: Push tasks only; specifies the alternate version or backend on
+        which to run this task, or `DEFAULT_APP_VERSION` to run on the
+        application's default version. You can specify a module or version, a
+        frontend version, or a backend on which to run this task. The string
+        that you specify will be prepended to the domain name of your app. If
+        you specify the `target` argument, do not specify a `Host` header in
+        the dictionary for the `headers` argument.
 
   Returns:
-    The Task that was added to the queue.
+    The task that was added to the queue.
 
   Raises:
-    BadTransactionStateError: if the transactional argument is true but this
-      call is being made outside of the context of a transaction.
-    InvalidEtaError: if the ETA is too far into the future.
-    InvalidQueueModeError if a task with method PULL is added to a queue in push
-      mode, or a task with method not equal to PULL is added to a queue in pull
-      mode.
-    InvalidTagError: if the tag is too long.
-    InvalidTaskError if any of the parameters are invalid.
-    InvalidTaskNameError if the task name is invalid.
-    InvalidUrlError if the task URL is invalid or too long.
-    TaskTooLargeError if the task with its payload is too large.
-    TransactionalRequestTooLargeError: if transactional is True and the total
-      size of the tasks and supporting request data exceeds
-      MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES.
+    BadTransactionStateError: If the transactional argument is true but this
+        call is being made outside of the context of a transaction.
+    InvalidEtaError: If the `eta` is set too far into the future.
+    InvalidQueueModeError: If a pull task is added to a queue in push mode, or a
+        task with `method` not equal to `PULL` is added to a queue in pull mode.
+    InvalidTagError: If the tag is too long.
+    InvalidTaskError: If any of the parameters are invalid.
+    InvalidTaskNameError: If the task name is invalid.
+    InvalidUrlError: If the task URL is invalid or too long.
+    TaskTooLargeError: If the task with its associated payload is too large.
+    TransactionalRequestTooLargeError: If transactional is `True` and the
+        total size of the tasks and supporting request data exceeds the
+        `MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES` quota.
   """
   transactional = kwargs.pop('transactional', False)
   queue_name = kwargs.pop('queue_name', _DEFAULT_QUEUE)

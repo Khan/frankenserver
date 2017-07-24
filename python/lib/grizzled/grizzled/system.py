@@ -68,7 +68,7 @@ def python_version(version):
         import sys
 
         if sys.hexversion < 0x020501f0:
-            raise RuntimeError, 'This program requires Python 2.5.1 or better'
+            raise RuntimeError('This program requires Python 2.5.1 or better')
 
     Here's how you'd use ``python_version()`` to do the same thing (in an
     arguably more readable way):
@@ -79,7 +79,7 @@ def python_version(version):
         from grizzled.sys import python_version
 
         if sys.hexversion < python_version("2.5.1"):
-            raise RuntimeError, 'This program requires Python 2.5.1 or better'
+            raise RuntimeError('This program requires Python 2.5.1 or better')
 
     :Parameters:
         version : str
@@ -95,7 +95,7 @@ def python_version(version):
 
     tokens = version.split('.')
     if len(tokens) > 3:
-        raise ValueError, err
+        raise ValueError(err)
 
     major = int(tokens[0])
     minor = micro = serial = 0
@@ -104,7 +104,7 @@ def python_version(version):
     if len(tokens) > 1:
         match = RELEASE_LEVEL_RE.match(tokens[1])
         if not match:
-            raise ValueError, err
+            raise ValueError(err)
 
         minor = int(match.group(1))
         rl = match.group(2)
@@ -115,12 +115,12 @@ def python_version(version):
         if len(tokens) > 2:
             match = RELEASE_LEVEL_RE.match(tokens[2])
             if not match:
-                raise ValueError, err
+                raise ValueError(err)
 
             micro = int(match.group(1))
             rl2 = match.group(2)
             if rl and rl2:
-                raise ValueError, err
+                raise ValueError(err)
             if rl2:
                 release_level = rl2[0]
                 serial = int(rl2[1:])
@@ -128,7 +128,7 @@ def python_version(version):
     try:
         release_level = RELEASE_LEVELS[release_level]
     except KeyError:
-        raise ValueError, err
+        raise ValueError(err)
 
     return (major << 24) |\
            (minor << 16) |\
@@ -160,9 +160,11 @@ def split_python_version(version=None):
 
     release_level_string = RELEASE_LEVEL_NAMES.get(release_level, None)
     if not release_level_string:
-        raise ValueError, \
-              'Bad release level 0x%x in version 0x%08x' %\
-              (release_level, version)
+        raise ValueError(
+                  'Bad release level 0x{0:02x} in version 0x{1:08x}'.format(
+                      release_level, version
+                  )
+              )
 
     return (major, minor, micro, release_level_string, serial)
 
@@ -208,15 +210,18 @@ def ensure_version(min_version):
     elif type(min_version) == int:
         pass
     else:
-        raise TypeError, \
-              'version %s is not a string or an integer' % min_version
+        raise TypeError(
+            'version {0} is not a string or an integer'.format(min_version)
+        )
 
     if _sys.hexversion < min_version:
-        raise RuntimeError, \
-              'This program requires Python version "%s" or better, but ' \
-              'the current Python version is "%s".' %\
-              (python_version_string(min_version),
-               python_version_string(sys.hexversion))
+        raise RuntimeError(
+                  'This program requires Python version "{0}" or better, but ' \
+                  'the current Python version is "{1}".'.format(
+                      python_version_string(min_version),
+                      python_version_string(sys.hexversion)
+                  )
+              )
 
 
 def class_for_name(class_name):

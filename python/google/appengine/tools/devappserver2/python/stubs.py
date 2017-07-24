@@ -44,6 +44,14 @@ def return_minus_one(*unused_args, **unused_kwargs):
   return -1
 
 
+def log_access_check_fail(filename):
+  # This gets the sandboxed version of the logging module
+  logging = __import__('logging')
+  logging.info('Sandbox prevented access to file "%s"', filename)
+  logging.info('If it is a static file, check that '
+               '`application_readable: true` is set in your app.yaml')
+
+
 def fake_uname():
   """Fake version of os.uname."""
   return ('Linux', '', '', '', '')
@@ -72,6 +80,7 @@ def fake_open(filename, flags, mode=0777, _os_open=os.open):
   if flags & (os.O_RDWR | os.O_CREAT | os.O_WRONLY):
     raise OSError(errno.EROFS, 'Read-only file system', filename)
   elif not FakeFile.is_file_accessible(filename):
+    log_access_check_fail(filename)
     raise OSError(errno.ENOENT, 'No such file or directory', filename)
   return _os_open(filename, flags, mode)
 
@@ -247,6 +256,7 @@ class FakeFile(file):
       raise IOError(errno.EROFS, 'Read-only file system', filename)
 
     if not FakeFile.is_file_accessible(filename):
+      log_access_check_fail(filename)
       raise IOError(errno.EACCES, 'file not accessible', filename)
 
     super(FakeFile, self).__init__(filename, mode, bufsize, **kwargs)
@@ -271,6 +281,7 @@ class RestrictedPathFunction(object):
   def __call__(self, path, *args, **kwargs):
     """Enforces access permissions for the wrapped function."""
     if not FakeFile.is_file_accessible(path):
+      log_access_check_fail(path)
       raise self._error_class(errno.EACCES, 'path not accessible', path)
 
     return self._original_func(path, *args, **kwargs)

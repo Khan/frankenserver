@@ -36,6 +36,7 @@ REMOTE_IP = '0.1.0.1'
 class CronHandler(admin_request_handler.AdminRequestHandler):
 
   def get(self):
+    super(CronHandler, self).get()
     values = {}
     values['has_pytz'] = bool(pytz)
     try:
@@ -84,9 +85,11 @@ class CronHandler(admin_request_handler.AdminRequestHandler):
     return None
 
   def post(self):
+    super(CronHandler, self).post()
     self.response.status = self.dispatcher.add_request(
         method='GET',
         relative_url=self.request.get('url'),
         headers=[('X-AppEngine-Cron', 'true')],
         body='',
+        module_name=self.request.get('target'),
         source_ip=REMOTE_IP).status

@@ -29,9 +29,6 @@ Index: describes a single index specified in datastore-indexes.xml
 
 
 
-
-
-
 from xml.etree import ElementTree
 
 from google.appengine.api.validation import ValidationError
@@ -42,8 +39,14 @@ from google.appengine.datastore.datastore_index import Property
 MISSING_KIND = '<datastore-index> node has missing attribute "kind".'
 BAD_DIRECTION = ('<property> tag attribute "direction" must have value "asc"'
                  ' or "desc", given "%s"')
+BAD_MODE = ('<property> tag attribute "mode" must have value "geospatial",'
+            ' given "%s"')
 NAME_MISSING = ('<datastore-index> node with kind "%s" needs to have a name'
                 ' attribute specified for its <property> node')
+MODE_AND_DIRECTION_SPECIFIED = ('<datastore-index> node has both direction '
+                                'and mode specfied')
+MODE_AND_ANCESTOR_SPECIFIED = ('<property> tag attribute "mode" cannot be '
+                               'specifed with "ancestor"')
 
 
 def IndexesXmlToIndexDefinitions(xml_str):
@@ -132,17 +135,40 @@ class IndexesXmlParser(object):
           'Value for ancestor should be true or false, not "%s"' % ancestor)
     properties = []
     property_nodes = [n for n in node.getchildren() if n.tag == 'property']
+
+
+    has_geospatial = any(
+        property_node.attrib.get('mode') == 'geospatial'
+        for property_node in property_nodes)
+
     for property_node in property_nodes:
       name = property_node.attrib.get('name', '')
       if not name:
         self.errors.append(NAME_MISSING % index.kind)
         continue
 
-      direction = property_node.attrib.get('direction', 'asc')
-      if direction not in ('asc', 'desc'):
-        self.errors.append(BAD_DIRECTION % direction)
-        continue
-      properties.append(Property(name=name, direction=direction))
+      direction = property_node.attrib.get('direction')
+      mode = property_node.attrib.get('mode')
+      if mode:
+        if index.ancestor:
+          self.errors.append(MODE_AND_ANCESTOR_SPECIFIED)
+          continue
+        if mode != 'geospatial':
+          self.errors.append(BAD_MODE % mode)
+          continue
+        if direction:
+          self.errors.append(MODE_AND_DIRECTION_SPECIFIED)
+          continue
+      else:
+        if not direction:
+
+
+          if not has_geospatial:
+            direction = 'asc'
+        elif direction not in ('asc', 'desc'):
+          self.errors.append(BAD_DIRECTION % direction)
+          continue
+      properties.append(Property(name=name, direction=direction, mode=mode))
     index.properties = properties
     self.indexes.append(index)
 

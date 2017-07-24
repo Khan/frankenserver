@@ -25,12 +25,13 @@ import os.path
 import threading
 
 import google
-import webapp2
+
+from google.appengine.tools.devappserver2.admin import admin_request_handler
 
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), 'assets')
 
 
-class StaticFileHandler(webapp2.RequestHandler):
+class StaticFileHandler(admin_request_handler.AdminRequestHandler):
   """A request handler for returning static files."""
 
   _asset_name_to_path = None
@@ -53,6 +54,7 @@ class StaticFileHandler(webapp2.RequestHandler):
     Args:
       asset_name: The name of the static asset to serve. Must be in ASSETS_PATH.
     """
+    super(StaticFileHandler, self).get(asset_name)
     with self._asset_name_to_path_lock:
       if self._asset_name_to_path is None:
         self._initialize_asset_map()

@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: 58917b33b42080b79747e553e2685ff5e3e2f84b $
 #
 # Nose program for testing grizzled.io classes/functions
@@ -7,7 +6,6 @@
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.io import *
 from cStringIO import StringIO
 import os

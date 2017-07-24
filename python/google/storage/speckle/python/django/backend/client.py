@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Django database client for rdbms.
 
 Encapsulates the logic for starting up a command line client to the database,

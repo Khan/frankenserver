@@ -82,8 +82,6 @@ def GenerateIndexDictFromHistory(query_history,
 
 
 
-
-
   all_keys = datastore_index.IndexDefinitionsToKeys(all_indexes)
   manual_keys = datastore_index.IndexDefinitionsToKeys(manual_indexes)
 
@@ -96,14 +94,93 @@ def GenerateIndexDictFromHistory(query_history,
         datastore_index.CompositeIndexForQuery(query))
     if required:
       props = datastore_index.GetRecommendedIndexProperties(props)
-      key = (kind, ancestor, props)
-      if key not in manual_keys:
-        if key in indexes:
-          indexes[key] += count
-        else:
-          indexes[key] = count
+      spec = (kind, ancestor, props)
+
+
+
+
+      if not any(_IndexSpecSatisfies(spec, k) for k in manual_keys):
+        _UpdateGeneratedIndexes(spec, count, indexes)
 
   return indexes
+
+
+def _UpdateGeneratedIndexes(spec, count, indexes):
+  """Updates the set of generated indexes to cover given query requirements.
+
+  It may add "spec" to the "indexes" dict if the latter does not
+  already have an index suitable for serving the query represented by
+  "spec".  (It may even replace an entry already in the dict if that
+  gives optimal coverage.)
+
+  Args:
+    spec: specification of index requirements (in "key" form) for a
+      query executed in the stub.
+    count: number of times the query was executed
+    indexes: dict containing other already-generated index "keys" and
+      their counts.
+
+  No return value; instead it Updates "indexes" in place as necessary.
+
+  """
+
+
+
+
+  for index in indexes:
+    if _IndexSpecSatisfies(spec, index):
+      indexes[index] += count
+      return
+
+
+
+  for index in indexes:
+    if _IndexSpecSatisfies(index, spec):
+      indexes[spec] = indexes[index] + count
+      del indexes[index]
+      return
+
+
+  indexes[spec] = count
+
+
+def _IndexSpecSatisfies(spec, candidate):
+  """Determines whether candidate index can serve the query given by spec."""
+  (spec_kind, spec_ancestor, spec_props) = spec
+  (candidate_kind, candidate_ancestor, candidate_props) = candidate
+  if (spec_kind, spec_ancestor) != (candidate_kind, candidate_ancestor):
+    return False
+  if len(spec_props) != len(candidate_props):
+    return False
+  return all(_PropSatisfies(s, c)
+             for (s, c) in zip(spec_props, candidate_props))
+
+
+def _PropSatisfies(spec, candidate):
+  """Determines whether candidate property meets requirements given by spec."""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  if spec.name != candidate.name or spec.mode != candidate.mode:
+    return False
+
+  return True if spec.direction is None else (
+      spec.direction == candidate.direction)
 
 
 def GenerateIndexFromHistory(query_history,
@@ -432,8 +509,9 @@ class DatastoreIndexesAutoXmlUpdater(object):
     """Convert a query dictionary into the corresponding required indexes.
 
     Args:
-      index_dict: Query history, a dict mapping datastore_pb.Query to a count
-        of the number of times that query has been issued.
+      index_dict: Index usage history, a dict mapping composite index
+        descriptors to a count of the number of times that queries
+        needing such an index have been executed
 
     Returns:
       a tuple (indexes, counts) where indexes and counts are lists of the same
@@ -446,10 +524,15 @@ class DatastoreIndexesAutoXmlUpdater(object):
     for (kind, ancestor, props), count in sorted(index_dict.iteritems()):
       properties = []
       for prop in props:
-        direction = (
-            'asc' if prop.direction == datastore_index.ASCENDING else 'desc')
-        properties.append(
-            datastore_index.Property(name=prop.name, direction=direction))
+        if prop.direction is None:
+          direction = None
+        else:
+          direction = (
+              'desc' if prop.direction == datastore_index.DESCENDING else 'asc')
+        mode = (
+            'geospatial' if prop.mode == datastore_index.GEOSPATIAL else None)
+        properties.append(datastore_index.Property(
+            name=prop.name, direction=direction, mode=mode))
 
       indexes.append(datastore_index.Index(
           kind=kind, ancestor=bool(ancestor), properties=properties))
@@ -472,11 +555,9 @@ class DatastoreIndexesAutoXmlUpdater(object):
     for index, count in zip(indexes, counts):
       lines.append('  <!-- Used %d time%s in query history -->'
                    % (count, 's' if count != 1 else ''))
-      lines.append('  <datastore-index kind="%s" ancestor="%s">'
-                   % (index.kind, 'true' if index.ancestor else 'false'))
-      for prop in index.properties:
-        lines.append('    <property name="%s" direction="%s" />'
-                     % (prop.name, prop.direction))
-      lines.append('  </datastore-index>')
+      kind, ancestor, props = datastore_index.IndexToKey(index)
+      xml_fragment = datastore_index.IndexXmlForQuery(kind, ancestor, props)
+      lines.append(xml_fragment)
+
     lines.append('</datastore-indexes>')
     return '\n'.join(lines) + '\n'

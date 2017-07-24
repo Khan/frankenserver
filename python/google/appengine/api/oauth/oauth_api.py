@@ -46,10 +46,18 @@ Classes defined here:
 import cPickle
 import os
 
-from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import user_service_pb
-from google.appengine.api import users
-from google.appengine.runtime import apiproxy_errors
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.api import user_service_pb
+  from google.appengine.api import users
+  from google.appengine.runtime import apiproxy_errors
+else:
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.api import user_service_pb
+  from google.appengine.api import users
+  from google.appengine.runtime import apiproxy_errors
+
 
 
 class Error(Exception):
@@ -121,32 +129,11 @@ def is_current_user_admin(_scope=None):
   return os.environ.get('OAUTH_IS_ADMIN', '0') == '1'
 
 
-
 def get_oauth_consumer_key():
-  """Returns the value of the 'oauth_consumer_key' parameter from the request.
+  """OAuth1 authentication is deprecated and turned down."""
 
-  Returns:
-    string: The value of the 'oauth_consumer_key' parameter from the request,
-        an identifier for the consumer that signed the request.
 
-  Raises:
-    OAuthRequestError: The request was not a valid OAuth request.
-    OAuthServiceFailureError: An unknown error occurred.
-  """
-  req = user_service_pb.CheckOAuthSignatureRequest()
-  resp = user_service_pb.CheckOAuthSignatureResponse()
-  try:
-    apiproxy_stub_map.MakeSyncCall('user', 'CheckOAuthSignature', req, resp)
-  except apiproxy_errors.ApplicationError, e:
-    if (e.application_error ==
-        user_service_pb.UserServiceError.OAUTH_INVALID_REQUEST):
-      raise InvalidOAuthParametersError(e.error_detail)
-    elif (e.application_error ==
-          user_service_pb.UserServiceError.OAUTH_ERROR):
-      raise OAuthServiceFailureError(e.error_detail)
-    else:
-      raise OAuthServiceFailureError(e.error_detail)
-  return resp.oauth_consumer_key()
+  raise InvalidOAuthParametersError('Two-legged OAuth1 not supported any more')
 
 
 def get_client_id(_scope):
@@ -161,7 +148,7 @@ def get_client_id(_scope):
 
   Raises:
     OAuthRequestError: The request was not a valid OAuth2 request.
-    OAuthServiceFailureError: An unknow error occurred.
+    OAuthServiceFailureError: An unknown error occurred.
   """
   _maybe_call_get_oauth_user(_scope)
   return _get_client_id_from_environ()
@@ -179,7 +166,7 @@ def get_authorized_scopes(scope):
 
   Raises:
     OAuthRequestError: The request was not a valid OAuth2 request.
-    OAuthServiceFailureError: An unknow error occurred
+    OAuthServiceFailureError: An unknown error occurred
   """
   _maybe_call_get_oauth_user(scope)
   return _get_authorized_scopes_from_environ()

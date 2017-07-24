@@ -28,16 +28,24 @@ import os
 import re
 import time
 
-try:
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
   from google.appengine.api import memcache
   from google.appengine.ext import db
   from google.appengine.api import validation
   from google.appengine.api import yaml_object
-except:
-  from google.appengine.api import memcache
-  from google.appengine.ext import db
-  from google.appengine.ext import validation
-  from google.appengine.ext import yaml_object
+else:
+  try:
+    from google.appengine.api import memcache
+    from google.appengine.ext import db
+    from google.appengine.api import validation
+    from google.appengine.api import yaml_object
+  except:
+    from google.appengine.api import memcache
+    from google.appengine.ext import db
+    from google.appengine.ext import validation
+    from google.appengine.ext import yaml_object
+
 
 
 

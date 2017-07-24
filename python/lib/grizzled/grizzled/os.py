@@ -56,8 +56,8 @@ else:
 
 # The path separator for the operating system.
 
-PATH_SEPARATOR = {'nt' : ';', 'posix' : ':'}
-FILE_SEPARATOR = {'nt' : '\\', 'posix' : '/'}
+PATH_SEPARATOR = {'nt' : ';', 'posix' : ':', 'java' : ':'}
+FILE_SEPARATOR = {'nt' : '\\', 'posix' : '/', 'java' :'/'}
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -270,8 +270,8 @@ def daemonize(no_close=False, pidfile=None):
     def __fork():
         try:
             return _os.fork()
-        except OSError, e:
-            raise DaemonError, ('Cannot fork', e.errno, e.strerror)
+        except OSError as e:
+            raise DaemonError(('Cannot fork', e.errno, e.strerror))
 
     def __redirect_file_descriptors():
         import resource  # POSIX resource information
@@ -306,9 +306,10 @@ def daemonize(no_close=False, pidfile=None):
 
     if _os.name != 'posix':
         import errno
-        raise DaemonError, \
-              ('daemonize() is only supported on Posix-compliant systems.',
-               errno.ENOSYS, _os.strerror(errno.ENOSYS))
+        raise DaemonError(
+            ('daemonize() is only supported on Posix-compliant systems.',
+            errno.ENOSYS, _os.strerror(errno.ENOSYS))
+        )
 
     try:
         # Fork once to go into the background.
@@ -358,8 +359,8 @@ def daemonize(no_close=False, pidfile=None):
     except DaemonError:
         raise
 
-    except OSError, e:
-        raise DaemonError, ('Unable to daemonize()', e.errno, e.strerror)
+    except OSError as e:
+        raise DaemonError(('Unable to daemonize()', e.errno, e.strerror))
 
 # ---------------------------------------------------------------------------
 # Main program (for testing)

@@ -45,6 +45,23 @@ _PATHS = wrapper_util.Paths(_DIR_PATH)
 EXTRA_PATHS = _PATHS.v2_extra_paths
 
 
+def fix_google_path():
+
+
+  if 'google' in sys.modules:
+    google_path = os.path.join(os.path.dirname(__file__), 'google')
+    google_module = sys.modules['google']
+    google_module.__path__.append(google_path)
+
+
+
+
+
+
+    if not hasattr(google_module, '__file__') or not google_module.__file__:
+      google_module.__file__ = os.path.join(google_path, '__init__.py')
+
+
 def fix_sys_path(extra_extra_paths=()):
   """Fix the sys.path to include our extra paths.
 
@@ -52,6 +69,7 @@ def fix_sys_path(extra_extra_paths=()):
   third-party modules are correctly added to sys.path.
   """
   sys.path[1:1] = EXTRA_PATHS
+  fix_google_path()
 
 
 def _run_file(file_path, globals_):
@@ -64,20 +82,22 @@ def _run_file(file_path, globals_):
   """
   script_name = os.path.basename(file_path)
 
+
+
+
+
+  if '--grpc_api' in sys.argv:
+    _PATHS.add_grpc_path(script_name)
+
   sys.path = (_PATHS.script_paths(script_name) +
               _PATHS.scrub_path(script_name, sys.path))
 
-
-
-
-
-
-
-  if 'google' in sys.modules:
-    del sys.modules['google']
+  fix_google_path()
 
   execfile(_PATHS.script_file(script_name), globals_)
 
 
 if __name__ == '__main__':
+
+  assert sys.version_info[0] == 2
   _run_file(__file__, globals())

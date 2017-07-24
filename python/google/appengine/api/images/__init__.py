@@ -20,15 +20,12 @@
 
 """Image manipulation API.
 
-Classes defined in this module:
-  Image: class used to encapsulate image information and transformations for
-    that image.
-
-    The current manipulations that are available are resize, rotate,
-    horizontal_flip, vertical_flip, crop and im_feeling_lucky.
-
-    It should be noted that each transform can only be called once per image
-    per execute_transforms() call.
+App Engine provides the ability to manipulate image data using a dedicated
+Images service. The Images service can resize, rotate, flip, and crop images; it
+can composite multiple images into a single image; and it can convert image data
+between several formats. It can also enhance photographs using a predefined
+algorithm. The API can also provide information about an image, such as its
+format, width, height, and a histogram of color values.
 """
 
 
@@ -100,11 +97,11 @@ class Error(Exception):
 
 
 class TransformationError(Error):
-  """Error while attempting to transform the image."""
+  """An error occurred while attempting to transform the image."""
 
 
 class BadRequestError(Error):
-  """The parameters given had something wrong with them."""
+  """The parameters specified were in some way invalid."""
 
 
 class NotImageError(Error):
@@ -112,11 +109,11 @@ class NotImageError(Error):
 
 
 class BadImageError(Error):
-  """The image data given is corrupt."""
+  """The image data is corrupt."""
 
 
 class LargeImageError(Error):
-  """The image data given is too large to process."""
+  """The image data is too large to process."""
 
 
 class InvalidBlobKeyError(Error):
@@ -126,8 +123,8 @@ class InvalidBlobKeyError(Error):
     """Constructor.
 
     Args:
-      blob_key: The blob_key that is believed to be invalid. May be None if the
-        BlobKey is unknown.
+      blob_key: The `blob_key` that is believed to be invalid. Set this argument
+          to `None` if the blob key is unknown.
     """
     self._blob_key = blob_key
 
@@ -140,11 +137,11 @@ class InvalidBlobKeyError(Error):
 
 
 class BlobKeyRequiredError(Error):
-  """A blobkey is required for this operation."""
+  """A blob key is required for this operation."""
 
 
 class UnsupportedSizeError(Error):
-  """Specified size is not supported by requested operation."""
+  """The size that was specified is not supported by requested operation."""
 
 
 class AccessDeniedError(Error):
@@ -152,19 +149,19 @@ class AccessDeniedError(Error):
 
 
 class ObjectNotFoundError(Error):
-  """The object referred to by a BlobKey does not exist."""
+  """The blob key referred to an object that does not exist."""
 
 
 def _ToImagesError(error, blob_key=None):
-  """Translate an application error to an Images error, if possible.
+  """Translates an application error to an Images error, if possible.
 
   Args:
-    error: an ApplicationError to translate.
-    blob_key: The blob_key that used in the function that caused the error.
-      May be None if the BlobKey is unknown.
+    error: An `ApplicationError` to translate.
+    blob_key: The `blob_key` that is used in the function that caused the
+        error. Set this argument to `None` if the blob key is unknown.
 
-   Returns:
-     The Images error if found, otherwise the original error.
+  Returns:
+    An Images API error if one is found; all other errors are returned as-is.
   """
   error_map = {
       images_service_pb.ImagesServiceError.NOT_IMAGE:
@@ -200,17 +197,18 @@ class Image(object):
   def __init__(self, image_data=None, blob_key=None, filename=None):
     """Constructor.
 
-    Only one of image_data, blob_key or filename can be specified.
+    You can only specify one of the following arguments.
 
     Args:
-      image_data: str, image data in string form.
-      blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
-        blob containing the image data.
-      filename: str, the filename of a Google Storage file containing the
-        image data. Must be in the format '/gs/bucket_name/object_name'.
+      image_data: String of the image data.
+      blob_key: A `BlobKey`, `BlobInfo`, string, or Unicode representation of
+          the blob key of the blob that contains the image data.
+      filename: String of the the file name of a Google Storage file that
+          contains the image data. Must be in the format
+          `/gs/bucket_name/object_name`.
 
     Raises:
-      NotImageError if the given data is empty.
+      NotImageError: If the given data is empty.
     """
 
     if not image_data and not blob_key and not filename:
@@ -233,22 +231,22 @@ class Image(object):
     self._original_metadata = None
 
   def _check_transform_limits(self):
-    """Ensure some simple limits on the number of transforms allowed.
+    """Ensures some simple limits on the number of transforms allowed.
 
     Raises:
-      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
-      requested for this image
+      BadRequestError: If `MAX_TRANSFORMS_PER_REQUEST` transforms have already
+          been requested for this image.
     """
     if len(self._transforms) >= MAX_TRANSFORMS_PER_REQUEST:
       raise BadRequestError("%d transforms have already been requested on this "
                             "image." % MAX_TRANSFORMS_PER_REQUEST)
 
   def _update_dimensions(self):
-    """Updates the width and height fields of the image.
+    """Updates the `width` and `height` fields of the image.
 
     Raises:
-      NotImageError if the image data is not an image.
-      BadImageError if the image data is corrupt.
+      NotImageError: If the image data is not an image.
+      BadImageError: If the image data is corrupt.
     """
     if not self._image_data:
       raise NotImageError("Dimensions unavailable for blob key input")
@@ -287,10 +285,10 @@ class Image(object):
       raise NotImageError("Unrecognized image format")
 
   def _update_gif_dimensions(self):
-    """Updates the width and height fields of the gif image.
+    """Updates the `width` and `height` fields of the GIF image.
 
     Raises:
-      BadImageError if the image string is not a valid gif image.
+      BadImageError: If the image string is not a valid GIF image.
     """
 
     size = len(self._image_data)
@@ -300,10 +298,10 @@ class Image(object):
       raise BadImageError("Corrupt GIF format")
 
   def _update_png_dimensions(self):
-    """Updates the width and height fields of the png image.
+    """Updates the `width` and `height` fields of the PNG image.
 
     Raises:
-      BadImageError if the image string is not a valid png image.
+      BadImageError: If the image string is not a valid PNG image.
     """
 
 
@@ -314,10 +312,10 @@ class Image(object):
       raise BadImageError("Corrupt PNG format")
 
   def _update_jpeg_dimensions(self):
-    """Updates the width and height fields of the jpeg image.
+    """Updates the `width` and `height` fields of the JPEG image.
 
     Raises:
-      BadImageError if the image string is not a valid jpeg image.
+      BadImageError: If the image string is not a valid JPEG image.
     """
 
     size = len(self._image_data)
@@ -346,10 +344,10 @@ class Image(object):
       raise BadImageError("Corrupt JPEG format")
 
   def _update_tiff_dimensions(self):
-    """Updates the width and height fields of the tiff image.
+    """Updates the `width` and `height` fields of the TIFF image.
 
     Raises:
-      BadImageError if the image string is not a valid tiff image.
+      BadImageError: If the image string is not a valid TIFF image.
     """
 
 
@@ -401,10 +399,10 @@ class Image(object):
       raise BadImageError("Corrupt TIFF format")
 
   def _update_bmp_dimensions(self):
-    """Updates the width and height fields of the bmp image.
+    """Updates the `width` and `height` fields of the BMP image.
 
     Raises:
-      BadImageError if the image string is not a valid bmp image.
+      BadImageError: If the image string is not a valid BMP image.
     """
 
 
@@ -427,10 +425,10 @@ class Image(object):
       raise BadImageError("Corrupt BMP format")
 
   def _update_ico_dimensions(self):
-    """Updates the width and height fields of the ico image.
+    """Updates the `width` and `height` fields of the ICO image.
 
     Raises:
-      BadImageError if the image string is not a valid ico image.
+      BadImageError: If the image string is not a valid ICO image.
     """
     size = len(self._image_data)
     if size >= 8:
@@ -444,29 +442,30 @@ class Image(object):
       raise BadImageError("Corrupt ICO format")
 
   def set_correct_orientation(self, correct_orientation):
-    """Set flag to correct image orientation based on image metadata.
+    """Sets a flag to correct the image orientation based on image metadata.
 
-    EXIF metadata within the image may contain a parameter indicating its proper
-    orientation. This value can equal 1 through 8, inclusive. "1" means that the
-    image is in its "normal" orientation, i.e., it should be viewed as it is
-    stored. Normally, this "orientation" value has no effect on the behavior of
-    the transformations. However, calling this function with the value
-    CORRECT_ORIENTATION any orientation specified in the EXIF metadata will be
-    corrected during the first transformation.
+    EXIF metadata within the image may contain a parameter that indicates its
+    proper orientation. This value can equal 1 through 8, inclusive. Setting the
+    orientation to 1 means that the image is in its "normal" orientation, i.e.,
+    it should be viewed as it is stored. Normally, this orientation value has no
+    effect on the behavior of the transformations. However, if you call this
+    function with the `correct_orientation` argument, any orientation specified
+    in the EXIF metadata will be corrected during the first transformation.
 
-    NOTE: If CORRECT_ORIENTATION is specified but the image is already in
-    portrait orientation, i.e., "taller" than it is "wide" no corrections will
-    be made, since it appears that the camera has already corrected it.
+    Note:
+        If `correct_orientation` is specified, but the image is already in
+        portrait orientation, i.e., "taller" than it is "wide," no corrections
+        will be made, since the camera has likely already corrected it.
 
-    Regardless whether the correction was requested or not, the orientation
-    value in the transformed image is always cleared to indicate that no
-    additional corrections of the returned image's orientation is necessary.
+    Whether the correction was requested or not, the orientation value in the
+    transformed image is always cleared to indicate that no additional
+    corrections of the returned image's orientation is necessary.
 
     Args:
-      correct_orientation: a value from ORIENTATION_CORRECTION_TYPE.
+      correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE`.
 
     Raises:
-      BadRequestError if correct_orientation value is invalid.
+      BadRequestError: If the `correct_orientation` value is invalid.
     """
     if correct_orientation not in ORIENTATION_CORRECTION_TYPE:
       raise BadRequestError("Orientation correction must be in %s" %
@@ -507,7 +506,7 @@ class Image(object):
       raise BadImageError("Corrupt WEBP format")
 
   def _update_webp_vp8x_dimensions(self):
-    """Updates the width and height fields of a webp image with vp8x chunk."""
+    """Updates the width and height fields of a WEBP image with a vp8x chunk."""
     size = len(self._image_data)
 
     if size < 30:
@@ -520,34 +519,36 @@ class Image(object):
 
   def resize(self, width=0, height=0, crop_to_fit=False,
              crop_offset_x=0.5, crop_offset_y=0.5, allow_stretch=False):
-    """Resize the image maintaining the aspect ratio.
+    """Resizes the image, maintaining the aspect ratio.
 
-    If both width and height are specified, the more restricting of the two
-    values will be used when resizing the image. The maximum dimension allowed
-    for both width and height is 4000 pixels.
-    If both width and height are specified and crop_to_fit is True, the less
-    restricting of the two values will be used when resizing and the image will
-    be cropped to fit the specified size. In this case the center of cropping
-    can be adjusted  by crop_offset_x and crop_offset_y.
+    If both `width` and `height` are specified, the more restricting of the two
+    values will be used when the image is resized. The maximum dimension allowed
+    for both `width` and `height` is 4000 pixels.
+
+    If both `width` and `height` are specified, and `crop_to_fit` is `True`, the
+    less restricting of the two values will be used when the image is resized,
+    and the image will be cropped to fit the specified size. In this case, the
+    center of cropping can be adjusted by `crop_offset_x` and `crop_offset_y`.
 
     Args:
-      width: int, width (in pixels) to change the image width to.
-      height: int, height (in pixels) to change the image height to.
-      crop_to_fit: If True and both width and height are specified, the image is
-        cropped after resize to fit the specified dimensions.
-      crop_offset_x: float value between 0.0 and 1.0, 0 is left and 1 is right,
-        default is 0.5, the center of image.
-      crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
-        default is 0.5, the center of image.
-      allow_stretch: If True and both width and height are specified, the image
-        is stretched to fit the resize dimensions without maintaining the
-        aspect ratio.
+      width: Integer of the width in pixels to change the image width to.
+      height: Integer of the height in pixels to change the image height to.
+      crop_to_fit: If `True`, and both `width` and `height` are specified, the
+          image is cropped after it is resized to fit the specified
+          dimensions.
+      crop_offset_x: Float value between 0.0 and 1.0. 0 is left, and 1 is right.
+          The default value is 0.5, or the center of the image.
+      crop_offset_y: Float value between 0.0 and 1.0. 0 is top, and 1 is bottom.
+          The default value is 0.5, or the center of the image.
+      allow_stretch: If `True`, and both `width` and `height` are specified, the
+          image is stretched to fit the resize dimensions without maintaining
+          the aspect ratio.
 
     Raises:
-      TypeError when width or height is not either 'int' or 'long' types.
-      BadRequestError when there is something wrong with the given height or
-        width or if MAX_TRANSFORMS_PER_REQUEST transforms have already been
-        requested on this image.
+      TypeError: When `width` or `height` is not an integer or long type.
+      BadRequestError: When the height or width is invalid, or if
+          `MAX_TRANSFORMS_PER_REQUEST` transforms have already been
+          requested on this image.
     """
     if (not isinstance(width, (int, long)) or
         not isinstance(height, (int, long))):
@@ -591,15 +592,16 @@ class Image(object):
     self._transforms.append(transform)
 
   def rotate(self, degrees):
-    """Rotate an image a given number of degrees clockwise.
+    """Rotates an image a given number of degrees clockwise.
 
     Args:
-      degrees: int, must be a multiple of 90.
+      degrees: Integer value of the number of degrees that an image must be
+          rotated. This value must be a multiple of 90.
 
     Raises:
-      TypeError when degrees is not either 'int' or 'long' types.
-      BadRequestError when there is something wrong with the given degrees or
-      if MAX_TRANSFORMS_PER_REQUEST transforms have already been requested.
+      TypeError: When `degrees` is not an integer or long type.
+      BadRequestError: When the `degrees` value is invalid or if
+          `MAX_TRANSFORMS_PER_REQUEST` transforms have already been requested.
     """
     if not isinstance(degrees, (int, long)):
       raise TypeError("Degrees must be integers.")
@@ -621,11 +623,11 @@ class Image(object):
     self._transforms.append(transform)
 
   def horizontal_flip(self):
-    """Flip the image horizontally.
+    """Flips the image horizontally.
 
     Raises:
-      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
-      requested on the image.
+      BadRequestError: If `MAX_TRANSFORMS_PER_REQUEST` transforms have already
+          been requested on the image.
     """
     self._check_transform_limits()
 
@@ -635,11 +637,11 @@ class Image(object):
     self._transforms.append(transform)
 
   def vertical_flip(self):
-    """Flip the image vertically.
+    """Flips the image vertically.
 
     Raises:
-      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
-      requested on the image.
+      BadRequestError: If `MAX_TRANSFORMS_PER_REQUEST` transforms have already
+          been requested on the image.
     """
     self._check_transform_limits()
     transform = images_service_pb.Transform()
@@ -648,15 +650,15 @@ class Image(object):
     self._transforms.append(transform)
 
   def _validate_crop_arg(self, val, val_name):
-    """Validate the given value of a Crop() method argument.
+    """Validates the given value of a `Crop()` method argument.
 
     Args:
-      val: float, value of the argument.
-      val_name: str, name of the argument.
+      val: Float value of the argument.
+      val_name: String of the name of the argument.
 
     Raises:
-      TypeError if the args are not of type 'float'.
-      BadRequestError when there is something wrong with the given bounding box.
+      TypeError: If the arguments are not of type float.
+      BadRequestError: When the bounding box is invalid.
     """
     if type(val) != float:
       raise TypeError("arg '%s' must be of type 'float'." % val_name)
@@ -666,24 +668,24 @@ class Image(object):
                             "(inclusive)" % val_name)
 
   def crop(self, left_x, top_y, right_x, bottom_y):
-    """Crop the image.
+    """Crops the image.
 
-    The four arguments are the scaling numbers to describe the bounding box
-    which will crop the image.  The upper left point of the bounding box will
-    be at (left_x*image_width, top_y*image_height) the lower right point will
-    be at (right_x*image_width, bottom_y*image_height).
+    The four arguments are the scaling numbers that describe the bounding box
+    that will crop the image.  The upper left point of the bounding box will
+    be at (`left_x*image_width`, `top_y*image_height`), and the lower right
+    point will be at (`right_x*image_width`, `bottom_y*image_height`).
 
     Args:
-      left_x: float value between 0.0 and 1.0 (inclusive).
-      top_y: float value between 0.0 and 1.0 (inclusive).
-      right_x: float value between 0.0 and 1.0 (inclusive).
-      bottom_y: float value between 0.0 and 1.0 (inclusive).
+      left_x: Float value between 0.0 and 1.0, inclusive.
+      top_y: Float value between 0.0 and 1.0, inclusive.
+      right_x: Float value between 0.0 and 1.0, inclusive.
+      bottom_y: Float value between 0.0 and 1.0, inclusive.
 
     Raises:
-      TypeError if the args are not of type 'float'.
-      BadRequestError when there is something wrong with the given bounding box
-        or if MAX_TRANSFORMS_PER_REQUEST transforms have already been requested
-        for this image.
+      TypeError: If the arguments are not of type float.
+      BadRequestError: When the bounding box values are invalid or if
+          `MAX_TRANSFORMS_PER_REQUEST` transforms have already been requested
+          for this image.
     """
     self._validate_crop_arg(left_x, "left_x")
     self._validate_crop_arg(top_y, "top_y")
@@ -706,13 +708,13 @@ class Image(object):
     self._transforms.append(transform)
 
   def im_feeling_lucky(self):
-    """Automatically adjust image contrast and color levels.
+    """Automatically adjusts the image's contrast and color levels.
 
     This is similar to the "I'm Feeling Lucky" button in Picasa.
 
     Raises:
-      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already
-        been requested for this image.
+      BadRequestError: If `MAX_TRANSFORMS_PER_REQUEST` transforms have already
+          been requested for this image.
     """
     self._check_transform_limits()
     transform = images_service_pb.Transform()
@@ -721,35 +723,40 @@ class Image(object):
     self._transforms.append(transform)
 
   def get_original_metadata(self):
-    """Metadata of the original image.
+    """Lists the metadata of the original image.
 
     Returns a dictionary of metadata extracted from the original image during
-    execute_transform.
-    Note, that some of the EXIF fields are processed, e.g., fields with multiple
-    values returned as lists, rational types are returned as floats, GPS
-    coordinates already parsed to signed floats, etc.
-    ImageWidth and ImageLength fields are corrected if they did not correspond
-    to the actual dimensions of the original image.
+    `execute_transform`.
+
+    Note:
+        Some of the EXIF fields are processed; for example, fields with multiple
+        values are returned as lists, rational types are returned as floats, GPS
+        coordinates are already parsed to signed floats, etc.
+
+    `ImageWidth` and `ImageLength` fields are corrected if they did not
+    correspond to the actual dimensions of the original image.
 
     Returns:
-      dict with string keys. If execute_transform was called with parse_metadata
-      being True, this dictionary contains information about various properties
-      of the original image, such as dimensions, color profile, and properties
-      from EXIF.
-      Even if parse_metadata was False or the images did not have any metadata,
-      the dictionary will contain a limited set of metadata, at least
-      'ImageWidth' and 'ImageLength', corresponding to the dimensions of the
-      original image.
-      It will return None, if it is called before a successful
-      execute_transfrom.
+      Dictionary of metadata with string keys. If `execute_transform` was
+      called with `parse_metadata` set to `True`, this dictionary contains
+      information about the various properties of the original image, such as
+      dimensions, color profile, and properties from EXIF.
+
+      Even if `parse_metadata` was `False` or the images did not have any
+      metadata, the dictionary will contain a limited set of metadata, with
+      least `ImageWidth` and `ImageLength` dimensions of the original image
+      being returned.
+
+      This call will return `None` if it is called before a successful
+      `execute_transfrom` call.
     """
     return self._original_metadata
 
   def _set_imagedata(self, imagedata):
-    """Fills in an ImageData PB from this Image instance.
+    """Populates an `ImageData` protocol buffer from this Image instance.
 
     Args:
-      imagedata: An ImageData PB instance
+        imagedata: An `ImageData` protocol buffer instance.
     """
     if self._blob_key:
       imagedata.set_content("")
@@ -761,36 +768,39 @@ class Image(object):
                          parse_source_metadata=False,
                          transparent_substitution_rgb=None,
                          rpc=None):
-    """Perform transformations on a given image.
+    """Performs transformations on a given image.
+
+    You can only execute one transformation per image per `execute_transforms()`
+    call.
 
     Args:
-      output_encoding: A value from OUTPUT_ENCODING_TYPES.
+      output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
       quality: A value between 1 and 100 to specify the quality of the
-        encoding.  This value is only used for JPEG & WEBP quality control.
-      parse_source_metadata: when True the metadata (EXIF) of the source image
-        is parsed before any transformations. The results can be retrieved
-        via Image.get_original_metadata.
-      transparent_substition_rgb: When transparent pixels are not support in the
-        destination image format then transparent pixels will be substituted
-        for the specified color, which must be 32 bit rgb format.
+          encoding.  This value is only used for JPEG and WEBP quality control.
+      parse_source_metadata: When `True`, the metadata (EXIF) of the source
+          image is parsed before any transformations. The results can be
+          retrieved via `Image.get_original_metadata`.
+      transparent_substitution_rgb: When transparent pixels are not supported in
+          the destination image format, transparent pixels will be substituted
+          for the specified color, which must be 32-bit RGB format.
       rpc: A UserRPC object.
 
     Returns:
-      str, image data after the transformations have been performed on it.
+      A string of the image data after the transformations have been
+      performed on it.
 
     Raises:
-      BadRequestError when there is something wrong with the request
-        specifications.
-      NotImageError when the image data given is not an image.
-      BadImageError when the image data given is corrupt.
-      LargeImageError when the image data given is too large to process.
-      InvalidBlobKeyError when the blob key provided is invalid.
-      TransformtionError when something errors during image manipulation.
-      AccessDeniedError: when the blobkey refers to a Google Storage object, and
-        the application does not have permission to access the object.
-      ObjectNotFoundError:: when the blobkey refers to an object that no longer
-        exists.
-      Error when something unknown, but bad, happens.
+      BadRequestError: When the request specifications are invalid.
+      NotImageError: When the image data given is not an image.
+      BadImageError: When the image data given is corrupt.
+      LargeImageError: When the image data given is too large to process.
+      InvalidBlobKeyError: When the blob key provided is invalid.
+      TransformationError: When an error occurs during image manipulation.
+      AccessDeniedError: When the blob key refers to a Google Storage object,
+          and the application does not have permission to access the object.
+      ObjectNotFoundError: When the blob key refers to an object that no
+          longer exists.
+      Error: All other error conditions.
     """
     rpc = self.execute_transforms_async(output_encoding=output_encoding,
         quality=quality,
@@ -803,35 +813,34 @@ class Image(object):
                                parse_source_metadata=False,
                                transparent_substitution_rgb=None,
                                rpc=None):
-    """Perform transformations on a given image - async version.
+    """Asynchronously performs transformations on a given image.
 
     Args:
-      output_encoding: A value from OUTPUT_ENCODING_TYPES.
+      output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
       quality: A value between 1 and 100 to specify the quality of the
-        encoding.  This value is only used for JPEG & WEBP quality control.
-      parse_source_metadata: when True the metadata (EXIF) of the source image
-        is parsed before any transformations. The results can be retrieved
-        via Image.get_original_metadata.
-      transparent_substition_rgb: When transparent pixels are not support in the
-        destination image format then transparent pixels will be substituted
-        for the specified color, which must be 32 bit rgb format.
+          encoding. This value is only used for JPEG & WEBP quality control.
+      parse_source_metadata: When `True`, the metadata (EXIF) of the source
+          image is parsed before any transformations. The results can be
+          retrieved via `Image.get_original_metadata`.
+      transparent_substitution_rgb: When transparent pixels are not supported in
+          the destination image format, transparent pixels will be substituted
+          for the specified color, which must be in 32-bit RGB format.
       rpc: A UserRPC object.
 
     Returns:
       A UserRPC object.
 
     Raises:
-      BadRequestError when there is something wrong with the request
-        specifications.
-      NotImageError when the image data given is not an image.
-      BadImageError when the image data given is corrupt.
-      LargeImageError when the image data given is too large to process.
-      InvalidBlobKeyError when the blob key provided is invalid.
-      TransformtionError when something errors during image manipulation.
-      AccessDeniedError: when the blobkey refers to a Google Storage object, and
-        the application does not have permission to access the object.
-      ValueError: when transparent_substitution_rgb is not an integer
-      Error when something unknown, but bad, happens.
+      BadRequestError: When the request specifications are invalid.
+      NotImageError: When the image data given is not an image.
+      BadImageError: When the image data given is corrupt.
+      LargeImageError: When the image data given is too large to process.
+      InvalidBlobKeyError: When the blob key provided is invalid.
+      TransformationError: When an error occurs during image manipulation.
+      AccessDeniedError: When the blob key refers to a Google Storage object,
+          and the application does not have permission to access the object.
+      ValueError: When `transparent_substitution_rgb` is not an integer.
+      Error: All other error conditions.
     """
     if output_encoding not in OUTPUT_ENCODING_TYPES:
       raise BadRequestError("Output encoding type not in recognized set "
@@ -872,14 +881,16 @@ class Image(object):
       input_settings.set_transparent_substitution_rgb(
           transparent_substitution_rgb)
 
+
+
     def execute_transforms_hook(rpc):
-      """Check success, handles exceptions and returns the converted RPC result.
+      """Checks success, handles exceptions, returns the converted RPC result.
 
       Args:
         rpc: A UserRPC object.
 
       Raises:
-        See docstring for execute_transforms_async for more details.
+        See `execute_transforms_async` for more details.
       """
       try:
         rpc.check_success()
@@ -910,21 +921,21 @@ class Image(object):
 
   @property
   def width(self):
-    """Gets the width of the image."""
+    """Retrieves the width of the image."""
     if self._width is None:
       self._update_dimensions()
     return self._width
 
   @property
   def height(self):
-    """Gets the height of the image."""
+    """Retrieves the height of the image."""
     if self._height is None:
       self._update_dimensions()
     return self._height
 
   @property
   def format(self):
-    """Gets the format of the image."""
+    """Retrieves the format of the image."""
     if self._format is None:
       self._update_dimensions()
     return self._format
@@ -935,24 +946,27 @@ class Image(object):
     Args:
       rpc: A UserRPC object.
 
-    Returns: 3 256-element lists containing the number of occurences of each
-    value of each color in the order RGB. As described at
-    http://en.wikipedia.org/wiki/Color_histogram for N = 256. i.e. the first
-    value of the first list contains the number of pixels with a red value of
-    0, the second the number with a red value of 1.
+    Returns:
+      3 256-element lists containing the number of occurences of each value of
+      each color in the order RGB. You can learn more about color histograms
+      at `Wikipedia`_.
 
     Raises:
-      NotImageError when the image data given is not an image.
-      BadImageError when the image data given is corrupt.
-      LargeImageError when the image data given is too large to process.
-      Error when something unknown, but bad, happens.
+      NotImageError: When the image data supplied is not an image.
+      BadImageError: When the image data supplied is corrupt.
+      LargeImageError: When the image data supplied is too large to process.
+      Error: All other error conditions.
+
+    .. _Wikipedia:
+        http://en.wikipedia.org/wiki/Color_histogram
+
     """
 
     rpc = self.histogram_async(rpc)
     return rpc.get_result()
 
   def histogram_async(self, rpc=None):
-    """Calculates the histogram of the image - async version.
+    """Asynchronously calculates the histogram of the image.
 
     Args:
       rpc: An optional UserRPC object.
@@ -961,10 +975,10 @@ class Image(object):
       rpc: A UserRPC object.
 
     Raises:
-      NotImageError when the image data given is not an image.
-      BadImageError when the image data given is corrupt.
-      LargeImageError when the image data given is too large to process.
-      Error when something unknown, but bad, happens.
+      NotImageError: When the image data supplied is not an image.
+      BadImageError: When the image data supplied is corrupt.
+      LargeImageError: When the image data supplied is too large to process.
+      Error: All other error conditions.
     """
     request = images_service_pb.ImagesHistogramRequest()
     response = images_service_pb.ImagesHistogramResponse()
@@ -972,13 +986,21 @@ class Image(object):
     self._set_imagedata(request.mutable_image())
 
     def get_histogram_hook(rpc):
-      """Check success, handles exceptions and returns the converted RPC result.
+      """Checks success, handles exceptions, returns the converted RPC result.
 
       Args:
         rpc: A UserRPC object.
 
+      Returns:
+        3 256-element lists containing the number of occurrences of each value
+        of each color in the order RGB. To learn more about color histograms,
+        see the `Wikipedia article`_ for color histograms.
+
       Raises:
-        See docstring for histogram_async for more details.
+        See `histogram_async` for more details.
+
+      .. _Wikipedia article:
+         https://en.wikipedia.org/wiki/Color_histogram
       """
       try:
         rpc.check_success()
@@ -999,7 +1021,7 @@ class Image(object):
 
   @staticmethod
   def CheckValidIntParameter(parameter, min_value, max_value, name):
-    """Checks that a parameters is an integer within the specified range."""
+    """Checks that a parameter is an integer within the specified range."""
 
     if parameter is not None:
       if not isinstance(parameter, (int, long)):
@@ -1016,15 +1038,15 @@ class Image(object):
 
 
 def create_rpc(deadline=None, callback=None):
-  """Creates an RPC object for use with the images API.
+  """Creates an RPC object for use with the Images API.
 
   Args:
     deadline: Optional deadline in seconds for the operation; the default
-      is a system-specific deadline (typically 5 seconds).
+        value is a system-specific deadline (typically 5 seconds).
     callback: Optional callable to invoke on completion.
 
   Returns:
-    An apiproxy_stub_map.UserRPC object specialized for this service.
+    An `apiproxy_stub_map.UserRPC` object specialized for this service.
   """
   return apiproxy_stub_map.UserRPC("images", deadline, callback)
 
@@ -1041,45 +1063,49 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
            correct_orientation=UNCHANGED_ORIENTATION,
            crop_to_fit=False, crop_offset_x=0.5, crop_offset_y=0.5,
            allow_stretch=False, rpc=None, transparent_substitution_rgb=None):
-  """Resize a given image file maintaining the aspect ratio.
+  """Resizes a given image file while maintaining the aspect ratio.
 
-  If both width and height are specified, the more restricting of the two
+  If both `width` and `height` are specified, the more restricting of the two
   values will be used when resizing the image. The maximum dimension allowed
   for both width and height is 4000 pixels.
-  If both width and height are specified and crop_to_fit is True, the less
-  restricting of the two values will be used when resizing and the image will be
-  cropped to fit the specified size. In this case the center of cropping can be
-  adjusted  by crop_offset_x and crop_offset_y.
+
+  If both `width` and `height` are specified and `crop_to_fit` is `True`, the
+  less restricting of the two values will be used when resizing and the image
+  will be cropped to fit the specified size. In this case, the center of
+  cropping can be adjusted by `crop_offset_x` and `crop_offset_y`.
 
   Args:
-    image_data: str, source image data.
-    width: int, width (in pixels) to change the image width to.
-    height: int, height (in pixels) to change the image height to.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    width: Integer of the width (in pixels) to change the image width to.
+    height: Integer of the height (in pixels) to change the image height to.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    crop_to_fit: If True and both width and height are specified, the image is
-      cropped after resize to fit the specified dimensions.
-    crop_offset_x: float value between 0.0 and 1.0, 0 is left and 1 is right,
-      default is 0.5, the center of image.
-    crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
-      default is 0.5, the center of image.
-    allow_stretch: If True and both width and height are specified, the image
-      is stretched to fit the resize dimensions without maintaining the
-      aspect ratio.
+        encoding.  This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    crop_to_fit: If `True`, and both `width` and `height` are specified, the
+        image is cropped after being resized to fit the specified dimensions.
+    crop_offset_x: Float value between 0.0 and 1.0. 0 is left and 1 is right.
+        The default value is 0.5, or the center of image.
+    crop_offset_y: Float value between 0.0 and 1.0. 0 is top and 1 is bottom.
+        The default value is 0.5, or the center of image.
+    allow_stretch: If `True`, and both `width` and `height` are specified, the
+        image is stretched to fit the resized dimensions without maintaining
+        the aspect ratio.
     rpc: Optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the resized image.
 
   Raises:
-    TypeError when width or height not either 'int' or 'long' types.
-    BadRequestError when there is something wrong with the given height or
-      width.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: When `width` or `height` are not of integer or long type.
+    BadRequestError: When the specified `width` or `height` is invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = resize_async(image_data,
                      width=width,
@@ -1101,48 +1127,49 @@ def resize_async(image_data, width=0, height=0, output_encoding=PNG,
                  crop_to_fit=False, crop_offset_x=0.5, crop_offset_y=0.5,
                  allow_stretch=False, rpc=None,
                  transparent_substitution_rgb=None):
-  """Resize a given image file maintaining the aspect ratio - async version.
+  """Asynchronously resizes an image file, maintaining the aspect ratio.
 
-  If both width and height are specified, the more restricting of the two
+  If both `width` and `height` are specified, the more restricting of the two
   values will be used when resizing the image. The maximum dimension allowed
   for both width and height is 4000 pixels.
-  If both width and height are specified and crop_to_fit is True, the less
-  restricting of the two values will be used when resizing and the image will be
-  cropped to fit the specified size. In this case the center of cropping can be
-  adjusted  by crop_offset_x and crop_offset_y.
+
+  If both `width` and `height` are specified and `crop_to_fit` is `True`, the
+  less restricting of the two values will be used when resizing and the image
+  will be cropped to fit the specified size. In this case, the center of
+  cropping can be adjusted by `crop_offset_x` and `crop_offset_y`.
 
   Args:
-    image_data: str, source image data.
-    width: int, width (in pixels) to change the image width to.
-    height: int, height (in pixels) to change the image height to.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    width: Integer of the width in pixels to change the image width to.
+    height: Integer of the height in pixels to change the image height to.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    crop_to_fit: If True and both width and height are specified, the image is
-      cropped after resize to fit the specified dimensions.
-    crop_offset_x: float value between 0.0 and 1.0, 0 is left and 1 is right,
-      default is 0.5, the center of image.
-    crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
-      default is 0.5, the center of image.
-    allow_stretch: If True and both width and height are specified, the image
-      is stretched to fit the resize dimensions without maintaining the
-      aspect ratio.
-    rpc: A UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    crop_to_fit: If `True`, and both `width` and `height` are specified, the
+        image is cropped after being resized to fit the specified dimensions.
+    crop_offset_x: Float value between 0.0 and 1.0. 0 is left and 1 is right.
+        The default value is 0.5, or the center of image.
+    crop_offset_y: Float value between 0.0 and 1.0. 0 is top and 1 is bottom.
+        The default value is 0.5, or the center of image.
+    allow_stretch: If `True`, and both `width` and `height` are specified, the
+        image is stretched to fit the resized dimensions without maintaining
+        the aspect ratio.
+    rpc: Optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
-    A UserRPC object, call get_result() to obtain the result of the RPC.
+    A UserRPC object; call `get_result()` to obtain the result of the RPC.
 
   Raises:
-    TypeError when width or height not either 'int' or 'long' types.
-    BadRequestError when there is something wrong with the given height or
-      width.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: When `width` or `height` are not of integer or long type.
+    BadRequestError: When the specified `width` or `height` is invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.resize(width, height, crop_to_fit=crop_to_fit,
@@ -1158,26 +1185,30 @@ def resize_async(image_data, width=0, height=0, output_encoding=PNG,
 def rotate(image_data, degrees, output_encoding=PNG, quality=None,
            correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
            transparent_substitution_rgb=None):
-  """Rotate a given image a given number of degrees clockwise.
+  """Rotates an image a given number of degrees clockwise.
 
   Args:
-    image_data: str, source image data.
-    degrees: value from ROTATE_DEGREE_VALUES.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    degrees: A value from `ROTATE_DEGREE_VALUES`.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
     rpc: An optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the rotated image.
 
   Raises:
-    TypeError when degrees is not either 'int' or 'long' types.
-    BadRequestError when there is something wrong with the given degrees.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: When `degrees` is not of integer or long type.
+    BadRequestError: When the specified `degrees` value is invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = rotate_async(image_data,
       degrees,
@@ -1192,30 +1223,31 @@ def rotate(image_data, degrees, output_encoding=PNG, quality=None,
 def rotate_async(image_data, degrees, output_encoding=PNG, quality=None,
                  correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                  transparent_substitution_rgb=None):
-  """Rotate a given image a given number of degrees clockwise - async version.
+  """Asynchronously rotates an image a specified number of degrees clockwise.
 
   Args:
-    image_data: str, source image data.
-    degrees: value from ROTATE_DEGREE_VALUES.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    degrees: A value from `ROTATE_DEGREE_VALUES`.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
     rpc: An optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
-    A UserRPC object, call get_result to complete the RPC and obtain the crop
-      result.
+    A UserRPC object; call `get_result()` to complete the RPC and obtain the
+    crop result.
 
   Raises:
-    TypeError when degrees is not either 'int' or 'long' types.
-    BadRequestError when there is something wrong with the given degrees.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: When `degrees` is not of integer or long type.
+    BadRequestError: When the specified `degrees` value is invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.rotate(degrees)
@@ -1229,23 +1261,27 @@ def rotate_async(image_data, degrees, output_encoding=PNG, quality=None,
 def horizontal_flip(image_data, output_encoding=PNG, quality=None,
                     correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                     transparent_substitution_rgb=None):
-  """Flip the image horizontally.
+  """Flips the image horizontally.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    rpc: An Optional UserRPC object
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    rpc: An optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the transformed image.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = horizontal_flip_async(image_data,
       output_encoding=output_encoding,
@@ -1260,27 +1296,28 @@ def horizontal_flip_async(image_data, output_encoding=PNG, quality=None,
                           correct_orientation=UNCHANGED_ORIENTATION,
                           rpc=None,
                           transparent_substitution_rgb=None):
-  """Flip the image horizontally - async version.
+  """Asynchronously flips the image horizontally.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    rpc: An Optional UserRPC object
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding.  This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    rpc: An optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
-    A UserRPC object, call get_result to complete the RPC and obtain the crop
-      result.
+    A UserRPC object; call `get_result()` to complete the RPC and obtain the
+    crop result.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.horizontal_flip()
@@ -1294,23 +1331,27 @@ def horizontal_flip_async(image_data, output_encoding=PNG, quality=None,
 def vertical_flip(image_data, output_encoding=PNG, quality=None,
                   correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                   transparent_substitution_rgb=None):
-  """Flip the image vertically.
+  """Flips the image vertically.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    rpc: An Optional UserRPC object
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding.  This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    rpc: An optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the transformed image.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = vertical_flip_async(image_data,
       output_encoding=output_encoding,
@@ -1324,27 +1365,28 @@ def vertical_flip(image_data, output_encoding=PNG, quality=None,
 def vertical_flip_async(image_data, output_encoding=PNG, quality=None,
                         correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                         transparent_substitution_rgb=None):
-  """Flip the image vertically - async version.
+  """Asynchronously flips the image vertically.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    rpc: An Optional UserRPC object
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    rpc: An optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
-    A UserRPC object, call get_result to complete the RPC and obtain the crop
-      result.
+    A UserRPC object; call `get_result()` to complete the RPC and obtain the
+    crop result.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.vertical_flip()
@@ -1358,34 +1400,38 @@ def vertical_flip_async(image_data, output_encoding=PNG, quality=None,
 def crop(image_data, left_x, top_y, right_x, bottom_y, output_encoding=PNG,
          quality=None, correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
          transparent_substitution_rgb=None):
-  """Crop the given image.
+  """Crops the image.
 
-  The four arguments are the scaling numbers to describe the bounding box
-  which will crop the image.  The upper left point of the bounding box will
-  be at (left_x*image_width, top_y*image_height) the lower right point will
-  be at (right_x*image_width, bottom_y*image_height).
+  The four arguments are the scaling numbers that describe the bounding box
+  that will crop the image.  The upper left point of the bounding box will be at
+  (`left_x*image_width`, `top_y*image_height`), and the lower right point will
+  be at (`right_x*image_width`, `bottom_y*image_height`).
 
   Args:
-    image_data: str, source image data.
-    left_x: float value between 0.0 and 1.0 (inclusive).
-    top_y: float value between 0.0 and 1.0 (inclusive).
-    right_x: float value between 0.0 and 1.0 (inclusive).
-    bottom_y: float value between 0.0 and 1.0 (inclusive).
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    left_x: Float value between 0.0 and 1.0, inclusive.
+    top_y: Float value between 0.0 and 1.0, inclusive.
+    right_x: Float value between 0.0 and 1.0, inclusive.
+    bottom_y: Float value between 0.0 and 1.0, inclusive.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
-    rpc: A User RPC Object
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
+    rpc: An optional UserRPC object.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the transformed image.
 
   Raises:
-    TypeError if the args are not of type 'float'.
-    BadRequestError when there is something wrong with the given bounding box.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: If the arguments are not of type float.
+    BadRequestError: If the bounding box values are invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = crop_async(image_data, left_x, top_y, right_x, bottom_y,
                    output_encoding=output_encoding, quality=quality,
@@ -1398,38 +1444,39 @@ def crop_async(image_data, left_x, top_y, right_x, bottom_y,
                output_encoding=PNG, quality=None,
                correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                transparent_substitution_rgb=None):
-  """Crop the given image - async version.
+  """Asynchronously crops the given image.
 
-  The four arguments are the scaling numbers to describe the bounding box
-  which will crop the image.  The upper left point of the bounding box will
-  be at (left_x*image_width, top_y*image_height) the lower right point will
-  be at (right_x*image_width, bottom_y*image_height).
+  The four arguments are the scaling numbers that describe the bounding box
+  that will crop the image.  The upper left point of the bounding box will be at
+  (`left_x*image_width`, `top_y*image_height`), and the lower right point will
+  be at (`right_x*image_width`, `bottom_y*image_height`).
 
   Args:
-    image_data: str, source image data.
-    left_x: float value between 0.0 and 1.0 (inclusive).
-    top_y: float value between 0.0 and 1.0 (inclusive).
-    right_x: float value between 0.0 and 1.0 (inclusive).
-    bottom_y: float value between 0.0 and 1.0 (inclusive).
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    left_x: Float value between 0.0 and 1.0, inclusive.
+    top_y: Float value between 0.0 and 1.0, inclusive.
+    right_x: Float value between 0.0 and 1.0, inclusive.
+    bottom_y: Float value between 0.0 and 1.0, inclusive.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
     rpc: An optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
-    A UserRPC object, call get_result to complete the RPC and obtain the crop
-      result.
+    A UserRPC object; call `get_result()` to complete the RPC and obtain the
+    crop result.
 
   Raises:
-    TypeError if the args are not of type 'float'.
-    BadRequestError when there is something wrong with the given bounding box.
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    TypeError: If the args are not of type float.
+    BadRequestError: When the bounding box values are invalid.
+    Error: All other errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.crop(left_x, top_y, right_x, bottom_y)
@@ -1443,25 +1490,29 @@ def crop_async(image_data, left_x, top_y, right_x, bottom_y,
 def im_feeling_lucky(image_data, output_encoding=PNG, quality=None,
                      correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                      transparent_substitution_rgb=None):
-  """Automatically adjust image levels.
+  """Automatically adjusts image levels.
 
   This is similar to the "I'm Feeling Lucky" button in Picasa.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
     rpc: An optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
+
+  Returns:
+    Raw image data of the transformed image.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   rpc = im_feeling_lucky_async(image_data,
       output_encoding=output_encoding,
@@ -1475,28 +1526,29 @@ def im_feeling_lucky(image_data, output_encoding=PNG, quality=None,
 def im_feeling_lucky_async(image_data, output_encoding=PNG, quality=None,
                            correct_orientation=UNCHANGED_ORIENTATION, rpc=None,
                            transparent_substitution_rgb=None):
-  """Automatically adjust image levels - async version.
+  """Asynchronously automatically adjusts image levels.
 
   This is similar to the "I'm Feeling Lucky" button in Picasa.
 
   Args:
-    image_data: str, source image data.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    image_data: String of the source image data.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
-    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
-      orientation correction should be performed during the transformation.
+        encoding. This value is only used to control JPEG quality.
+    correct_orientation: A value from `ORIENTATION_CORRECTION_TYPE` to
+        indicate if orientation correction should be performed during the
+        transformation.
     rpc: An optional UserRPC object.
-    transparent_substition_rgb: When transparent pixels are not support in the
-      destination image format then transparent pixels will be substituted
-      for the specified color, which must be 32 bit rgb format.
+    transparent_substitution_rgb: When transparent pixels are not supported in
+        the destination image format, then transparent pixels will be
+        substituted for the specified color, which must be in 32-bit RGB
+        format.
 
   Returns:
     A UserRPC object.
 
   Raises:
-    Error when something went wrong with the call.  See Image.ExecuteTransforms
-      for more details.
+    Error: All errors. See `Image.ExecuteTransforms` for more details.
   """
   image = Image(image_data)
   image.im_feeling_lucky()
@@ -1509,38 +1561,46 @@ def im_feeling_lucky_async(image_data, output_encoding=PNG, quality=None,
 
 def composite(inputs, width, height, color=0, output_encoding=PNG,
               quality=None, rpc=None):
-  """Composite one or more images onto a canvas - async version.
+  """Composites one or more images onto a canvas.
 
   Args:
-    inputs: a list of tuples (image_data, x_offset, y_offset, opacity, anchor)
-    where
-      image_data: str, source image data.
-      x_offset: x offset in pixels from the anchor position
-      y_offset: y offset in piyels from the anchor position
-      opacity: opacity of the image specified as a float in range [0.0, 1.0]
-      anchor: anchoring point from ANCHOR_POINTS. The anchor point of the image
-      is aligned with the same anchor point of the canvas. e.g. TOP_RIGHT would
-      place the top right corner of the image at the top right corner of the
-      canvas then apply the x and y offsets.
-    width: canvas width in pixels.
-    height: canvas height in pixels.
-    color: canvas background color encoded as a 32 bit unsigned int where each
-      color channel is represented by one byte in order ARGB.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    inputs: a list of tuples (`image_data`, `x_offset`, `y_offset`, `opacity`,
+        `anchor`) where:
+              - image_data
+                   String of the source image data.
+              - x_offset
+                   X offset, in pixels from the anchor position.
+              - y_offset
+                   Y offset, in piyels from the anchor position.
+              - opacity
+                   Opacity of the image, specified as a float in range [0.0,
+                   1.0]
+              - anchor
+                   Anchoring point from `ANCHOR_POINTS`. The anchor point of the
+                   image is aligned with the same anchor point of the canvas.
+                   For example, `TOP_RIGHT` would place the top right corner of
+                   the image at the top right corner of the canvas, then apply
+                   the x and y offsets.
+    width: Canvas width, in pixels.
+    height: Canvas height, in pixels.
+    color: Canvas background color, encoded as a 32-bit unsigned integer, where
+        each color channel is represented by one byte in ARGB order.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding. This value is only used for JPEG quality control.
+        encoding. This value is only used to control JPEG quality.
     rpc: Optional UserRPC object.
 
   Returns:
-      str, image data of the composited image.
+    A string that contains the image data of the composited image.
 
   Raises:
-    TypeError If width, height, color, x_offset or y_offset are not of type
-    int or long or if opacity is not a float
-    BadRequestError If more than MAX_TRANSFORMS_PER_REQUEST compositions have
-    been requested, if the canvas width or height is greater than 4000 or less
-    than or equal to 0, if the color is invalid or if for any composition
-    option, the opacity is outside the range [0,1] or the anchor is invalid.
+    TypeError: If `width`, `height`, `color`, `x_offset` or `y_offset` are not
+        of type integer or long, or if `opacity` is not a float.
+    BadRequestError: If more than `MAX_TRANSFORMS_PER_REQUEST` compositions
+        have been requested, if the canvas width or height is greater than
+        4000 or less than or equal to 0, if the color is invalid, if the opacity
+        is outside the range [0,1] for any composition option, or if the anchor
+        is invalid.
   """
   rpc = composite_async(inputs, width, height, color=color,
                         output_encoding=output_encoding, quality=quality,
@@ -1550,38 +1610,46 @@ def composite(inputs, width, height, color=0, output_encoding=PNG,
 
 def composite_async(inputs, width, height, color=0, output_encoding=PNG,
                     quality=None, rpc=None):
-  """Composite one or more images onto a canvas - async version.
+  """Asynchronously composites one or more images onto a canvas.
 
   Args:
-    inputs: a list of tuples (image_data, x_offset, y_offset, opacity, anchor)
-    where
-      image_data: str, source image data.
-      x_offset: x offset in pixels from the anchor position
-      y_offset: y offset in piyels from the anchor position
-      opacity: opacity of the image specified as a float in range [0.0, 1.0]
-      anchor: anchoring point from ANCHOR_POINTS. The anchor point of the image
-      is aligned with the same anchor point of the canvas. e.g. TOP_RIGHT would
-      place the top right corner of the image at the top right corner of the
-      canvas then apply the x and y offsets.
-    width: canvas width in pixels.
-    height: canvas height in pixels.
-    color: canvas background color encoded as a 32 bit unsigned int where each
-      color channel is represented by one byte in order ARGB.
-    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+    inputs: A list of tuples (`image_data`, `x_offset`, `y_offset`, `opacity`,
+        `anchor`), where:
+              - image_data
+                   String of the source image data.
+              - x_offset
+                   X offset, in pixels from the anchor position.
+              - y_offset
+                   Y offset, in piyels from the anchor position.
+              - opacity
+                   Opacity of the image, specified as a float in range [0.0,
+                   1.0]
+              - anchor
+                   Anchoring point from `ANCHOR_POINTS`. The anchor point of the
+                   image is aligned with the same anchor point of the canvas.
+                   For example, `TOP_RIGHT` would place the top right corner of
+                   the image at the top right corner of the canvas, then apply
+                   the x and y offsets.
+    width: Canvas width, in pixels.
+    height: Canvas height, in pixels.
+    color: Canvas background color, encoded as a 32-bit unsigned integer, where
+        each color channel is represented by one byte in ARGB order.
+    output_encoding: A value from `OUTPUT_ENCODING_TYPES`.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding. This value is only used for JPEG quality control.
+        encoding. This value is only used for JPEG quality control.
     rpc: Optional UserRPC object.
 
   Returns:
-      A UserRPC object.
+    A UserRPC object.
 
   Raises:
-    TypeError If width, height, color, x_offset or y_offset are not of type
-    int or long or if opacity is not a float
-    BadRequestError If more than MAX_TRANSFORMS_PER_REQUEST compositions have
-    been requested, if the canvas width or height is greater than 4000 or less
-    than or equal to 0, if the color is invalid or if for any composition
-    option, the opacity is outside the range [0,1] or the anchor is invalid.
+    TypeError: If `width`, `height`, `color`, `x_offset`, or `y_offset` are not
+        an integer or long, or if `opacity` is not a float.
+    BadRequestError: If more than `MAX_TRANSFORMS_PER_REQUEST` compositions
+        have been requested, if the canvas width or height is greater than
+        4000 or less than or equal to 0, if the color is invalid, if the opacity
+        is outside the range [0,1] for any composition option, or the anchor is
+        invalid.
   """
   if (not isinstance(width, (int, long)) or
       not isinstance(height, (int, long)) or
@@ -1661,7 +1729,7 @@ def composite_async(inputs, width, height, color=0, output_encoding=PNG,
       request.mutable_canvas().mutable_output().set_quality(quality)
 
   def composite_hook(rpc):
-    """Check success, handles exceptions and returns the converted RPC result.
+    """Checks success, handles exceptions, and returns the converted RPC result.
 
     Args:
       rpc: A UserRPC object.
@@ -1670,7 +1738,7 @@ def composite_async(inputs, width, height, color=0, output_encoding=PNG,
       Images bytes of the composite image.
 
     Raises:
-      See docstring for composite_async for more details.
+      See `composite_async` for more details.
     """
     try:
       rpc.check_success()
@@ -1690,18 +1758,18 @@ def histogram(image_data, rpc=None):
   """Calculates the histogram of the given image.
 
   Args:
-    image_data: str, source image data.
+    image_data: String of the source image data.
     rpc: An optional UserRPC object.
 
-  Returns: 3 256-element lists containing the number of occurences of each
-  value of each color in the order RGB.
-
+  Returns:
+    3 256-element lists containing the number of occurences of each value of
+    each color in the order RGB.
 
   Raises:
-    NotImageError when the image data given is not an image.
-    BadImageError when the image data given is corrupt.
-    LargeImageError when the image data given is too large to process.
-    Error when something unknown, but bad, happens.
+    NotImageError: If the supplied image data is not an image.
+    BadImageError: If the supplied image data is corrupt.
+    LargeImageError: If the supplied image data is too large to process.
+    Error: All other errors.
   """
   rpc = histogram_async(image_data, rpc=rpc)
   return rpc.get_result()
@@ -1711,23 +1779,23 @@ def histogram_async(image_data, rpc=None):
   """Calculates the histogram of the given image - async version.
 
   Args:
-    image_data: str, source image data.
+    image_data: String of the source image data.
     rpc: An optional UserRPC object.
 
   Returns:
     An UserRPC object.
 
   Raises:
-    NotImageError when the image data given is not an image.
-    BadImageError when the image data given is corrupt.
-    LargeImageError when the image data given is too large to process.
-    Error when something unknown, but bad, happens.
+    NotImageError: If the supplied image data is not an image.
+    BadImageError: If the supplied image data is corrupt.
+    LargeImageError: If the supplied image data is too large to process.
+    Error: All other errors.
   """
   image = Image(image_data)
   return image.histogram_async(rpc)
 
 
-IMG_SERVING_SIZES_LIMIT = 1600
+IMG_SERVING_SIZES_LIMIT = 3200
 
 
 IMG_SERVING_SIZES = [
@@ -1745,50 +1813,56 @@ def get_serving_url(blob_key,
                     secure_url=None,
                     filename=None,
                     rpc=None):
-  """Obtain a url that will serve the underlying image.
+  """Obtains a URL that will serve the underlying image.
 
   This URL is served by a high-performance dynamic image serving infrastructure.
-  This URL format also allows dynamic resizing and crop with certain
-  restrictions. To get dynamic resizing and cropping, specify size and crop
-  arguments, or simply append options to the end of the default url obtained via
-  this call.  Here is an example:
+  This URL format also allows dynamic resizing and cropping with certain
+  restrictions. To dynamically resize and crop, specify size and crop arguments,
+  or simply append options to the end of the default URL obtained via this call.
 
-  get_serving_url -> "http://lh3.ggpht.com/SomeCharactersGoesHere"
+  Example::
 
-  To get a 32 pixel sized version (aspect-ratio preserved) simply append
-  "=s32" to the url:
+      get_serving_url -> "http://lh3.ggpht.com/SomeCharactersGoesHere"
 
-  "http://lh3.ggpht.com/SomeCharactersGoesHere=s32"
 
-  To get a 32 pixel cropped version simply append "=s32-c":
+  To get a 32-pixel-sized version (aspect-ratio preserved), append `=s32` to the
+  URL::
 
-  "http://lh3.ggpht.com/SomeCharactersGoesHere=s32-c"
+      http://lh3.ggpht.com/SomeCharactersGoesHere=s32
+
+
+  To get a 32-pixel cropped version, append `=s32-c`::
+
+      http://lh3.ggpht.com/SomeCharactersGoesHere=s32-c
+
 
   Available sizes are any integer in the range [0, 1600] and is available as
-  IMG_SERVING_SIZES_LIMIT.
+  `IMG_SERVING_SIZES_LIMIT`.
 
   Args:
-    blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
-      blob to get URL of.
-    size: int, size of resulting images
-    crop: bool, True requests a cropped image, False a resized one.
-    secure_url: bool, True requests a https url, False requests a http url.
-    filename: The filename of a Google Storage object to get the URL of.
+    blob_key: The `BlobKey`, `BlobInfo`, string, or Unicode representation of
+        `BlobKey` of the blob whose URL you require.
+    size: Integer of the size of resulting images.
+    crop: Boolean value. `True` requests a cropped image, while `False` requests
+        a resized image.
+    secure_url: Boolean value. `True` requests a `https` URL, while `False`
+        requests a `http` URL.
+    filename: The file name of a Google Storage object whose URL you require.
     rpc: Optional UserRPC object.
 
   Returns:
-    str, a url
+    A URL string.
 
   Raises:
-    BlobKeyRequiredError: when no blobkey was specified in the ctor.
-    UnsupportedSizeError: when size parameters uses unsupported sizes.
-    BadRequestError: when crop/size are present in wrong combination, or a
-      blob_key and a filename have been specified.
-    TypeError: when secure_url is not a boolean type.
-    AccessDeniedError: when the blobkey refers to a Google Storage object, and
-      the application does not have permission to access the object.
-    ObjectNotFoundError:: when the blobkey refers to an object that no longer
-      exists.
+    BlobKeyRequiredError: If a blob key was not specified in the constructor.
+    UnsupportedSizeError: If you specified an invalid size parameter.
+    BadRequestError: If `crop` and `size` are present in the wrong
+        combination, or if `blob_key` and `filename` are both specified.
+    TypeError: If `secure_url` is not a boolean type.
+    AccessDeniedError: If `blob_key` refers to a Google Storage object and
+        the application does not have permission to access the object.
+    ObjectNotFoundError: If `blob_key` refers to an object that doesn't
+        exist.
   """
   rpc = get_serving_url_async(blob_key, size, crop, secure_url, filename, rpc)
   return rpc.get_result()
@@ -1800,48 +1874,54 @@ def get_serving_url_async(blob_key,
                           secure_url=None,
                           filename=None,
                           rpc=None):
-  """Obtain a url that will serve the underlying image - async version.
+  """Asynchronously obtains a URL that will serve the underlying image.
 
   This URL is served by a high-performance dynamic image serving infrastructure.
-  This URL format also allows dynamic resizing and crop with certain
-  restrictions. To get dynamic resizing and cropping, specify size and crop
-  arguments, or simply append options to the end of the default url obtained via
-  this call.  Here is an example:
+  This URL format also allows dynamic resizing and cropping with certain
+  restrictions. To dynamically resize and crop, specify size and crop arguments,
+  or simply append options to the end of the default URL obtained via this call.
 
-  get_serving_url -> "http://lh3.ggpht.com/SomeCharactersGoesHere"
+  Example::
 
-  To get a 32 pixel sized version (aspect-ratio preserved) simply append
-  "=s32" to the url:
+      get_serving_url -> "http://lh3.ggpht.com/SomeCharactersGoesHere"
 
-  "http://lh3.ggpht.com/SomeCharactersGoesHere=s32"
 
-  To get a 32 pixel cropped version simply append "=s32-c":
+  To get a 32-pixel-sized version (aspect-ratio preserved), append `=s32` to the
+  URL::
 
-  "http://lh3.ggpht.com/SomeCharactersGoesHere=s32-c"
+      http://lh3.ggpht.com/SomeCharactersGoesHere=s32
+
+
+  To get a 32-pixel cropped version, append `=s32-c`::
+
+      http://lh3.ggpht.com/SomeCharactersGoesHere=s32-c
+
 
   Available sizes are any integer in the range [0, 1600] and is available as
-  IMG_SERVING_SIZES_LIMIT.
+  `IMG_SERVING_SIZES_LIMIT`.
 
   Args:
-    blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
-      blob to get URL of.
-    size: int, size of resulting images
-    crop: bool, True requests a cropped image, False a resized one.
-    secure_url: bool, True requests a https url, False requests a http url.
-    filename: The filename of a Google Storage object to get the URL of.
+    blob_key: The `BlobKey`, `BlobInfo`, string, or Unicode representation of
+        the `BlobKey` of blob whose URL you require.
+    size: Integer of the size of resulting images.
+    crop: Boolean value. `True` requests a cropped image, while `False` requests
+        a resized image.
+    secure_url: Boolean value. `True` requests a `https` URL, while `False`
+        requests a `http` URL.
+    filename: The file name of a Google Storage object whose URL you require.
     rpc: Optional UserRPC object.
 
   Returns:
-    A UserRPC whose result will be a string that is the serving url
+    A UserRPC whose result will be a string that is the serving URL.
 
   Raises:
-    BlobKeyRequiredError: when no blobkey was specified in the ctor.
-    UnsupportedSizeError: when size parameters uses unsupported sizes.
-    BadRequestError: when crop/size are present in wrong combination, or a
-      blob_key and a filename have been specified.
-    TypeError: when secure_url is not a boolean type.
-    AccessDeniedError: when the blobkey refers to a Google Storage object, and
-      the application does not have permission to access the object.
+    BlobKeyRequiredError: If a blob key was not specified in the constructor.
+    UnsupportedSizeError: If you specified an invalid size parameter.
+    BadRequestError: If `crop` and `size` are present in the wrong
+        combination, or if `blob_key` and `filename` are both specified.
+    TypeError: If `secure_url` is not a boolean type.
+    AccessDeniedError: If `blob_key` refers to a Google Storage object and
+        the application does not have permission to access the object.
   """
   if not blob_key and not filename:
     raise BlobKeyRequiredError(
@@ -1875,16 +1955,16 @@ def get_serving_url_async(blob_key,
     request.set_create_secure_url(secure_url)
 
   def get_serving_url_hook(rpc):
-    """Check success, handle exceptions, and return converted RPC result.
+    """Checks success, handles exceptions, and returns a converted RPC result.
 
     Args:
       rpc: A UserRPC object.
 
     Returns:
-      The URL for serving the image.
+      The URL to serve the image.
 
     Raises:
-      See docstring for get_serving_url for more details.
+      See `get_serving_url` for more details.
     """
     try:
       rpc.check_success()
@@ -1909,37 +1989,37 @@ def get_serving_url_async(blob_key,
 
 
 def delete_serving_url(blob_key, rpc=None):
-  """Delete a serving url that was created for a blob_key using get_serving_url.
+  """Deletes a serving URL created for `blob_key` using `get_serving_url`.
 
   Args:
-    blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
-      blob that has an existing URL to delete.
+    blob_key: The `BlobKey`, `BlobInfo`, string, or Unicode representation of
+        the BlobKey of a blob with an existing URL that you want to delete.
     rpc: Optional UserRPC object.
 
   Raises:
-    BlobKeyRequiredError: when no blobkey was specified.
-    InvalidBlobKeyError: the blob_key supplied was invalid.
-    Error: There was a generic error deleting the serving url.
+    BlobKeyRequiredError: If no `blob_key` was specified.
+    InvalidBlobKeyError: If the `blob_key` supplied was invalid.
+    Error: There was a generic error deleting the serving URL.
   """
   rpc = delete_serving_url_async(blob_key, rpc)
   rpc.get_result()
 
 
 def delete_serving_url_async(blob_key, rpc=None):
-  """Delete a serving url created using get_serving_url - async version.
+  """Deletes a serving URL created using get_serving_url - async version.
 
   Args:
-    blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
-      blob that has an existing URL to delete.
+    blob_key: `BlobKey`, `BlobInfo`, string, or unicode representation of the
+        BlobKey of a blob with an existing URL that you want to delete.
     rpc: Optional UserRPC object.
 
   Returns:
     A UserRPC object.
 
   Raises:
-    BlobKeyRequiredError: when no blobkey was specified.
-    InvalidBlobKeyError: the blob_key supplied was invalid.
-    Error: There was a generic error deleting the serving url.
+    BlobKeyRequiredError: If no `blob_key` was specified.
+    InvalidBlobKeyError: If the `blob_key` supplied was invalid.
+    Error: There was a generic error deleting the serving URL.
   """
   if not blob_key:
     raise BlobKeyRequiredError("A Blobkey is required for this operation.")
@@ -1950,13 +2030,13 @@ def delete_serving_url_async(blob_key, rpc=None):
   request.set_blob_key(_extract_blob_key(blob_key))
 
   def delete_serving_url_hook(rpc):
-    """Checks success, handles exceptions and returns the converted RPC result.
+    """Checks success, handles exceptions, and returns the converted RPC result.
 
     Args:
       rpc: A UserRPC object.
 
     Raises:
-      See docstring for delete_serving_url_async for more details.
+      See `delete_serving_url_async` for more details.
     """
     try:
       rpc.check_success()
@@ -1972,10 +2052,14 @@ def delete_serving_url_async(blob_key, rpc=None):
 
 
 def _extract_blob_key(blob):
-  """Extract a unicode blob key from a str, BlobKey, or BlobInfo.
+  """Extracts a Unicode blob key from a string, `BlobKey`, or `BlobInfo`.
 
   Args:
-    blob: The str, unicode, BlobKey, or BlobInfo that contains the blob key.
+    blob: The string, Unicode, `BlobKey`, or `BlobInfo` that contains the blob
+        key.
+
+  Returns:
+    Unicode string representing the blob key.
   """
   if isinstance(blob, str):
     return blob.decode('utf-8')

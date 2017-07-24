@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import socket
+import subprocess
 import tempfile
 import unittest
 
@@ -531,7 +532,7 @@ class HttpProxyTest(wsgi_test_utils.WSGITestCase):
         prior_error=error)
 
     # Expect that wait_for_connection does not hang.
-    self.proxy.wait_for_connection()
+    self.proxy.wait_for_connection(self.mox.CreateMock(subprocess.Popen))
 
     expected_headers = {
         'Content-Type': 'text/plain',

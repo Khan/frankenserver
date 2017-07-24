@@ -1,8 +1,9 @@
-# $Id: 55b6d7323887ac09f6bfba365205e952533b847b $
+# $Id: 89ff72a92c63e6cbd73dab48795808ee334ba60d $
 
 """
 The ``grizzled.text`` package contains text-related classes and modules.
 """
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -117,10 +118,10 @@ def hexdump(source, out, width=16, start=0, limit=None, show_repeats=False):
         if length == 0:
             if repeat_count and (not show_repeats):
                 if repeat_count > 1:
-                    print >> out, REPEAT_FORMAT % (repeat_count - 1)
+                    print(REPEAT_FORMAT % (repeat_count - 1), file=out)
                 elif repeat_count == 1:
-                    print >> out, lastline
-                print >> out, lastline
+                    print(lastline, file=out)
+                print(lastline, file=out)
             break
 
         else:
@@ -132,9 +133,9 @@ def hexdump(source, out, width=16, start=0, limit=None, show_repeats=False):
             else:
                 if repeat_count and (not show_repeats):
                     if repeat_count == 1:
-                        print >> out, lastline
+                        print(lastline, file=out)
                     else:
-                        print >> out, REPEAT_FORMAT % (repeat_count - 1)
+                        print(REPEAT_FORMAT % (repeat_count - 1), file=out)
                     repeat_count = 0
 
             # Build output line.
@@ -149,7 +150,7 @@ def hexdump(source, out, width=16, start=0, limit=None, show_repeats=False):
             line = "%06x: %-*s %s" % (pos, hex_field_width, hex, asc)
 
             if show_buf:
-                print >> out, line
+                print(line, file=out)
 
             pos = pos + length
             lastbuf = buf
@@ -214,4 +215,4 @@ def str2bool(s):
                 'off'   : False,
                 'on'    : True}[s.lower()]
     except KeyError:
-        raise ValueError, 'Unrecognized boolean string: "%s"' % s
+        raise ValueError('Unrecognized boolean string: "{0}"'.format(s))

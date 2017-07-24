@@ -89,6 +89,7 @@ class TaskQueueTasksHandler(admin_request_handler.AdminRequestHandler):
     return response.result()
 
   def get(self, queue_name):
+    super(TaskQueueTasksHandler, self).get()
     queue_info = taskqueue_utils.QueueInfo.get(
         queue_names=frozenset([queue_name])).next()
     tasks = list(self._get_tasks(queue_name, count=_TASKS_TO_LOAD))
@@ -106,6 +107,7 @@ class TaskQueueTasksHandler(admin_request_handler.AdminRequestHandler):
 
   def post(self, queue_name):
     """Handle modifying actions and redirect to a GET page."""
+    super(TaskQueueTasksHandler, self).post()
     task_name = self.request.get('task_name')
 
     if self.request.get('action:deletetask'):

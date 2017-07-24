@@ -34,7 +34,6 @@ from google.appengine.tools import cron_xml_parser
 from google.appengine.tools import dispatch_xml_parser
 from google.appengine.tools import dos_xml_parser
 from google.appengine.tools import jarfile
-from google.appengine.tools import java_quickstart
 from google.appengine.tools import java_utils
 from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import web_xml_parser
@@ -44,7 +43,7 @@ from google.appengine.tools import yaml_translator
 
 _CLASSES_JAR_NAME_PREFIX = '_ah_webinf_classes'
 _COMPILED_JSP_JAR_NAME_PREFIX = '_ah_compiled_jsps'
-_LOCAL_JSPC_CLASS = 'com.google.appengine.tools.development.LocalJspC'
+_LOCAL_JSPC_CLASS = 'com.google.appengine.tools.admin.LocalJspC'
 _MAX_COMPILED_JSP_JAR_SIZE = 1024 * 1024 * 5
 
 
@@ -146,6 +145,10 @@ class JavaAppUpdate(object):
     self._ValidateXmlFiles()
 
     self.app_engine_web_xml = self._ReadAppEngineWebXml()
+    if self.app_engine_web_xml.env in ['flex', 'flexible']:
+      raise ConfigurationError(
+          'Flex environment is not supported with this tool.'
+          ' Please use the Cloud SDK to perform a deployment.')
     self.app_engine_web_xml.app_root = self.basepath
     if self.options.app_id:
       self.app_engine_web_xml.app_id = self.options.app_id
@@ -154,11 +157,7 @@ class JavaAppUpdate(object):
     quickstart = xml_parser_utils.BooleanValue(
         self.app_engine_web_xml.beta_settings.get('java_quickstart', 'false'))
     if quickstart:
-      web_xml_str, _ = java_quickstart.quickstart_generator(self.basepath)
-      webdefault_xml_str = java_quickstart.get_webdefault_xml()
-      web_xml_str = java_quickstart.remove_mappings(
-          web_xml_str, webdefault_xml_str)
-      self.web_xml = web_xml_parser.WebXmlParser().ProcessXml(web_xml_str)
+      raise ConfigurationError('Quickstart generation is not supported.')
     else:
       self.web_xml = self._ReadWebXml()
 
@@ -540,9 +539,8 @@ class JavaAppUpdate(object):
     """Builds the classpath for the JSP Compilation system call."""
     lib_dir = os.path.join(os.path.dirname(classes_dir), 'lib')
     elements = (
-        GetImplLibs(tools_dir) + GetSharedLibFiles(tools_dir) +
-        [classes_dir, gen_dir] +
-        _FilesMatching(
+        GetToolsJar(tools_dir) + GetImplLibs(tools_dir) +
+        GetSharedLibFiles(tools_dir) + [classes_dir, gen_dir] + _FilesMatching(
             lib_dir, lambda f: f.endswith('.jar') or f.endswith('.zip')))
 
     return (os.pathsep).join(elements)
@@ -554,6 +552,10 @@ class JavaAppUpdate(object):
         if re.search(regex, f):
           return True
     return False
+
+
+def GetToolsJar(tools_dir):
+  return [os.path.join(tools_dir, 'java', 'lib', 'appengine-tools-api.jar')]
 
 
 def GetImplLibs(tools_dir):

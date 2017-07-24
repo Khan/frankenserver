@@ -23,9 +23,11 @@ from google.appengine.tools.devappserver2.admin import admin_request_handler
 class DatastoreStatsHandler(admin_request_handler.AdminRequestHandler):
 
   def get(self):
+    super(DatastoreStatsHandler, self).get()
     self.response.write(self.render('datastore_stats.html', {}))
 
   def post(self):
+    super(DatastoreStatsHandler, self).post()
     if self.request.get('action:compute_stats'):
       msg = datastore_stats_generator.DatastoreStatsProcessor().Run().Report()
       self.response.headers['Content-Type'] = 'text/plain; charset=utf-8'

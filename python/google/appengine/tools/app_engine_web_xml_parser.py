@@ -130,8 +130,8 @@ class AppEngineWebXmlParser(object):
   def ProcessVersionNode(self, node):
     self.app_engine_web_xml.version_id = node.text
 
-  def ProcessSourceLanguageNode(self, node):
-    self.app_engine_web_xml.source_language = node.text
+  def ProcessRuntimeNode(self, node):
+    self.app_engine_web_xml.runtime = node.text
 
   def ProcessModuleNode(self, node):
     self.app_engine_web_xml.module = node.text
@@ -304,6 +304,10 @@ class AppEngineWebXmlParser(object):
       if api_id:
         self.app_engine_web_xml.api_endpoint_ids.append(api_id)
 
+  def ProcessPagespeedNode(self, node):
+    """Ignore pagespeed node."""
+    pass
+
   def ProcessClassLoaderConfigNode(self, node):
     for node in xml_parser_utils.GetNodes(node, 'priority-specifier'):
       entry = PrioritySpecifierEntry()
@@ -370,6 +374,49 @@ class AppEngineWebXmlParser(object):
         self.errors.append(
             'unrecognized element within <health-check>: <%s>' % tag)
     self.app_engine_web_xml.health_check = health_check
+
+  def ProcessLivenessCheckNode(self, node):
+    """Processing a liveness check node."""
+    liveness_check = LivenessCheck()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      if tag in ('host', 'path'):
+        setattr(liveness_check, tag, child.text)
+      elif tag in ('check-interval-sec', 'success-threshold',
+                   'initial-delay-sec', 'timeout-sec', 'failure-threshold'):
+        text = child.text or ''
+        try:
+          value = self._PositiveInt(text)
+          setattr(liveness_check, tag.replace('-', '_'), value)
+        except ValueError:
+          self.errors.append('value for %s must be a positive integer: "%s"' %
+                             (tag, text))
+      else:
+        self.errors.append(
+            'unrecognized element within <liveness-check>: <%s>' % tag)
+    self.app_engine_web_xml.liveness_check = liveness_check
+
+  def ProcessReadinessCheckNode(self, node):
+    """Processing a readiness check node."""
+    readiness_check = ReadinessCheck()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      if tag in ('host', 'path'):
+        setattr(readiness_check, tag, child.text)
+      elif tag in ('check-interval-sec', 'success-threshold',
+                   'initial-delay-sec', 'timeout-sec', 'failure-threshold',
+                   'app-start-timeout-sec'):
+        text = child.text or ''
+        try:
+          value = self._PositiveInt(text)
+          setattr(readiness_check, tag.replace('-', '_'), value)
+        except ValueError:
+          self.errors.append('value for %s must be a positive integer: "%s"' %
+                             (tag, text))
+      else:
+        self.errors.append(
+            'unrecognized element within <readiness-check>: <%s>' % tag)
+    self.app_engine_web_xml.readiness_check = readiness_check
 
   def ProcessVmHealthCheckNode(self, node):
     self.ProcessHealthCheckNode(node)
@@ -444,13 +491,15 @@ class AppEngineWebXml(ValueMixin):
     """Initializes an empty AppEngineWebXml object."""
     self.app_id = None
     self.version_id = None
-    self.source_language = None
+    self.runtime = None
     self.module = None
     self.service = None
     self.system_properties = {}
     self.beta_settings = {}
     self.vm_settings = {}
     self.health_check = None
+    self.liveness_check = None
+    self.readiness_check = None
     self.resources = None
     self.network = None
     self.env_variables = {}
@@ -654,6 +703,16 @@ class StaticFileInclude(ValueMixin):
 
 class HealthCheck(ValueMixin):
   """Instances contain information about health check settings."""
+  pass
+
+
+class LivenessCheck(ValueMixin):
+  """Instances contain information about liveness check settings."""
+  pass
+
+
+class ReadinessCheck(ValueMixin):
+  """Instances contain information about readiness check settings."""
   pass
 
 

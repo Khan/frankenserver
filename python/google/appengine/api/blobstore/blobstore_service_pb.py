@@ -19,10 +19,27 @@
 
 from google.net.proto import ProtocolBuffer
 import array
+import base64
 import dummy_thread as thread
-
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+try:
+  from google3.net.proto import _net_proto___parse__python
+except ImportError:
+  _net_proto___parse__python = None
+import sys
+try:
+  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.pywraprpc_lite')
+  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
+  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
+except ImportError:
+  _client_stub_base_class = object
+try:
+  __import__('google.net.rpc.python.rpcserver')
+  rpcserver = sys.modules.get('google.net.rpc.python.rpcserver')
+  _server_stub_base_class = rpcserver.BaseRpcServer
+except ImportError:
+  _server_stub_base_class = object
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -33,6 +50,7 @@ else:
 
 from google.appengine.api.api_base_pb import *
 import google.appengine.api.api_base_pb
+google_dot_apphosting_dot_api_dot_api__base__pb = __import__('google.appengine.api.api_base_pb', {}, {}, [''])
 class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -69,6 +87,33 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.BlobstoreServiceError', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.BlobstoreServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.BlobstoreServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.BlobstoreServiceError', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.BlobstoreServiceError', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.BlobstoreServiceError', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -125,6 +170,12 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.BlobstoreServiceError'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSAQxVUkxfVE9PX0xPTkeYAQKMAYsBkgERUEVSTUlTU0lPTl9ERU5JRUSYAQOMAYsBkgEOQkxPQl9OT1RfRk9VTkSYAQSMAYsBkgEXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0WYAQWMAYsBkgEZQkxPQl9GRVRDSF9TSVpFX1RPT19MQVJHRZgBBowBiwGSARVBUkdVTUVOVF9PVVRfT0ZfUkFOR0WYAQiMAYsBkgEQSU5WQUxJRF9CTE9CX0tFWZgBCYwBdLoBhw0KMGFwcGhvc3RpbmcvYXBpL2Jsb2JzdG9yZS9ibG9ic3RvcmVfc2VydmljZS5wcm90bxIKYXBwaG9zdGluZxodYXBwaG9zdGluZy9hcGkvYXBpX2Jhc2UucHJvdG8i6wEKFUJsb2JzdG9yZVNlcnZpY2VFcnJvciLRAQoJRXJyb3JDb2RlEgYKAk9LEAASEgoOSU5URVJOQUxfRVJST1IQARIQCgxVUkxfVE9PX0xPTkcQAhIVChFQRVJNSVNTSU9OX0RFTklFRBADEhIKDkJMT0JfTk9UX0ZPVU5EEAQSGwoXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0UQBRIdChlCTE9CX0ZFVENIX1NJWkVfVE9PX0xBUkdFEAYSGQoVQVJHVU1FTlRfT1VUX09GX1JBTkdFEAgSFAoQSU5WQUxJRF9CTE9CX0tFWRAJIq4BChZDcmVhdGVVcGxvYWRVUkxSZXF1ZXN0EhQKDHN1Y2Nlc3NfcGF0aBgBIAIoCRIdChVtYXhfdXBsb2FkX3NpemVfYnl0ZXMYAiABKAMSJgoebWF4X3VwbG9hZF9zaXplX3Blcl9ibG9iX2J5dGVzGAMgASgDEhYKDmdzX2J1Y2tldF9uYW1lGAQgASgJEh8KF3VybF9leHBpcnlfdGltZV9zZWNvbmRzGAUgASgFIiYKF0NyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlEgsKA3VybBgBIAIoCSI0ChFEZWxldGVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAMoCRINCgV0b2tlbhgCIAEoCSJMChBGZXRjaERhdGFSZXF1ZXN0EhAKCGJsb2Jfa2V5GAEgAigJEhMKC3N0YXJ0X2luZGV4GAIgAigDEhEKCWVuZF9pbmRleBgDIAIoAyImChFGZXRjaERhdGFSZXNwb25zZRIRCgRkYXRhGOgHIAIoDEICCAEiTgoQQ2xvbmVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAIoDBIRCgltaW1lX3R5cGUYAiACKAwSFQoNdGFyZ2V0X2FwcF9pZBgDIAIoDCIlChFDbG9uZUJsb2JSZXNwb25zZRIQCghibG9iX2tleRgBIAIoDCIoChREZWNvZGVCbG9iS2V5UmVxdWVzdBIQCghibG9iX2tleRgBIAMoCSIoChVEZWNvZGVCbG9iS2V5UmVzcG9uc2USDwoHZGVjb2RlZBgBIAMoCSI4CiRDcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkiOQolQ3JlYXRlRW5jb2RlZEdvb2dsZVN0b3JhZ2VLZXlSZXNwb25zZRIQCghibG9iX2tleRgBIAIoCTK0BAoQQmxvYnN0b3JlU2VydmljZRJcCg9DcmVhdGVVcGxvYWRVUkwSIi5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlcXVlc3QaIy5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlIgASSQoKRGVsZXRlQmxvYhIdLmFwcGhvc3RpbmcuRGVsZXRlQmxvYlJlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgASSgoJRmV0Y2hEYXRhEhwuYXBwaG9zdGluZy5GZXRjaERhdGFSZXF1ZXN0Gh0uYXBwaG9zdGluZy5GZXRjaERhdGFSZXNwb25zZSIAEkoKCUNsb25lQmxvYhIcLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVxdWVzdBodLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVzcG9uc2UiABJWCg1EZWNvZGVCbG9iS2V5EiAuYXBwaG9zdGluZy5EZWNvZGVCbG9iS2V5UmVxdWVzdBohLmFwcGhvc3RpbmcuRGVjb2RlQmxvYktleVJlc3BvbnNlIgAShgEKHUNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5EjAuYXBwaG9zdGluZy5DcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QaMS5hcHBob3N0aW5nLkNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5UmVzcG9uc2UiAEI+CiJjb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuYmxvYnN0b3JlEAIgASgBQhJCbG9ic3RvcmVTZXJ2aWNlUGI="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
   has_success_path_ = 0
   success_path_ = ""
@@ -213,6 +264,33 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_max_upload_size_per_blob_bytes()): self.set_max_upload_size_per_blob_bytes(x.max_upload_size_per_blob_bytes())
     if (x.has_gs_bucket_name()): self.set_gs_bucket_name(x.gs_bucket_name())
     if (x.has_url_expiry_time_seconds()): self.set_url_expiry_time_seconds(x.url_expiry_time_seconds())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CreateUploadURLRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CreateUploadURLRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CreateUploadURLRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CreateUploadURLRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CreateUploadURLRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CreateUploadURLRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -361,6 +439,12 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateUploadURLRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KIWFwcGhvc3RpbmcuQ3JlYXRlVXBsb2FkVVJMUmVxdWVzdBMaDHN1Y2Nlc3NfcGF0aCABKAIwCTgCFBMaFW1heF91cGxvYWRfc2l6ZV9ieXRlcyACKAAwAzgBFBMaHm1heF91cGxvYWRfc2l6ZV9wZXJfYmxvYl9ieXRlcyADKAAwAzgBFBMaDmdzX2J1Y2tldF9uYW1lIAQoAjAJOAEUExoXdXJsX2V4cGlyeV90aW1lX3NlY29uZHMgBSgAMAU4ARTCASBhcHBob3N0aW5nLkJsb2JzdG9yZVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
   has_url_ = 0
   url_ = ""
@@ -385,6 +469,33 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_url()): self.set_url(x.url())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CreateUploadURLResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CreateUploadURLResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CreateUploadURLResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CreateUploadURLResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CreateUploadURLResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CreateUploadURLResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -461,6 +572,12 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateUploadURLResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KImFwcGhvc3RpbmcuQ3JlYXRlVXBsb2FkVVJMUmVzcG9uc2UTGgN1cmwgASgCMAk4AhTCASBhcHBob3N0aW5nLkJsb2JzdG9yZVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
   has_token_ = 0
   token_ = ""
@@ -502,6 +619,33 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
     if (x.has_token()): self.set_token(x.token())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.DeleteBlobRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.DeleteBlobRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.DeleteBlobRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.DeleteBlobRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.DeleteBlobRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.DeleteBlobRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -599,6 +743,12 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteBlobRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuRGVsZXRlQmxvYlJlcXVlc3QTGghibG9iX2tleSABKAIwCTgDFBMaBXRva2VuIAIoAjAJOAEUwgEgYXBwaG9zdGluZy5CbG9ic3RvcmVTZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
   has_blob_key_ = 0
   blob_key_ = ""
@@ -655,6 +805,33 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
     if (x.has_start_index()): self.set_start_index(x.start_index())
     if (x.has_end_index()): self.set_end_index(x.end_index())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.FetchDataRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.FetchDataRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.FetchDataRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.FetchDataRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.FetchDataRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.FetchDataRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -777,6 +954,12 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.FetchDataRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KG2FwcGhvc3RpbmcuRmV0Y2hEYXRhUmVxdWVzdBMaCGJsb2Jfa2V5IAEoAjAJOAIUExoLc3RhcnRfaW5kZXggAigAMAM4AhQTGgllbmRfaW5kZXggAygAMAM4AhTCASBhcHBob3N0aW5nLkJsb2JzdG9yZVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
   has_data_ = 0
   data_ = ""
@@ -801,6 +984,33 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_data()): self.set_data(x.data())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.FetchDataResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.FetchDataResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.FetchDataResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.FetchDataResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.FetchDataResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.FetchDataResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -877,6 +1087,12 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.FetchDataResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuRmV0Y2hEYXRhUmVzcG9uc2UTGgRkYXRhIOgHKAIwCTgCowGqAQVjdHlwZbIBBENvcmSkARTCASBhcHBob3N0aW5nLkJsb2JzdG9yZVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
   has_blob_key_ = 0
   blob_key_ = ""
@@ -933,6 +1149,33 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
     if (x.has_mime_type()): self.set_mime_type(x.mime_type())
     if (x.has_target_app_id()): self.set_target_app_id(x.target_app_id())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CloneBlobRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CloneBlobRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CloneBlobRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CloneBlobRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CloneBlobRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CloneBlobRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1055,6 +1298,12 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CloneBlobRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KG2FwcGhvc3RpbmcuQ2xvbmVCbG9iUmVxdWVzdBMaCGJsb2Jfa2V5IAEoAjAJOAIUExoJbWltZV90eXBlIAIoAjAJOAIUExoNdGFyZ2V0X2FwcF9pZCADKAIwCTgCFMIBIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
   has_blob_key_ = 0
   blob_key_ = ""
@@ -1079,6 +1328,33 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CloneBlobResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CloneBlobResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CloneBlobResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CloneBlobResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CloneBlobResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CloneBlobResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1155,6 +1431,12 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CloneBlobResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVzcG9uc2UTGghibG9iX2tleSABKAIwCTgCFMIBIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1180,6 +1462,33 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.DecodeBlobKeyRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.DecodeBlobKeyRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.DecodeBlobKeyRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.DecodeBlobKeyRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.DecodeBlobKeyRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.DecodeBlobKeyRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1259,6 +1568,12 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.DecodeBlobKeyRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KH2FwcGhvc3RpbmcuRGVjb2RlQmxvYktleVJlcXVlc3QTGghibG9iX2tleSABKAIwCTgDFMIBIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1284,6 +1599,33 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.decoded_size()): self.add_decoded(x.decoded(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.DecodeBlobKeyResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.DecodeBlobKeyResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.DecodeBlobKeyResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.DecodeBlobKeyResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.DecodeBlobKeyResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.DecodeBlobKeyResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1363,6 +1705,12 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.DecodeBlobKeyResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuRGVjb2RlQmxvYktleVJlc3BvbnNlExoHZGVjb2RlZCABKAIwCTgDFMIBIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9y"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -1387,6 +1735,33 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CreateEncodedGoogleStorageKeyRequest', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1463,6 +1838,12 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateEncodedGoogleStorageKeyRequest'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KL2FwcGhvc3RpbmcuQ3JlYXRlRW5jb2RlZEdvb2dsZVN0b3JhZ2VLZXlSZXF1ZXN0ExoIZmlsZW5hbWUgASgCMAk4AhTCASBhcHBob3N0aW5nLkJsb2JzdG9yZVNlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
   has_blob_key_ = 0
   blob_key_ = ""
@@ -1487,6 +1868,33 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.CreateEncodedGoogleStorageKeyResponse', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1563,7 +1971,413 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateEncodedGoogleStorageKeyResponse'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KMGFwcGhvc3RpbmcuQ3JlYXRlRW5jb2RlZEdvb2dsZVN0b3JhZ2VLZXlSZXNwb25zZRMaCGJsb2Jfa2V5IAEoAjAJOAIUwgEgYXBwaG9zdGluZy5CbG9ic3RvcmVTZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+
+
+class _BlobstoreService_ClientBaseStub(_client_stub_base_class):
+  """Makes Stubby RPC calls to a BlobstoreService server."""
+
+  __slots__ = (
+      '_protorpc_CreateUploadURL', '_full_name_CreateUploadURL',
+      '_protorpc_DeleteBlob', '_full_name_DeleteBlob',
+      '_protorpc_FetchData', '_full_name_FetchData',
+      '_protorpc_CloneBlob', '_full_name_CloneBlob',
+      '_protorpc_DecodeBlobKey', '_full_name_DecodeBlobKey',
+      '_protorpc_CreateEncodedGoogleStorageKey', '_full_name_CreateEncodedGoogleStorageKey',
+  )
+
+  def __init__(self, rpc_stub, rpc_factory=None):
+    super(_BlobstoreService_ClientBaseStub, self).__init__(
+        None, inject_stub=rpc_stub, rpc_factory=rpc_factory)
+
+    self._protorpc_CreateUploadURL = pywraprpc.RPC()
+    self._full_name_CreateUploadURL = self._stub.GetFullMethodName(
+        'CreateUploadURL')
+
+    self._protorpc_DeleteBlob = pywraprpc.RPC()
+    self._full_name_DeleteBlob = self._stub.GetFullMethodName(
+        'DeleteBlob')
+
+    self._protorpc_FetchData = pywraprpc.RPC()
+    self._full_name_FetchData = self._stub.GetFullMethodName(
+        'FetchData')
+
+    self._protorpc_CloneBlob = pywraprpc.RPC()
+    self._full_name_CloneBlob = self._stub.GetFullMethodName(
+        'CloneBlob')
+
+    self._protorpc_DecodeBlobKey = pywraprpc.RPC()
+    self._full_name_DecodeBlobKey = self._stub.GetFullMethodName(
+        'DecodeBlobKey')
+
+    self._protorpc_CreateEncodedGoogleStorageKey = pywraprpc.RPC()
+    self._full_name_CreateEncodedGoogleStorageKey = self._stub.GetFullMethodName(
+        'CreateEncodedGoogleStorageKey')
+
+  def CreateUploadURL(self, request, rpc=None, callback=None, response=None):
+    """Make a CreateUploadURL RPC call.
+
+    Args:
+      request: a CreateUploadURLRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CreateUploadURLResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = CreateUploadURLResponse
+    return self._MakeCall(rpc,
+                          self._full_name_CreateUploadURL,
+                          'CreateUploadURL',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_CreateUploadURL,
+                          package_name='apphosting')
+
+  def DeleteBlob(self, request, rpc=None, callback=None, response=None):
+    """Make a DeleteBlob RPC call.
+
+    Args:
+      request: a DeleteBlobRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto
+    return self._MakeCall(rpc,
+                          self._full_name_DeleteBlob,
+                          'DeleteBlob',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_DeleteBlob,
+                          package_name='apphosting')
+
+  def FetchData(self, request, rpc=None, callback=None, response=None):
+    """Make a FetchData RPC call.
+
+    Args:
+      request: a FetchDataRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The FetchDataResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = FetchDataResponse
+    return self._MakeCall(rpc,
+                          self._full_name_FetchData,
+                          'FetchData',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_FetchData,
+                          package_name='apphosting')
+
+  def CloneBlob(self, request, rpc=None, callback=None, response=None):
+    """Make a CloneBlob RPC call.
+
+    Args:
+      request: a CloneBlobRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CloneBlobResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = CloneBlobResponse
+    return self._MakeCall(rpc,
+                          self._full_name_CloneBlob,
+                          'CloneBlob',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_CloneBlob,
+                          package_name='apphosting')
+
+  def DecodeBlobKey(self, request, rpc=None, callback=None, response=None):
+    """Make a DecodeBlobKey RPC call.
+
+    Args:
+      request: a DecodeBlobKeyRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The DecodeBlobKeyResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = DecodeBlobKeyResponse
+    return self._MakeCall(rpc,
+                          self._full_name_DecodeBlobKey,
+                          'DecodeBlobKey',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_DecodeBlobKey,
+                          package_name='apphosting')
+
+  def CreateEncodedGoogleStorageKey(self, request, rpc=None, callback=None, response=None):
+    """Make a CreateEncodedGoogleStorageKey RPC call.
+
+    Args:
+      request: a CreateEncodedGoogleStorageKeyRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CreateEncodedGoogleStorageKeyResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = CreateEncodedGoogleStorageKeyResponse
+    return self._MakeCall(rpc,
+                          self._full_name_CreateEncodedGoogleStorageKey,
+                          'CreateEncodedGoogleStorageKey',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_CreateEncodedGoogleStorageKey,
+                          package_name='apphosting')
+
+
+class _BlobstoreService_ClientStub(_BlobstoreService_ClientBaseStub):
+  __slots__ = ('_params',)
+  def __init__(self, rpc_stub_parameters, service_name, rpc_factory=None):
+    if service_name is None:
+      service_name = 'BlobstoreService'
+    stub = pywraprpc.RPC_GenericStub(service_name, rpc_stub_parameters)
+    super(_BlobstoreService_ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
+    self._params = rpc_stub_parameters
+
+
+class _BlobstoreService_RPC2ClientStub(_BlobstoreService_ClientBaseStub):
+  __slots__ = ()
+  def __init__(self, server, channel, service_name, rpc_factory=None):
+    if service_name is None:
+      service_name = 'BlobstoreService'
+    if channel is None:
+      if server is None:
+        raise RuntimeError('Invalid argument combination to create a stub')
+      channel = pywraprpc.NewClientChannel(server)
+    elif channel.version() == 1:
+      raise RuntimeError('Expecting an RPC2 channel to create the stub')
+    stub = pywraprpc.RPC_GenericStub(service_name, channel)
+    super(_BlobstoreService_RPC2ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
+
+
+class BlobstoreService(_server_stub_base_class):
+  """Base class for BlobstoreService Stubby servers."""
+
+  @classmethod
+  def _MethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <response-type>)}."""
+    return {
+      'CreateUploadURL': (CreateUploadURLRequest, CreateUploadURLResponse),
+      'DeleteBlob': (DeleteBlobRequest, google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto),
+      'FetchData': (FetchDataRequest, FetchDataResponse),
+      'CloneBlob': (CloneBlobRequest, CloneBlobResponse),
+      'DecodeBlobKey': (DecodeBlobKeyRequest, DecodeBlobKeyResponse),
+      'CreateEncodedGoogleStorageKey': (CreateEncodedGoogleStorageKeyRequest, CreateEncodedGoogleStorageKeyResponse),
+      }
+
+  @classmethod
+  def _StreamMethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <stream-type>, <response-type>)}."""
+    return {
+      }
+
+  def __init__(self, *args, **kwargs):
+    """Creates a Stubby RPC server.
+
+    The arguments to this constructor are the same as the arguments to
+    BaseRpcServer.__init__ in rpcserver.py *MINUS* export_name. This
+    constructor passes its own value for export_name to
+    BaseRpcServer.__init__, so callers of this constructor should only
+    pass to this constructor values corresponding to
+    BaseRpcServer.__init__'s remaining arguments.
+    """
+    if _server_stub_base_class is object:
+      raise NotImplementedError('Add //net/rpc/python:rpcserver as a '
+                                'dependency for Stubby server support.')
+    _server_stub_base_class.__init__(self, 'apphosting.BlobstoreService', *args, **kwargs)
+
+  @staticmethod
+  def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
+    """Creates a new BlobstoreService Stubby client stub.
+
+    Args:
+      rpc_stub_parameters: an RPC_StubParameters instance.
+      service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
+    """
+
+    if _client_stub_base_class is object:
+      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+    return _BlobstoreService_ClientStub(
+        rpc_stub_parameters, service_name, rpc_factory=rpc_factory)
+
+  @staticmethod
+  def NewRPC2Stub(
+      server=None, channel=None, service_name=None, rpc_factory=None):
+    """Creates a new BlobstoreService Stubby2 client stub.
+
+    Args:
+      server: host:port or bns address.
+      channel: directly use a channel to create a stub. Will ignore server
+          argument if this is specified.
+      service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
+    """
+
+    if _client_stub_base_class is object:
+      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+    return _BlobstoreService_RPC2ClientStub(
+        server, channel, service_name, rpc_factory=rpc_factory)
+
+  def CreateUploadURL(self, rpc, request, response):
+    """Handles a CreateUploadURL RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a CreateUploadURLRequest that contains the client request
+      response: a CreateUploadURLResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def DeleteBlob(self, rpc, request, response):
+    """Handles a DeleteBlob RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a DeleteBlobRequest that contains the client request
+      response: a google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def FetchData(self, rpc, request, response):
+    """Handles a FetchData RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a FetchDataRequest that contains the client request
+      response: a FetchDataResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def CloneBlob(self, rpc, request, response):
+    """Handles a CloneBlob RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a CloneBlobRequest that contains the client request
+      response: a CloneBlobResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def DecodeBlobKey(self, rpc, request, response):
+    """Handles a DecodeBlobKey RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a DecodeBlobKeyRequest that contains the client request
+      response: a DecodeBlobKeyResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+
+  def CreateEncodedGoogleStorageKey(self, rpc, request, response):
+    """Handles a CreateEncodedGoogleStorageKey RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a CreateEncodedGoogleStorageKeyRequest that contains the client request
+      response: a CreateEncodedGoogleStorageKeyResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
+  def _AddMethodAttributes(self):
+    """Sets attributes on Python RPC handlers.
+
+    See BaseRpcServer in rpcserver.py for details.
+    """
+    rpcserver._GetHandlerDecorator(
+        getattr(self.CreateUploadURL, '__func__'),
+        CreateUploadURLRequest,
+        CreateUploadURLResponse,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.DeleteBlob, '__func__'),
+        DeleteBlobRequest,
+        google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.FetchData, '__func__'),
+        FetchDataRequest,
+        FetchDataResponse,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.CloneBlob, '__func__'),
+        CloneBlobRequest,
+        CloneBlobResponse,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.DecodeBlobKey, '__func__'),
+        DecodeBlobKeyRequest,
+        DecodeBlobKeyResponse,
+        None,
+        'INTEGRITY')
+    rpcserver._GetHandlerDecorator(
+        getattr(self.CreateEncodedGoogleStorageKey, '__func__'),
+        CreateEncodedGoogleStorageKeyRequest,
+        CreateEncodedGoogleStorageKeyResponse,
+        None,
+        'INTEGRITY')
+
 if _extension_runtime:
   pass
 
-__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','FetchDataRequest','FetchDataResponse','CloneBlobRequest','CloneBlobResponse','DecodeBlobKeyRequest','DecodeBlobKeyResponse','CreateEncodedGoogleStorageKeyRequest','CreateEncodedGoogleStorageKeyResponse']
+__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','FetchDataRequest','FetchDataResponse','CloneBlobRequest','CloneBlobResponse','DecodeBlobKeyRequest','DecodeBlobKeyResponse','CreateEncodedGoogleStorageKeyRequest','CreateEncodedGoogleStorageKeyResponse','BlobstoreService']

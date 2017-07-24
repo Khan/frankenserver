@@ -27,7 +27,8 @@ import google
 import jinja2
 import webapp2
 
-from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2 import metrics
+from google.appengine.tools.devappserver2 import util
 
 
 def _urlencode_filter(value):
@@ -59,21 +60,11 @@ admin_template_environment = jinja2.Environment(
 admin_template_environment.filters['urlencode'] = _urlencode_filter
 admin_template_environment.filters['bytesizeformat'] = _byte_size_format
 
-_DEFAULT_SDK_VERSION = '(Internal)'
-
-
-def _get_sdk_version():
-  version_object = sdk_update_checker.GetVersionObject()
-  if version_object:
-    return version_object['release']
-  else:
-    return _DEFAULT_SDK_VERSION
-
 
 class AdminRequestHandler(webapp2.RequestHandler):
   """Base class for all admin UI request handlers."""
 
-  _SDK_VERSION = _get_sdk_version()
+  _SDK_VERSION = util.get_sdk_version()
 
   @classmethod
   def init_xsrf(cls, xsrf_path):
@@ -150,3 +141,11 @@ class AdminRequestHandler(webapp2.RequestHandler):
   @property
   def configuration(self):
     return self.request.app.configuration
+
+  @metrics.LogHandlerRequest('admin-console')
+  def get(self, *args, **kwargs):
+    """Base method for all get requests."""
+
+  @metrics.LogHandlerRequest('admin-console')
+  def post(self, *args, **kwargs):
+    """Base method for all post requests."""

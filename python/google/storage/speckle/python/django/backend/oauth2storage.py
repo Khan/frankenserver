@@ -16,8 +16,6 @@
 #
 
 
-
-
 """OAuth 2.0 credential storage for rdbms."""
 
 

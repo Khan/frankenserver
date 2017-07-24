@@ -579,6 +579,8 @@ class _EntityValidator(object):
     """
     if value.HasField('string_value'):
       _assert_valid_utf8(value.string_value, 'string value')
+    elif value.HasField('timestamp_value'):
+      self.validate_timestamp(value.timestamp_value)
     elif value.HasField('key_value'):
       self.validate_key(KEY_IN_VALUE, value.key_value)
     elif value.HasField('geo_point_value'):
@@ -787,6 +789,13 @@ class _EntityValidator(object):
     if not constraint.reserved_property_name_allowed:
       _assert_string_not_reserved(property_name, desc)
 
+  def validate_timestamp(self, timestamp):
+    _assert_condition(0 <= timestamp.nanos < 1000000000,
+                      'Timestamp nanos exceeds limit for field')
+    _assert_condition(
+        datastore_pbs.is_in_rfc_3339_bounds(timestamp.seconds * 1000 * 1000),
+        'Timestamp seconds exceeds limit for field')
+
 
 
 __entity_validator = _EntityValidator()
@@ -816,7 +825,7 @@ class _QueryValidator(object):
       ValidationError: if the query is invalid
     """
     _assert_condition((not is_strong_read_consistency
-                       or self._has_ancestor(query.filter)),
+                       or self._has_ancestor_or_parent(query.filter)),
                       'Global queries do not support strong consistency.')
     if query.HasField('filter'):
       self.validate_filter(query.filter)
@@ -902,7 +911,7 @@ class _QueryValidator(object):
     """
     self.__validate_property_reference(property_order.property)
 
-  def _has_ancestor(self, filt):
+  def _has_ancestor_or_parent(self, filt):
     """Determines if a filter includes an ancestor filter.
 
     Args:
@@ -914,13 +923,16 @@ class _QueryValidator(object):
     if filt.HasField('property_filter'):
       op = filt.property_filter.op
       name = filt.property_filter.property.name
-      return (op == googledatastore.PropertyFilter.HAS_ANCESTOR
+      value = filt.property_filter.value
+      return ((op == googledatastore.PropertyFilter.HAS_ANCESTOR or
+               op == googledatastore.PropertyFilter.HAS_PARENT)
+              and value.HasField('key_value')
               and name == datastore_pbs.PROPERTY_NAME_KEY)
     if filt.HasField('composite_filter'):
       if (filt.composite_filter.op
           == googledatastore.CompositeFilter.AND):
         for sub_filter in filt.composite_filter.filters:
-          if self._has_ancestor(sub_filter):
+          if self._has_ancestor_or_parent(sub_filter):
             return True
     return False
 

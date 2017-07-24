@@ -18,9 +18,14 @@
 
 
 
+import socket
 import unittest
 import wsgiref
 
+import google
+import mox
+
+from google.appengine.tools import sdk_update_checker
 from google.appengine.tools.devappserver2 import util
 
 
@@ -51,6 +56,39 @@ class UtilTest(unittest.TestCase):
                       'HTTP_CONTENT_LENGTH': '2',
                       'HTTP_X_USER_IP': '127.0.0.1',
                       'HTTP_ACCESS_CONTROL_ALLOW_ORIGIN': 'google.com'})
+
+
+class HTTPServerIPv6Test(unittest.TestCase):
+
+  def testHasIPv6AddressFamily(self):
+    server = util.HTTPServerIPv6(None, None, None)
+    self.assertEqual(server.address_family, socket.AF_INET6)
+
+
+class GetSDKVersionTest(unittest.TestCase):
+  """Tests for get_sdk_version."""
+
+  def setUp(self):
+    self.mox = mox.Mox()
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  def test_version_file_exists(self):
+    """If a VERSION file exists, the default SDK version is not used."""
+    self.assertNotEqual(util._DEFAULT_SDK_VERSION,
+                        util.get_sdk_version())
+
+  def test_version_file_missing(self):
+    """If no VERSION file exists, the default SDK version is used."""
+    self.mox.StubOutWithMock(sdk_update_checker, 'GetVersionObject')
+    sdk_update_checker.GetVersionObject().AndReturn(None)
+
+    self.mox.ReplayAll()
+    self.assertEqual(util._DEFAULT_SDK_VERSION,
+                     util.get_sdk_version())
+    self.mox.VerifyAll()
+
 
 if __name__ == '__main__':
   unittest.main()

@@ -50,6 +50,7 @@ from google.appengine.api import apiproxy_stub
 from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_errors
 from google.appengine.api import urlfetch_service_pb
+from google.appengine.api import urlfetch_stub_cert_path
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -126,9 +127,9 @@ def _SetupSSL(path):
                     'validate SSL certificates.')
 
 
-_SetupSSL(os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..',
-                                        '..', 'lib', 'cacerts',
-                                        'urlfetch_cacerts.txt')))
+
+
+_SetupSSL(os.path.normpath(urlfetch_stub_cert_path.CERT_PATH))
 
 def _IsAllowedPort(port):
 
@@ -335,32 +336,42 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
+
+
+
       adjusted_headers = {
           'User-Agent':
-          ('AppEngine-Google; (+http://code.google.com/appengine; appid: %s)'
-           % os.getenv('APPLICATION_ID')),
-          'Host': host,
-          'Accept-Encoding': 'gzip',
+          [('AppEngine-Google; (+http://code.google.com/appengine; appid: %s)'
+            % os.getenv('APPLICATION_ID'))],
+          'Host': [host],
+          'Accept-Encoding': ['gzip'],
       }
       if payload is not None:
 
 
-        adjusted_headers['Content-Length'] = str(len(payload))
+        adjusted_headers['Content-Length'] = [str(len(payload))]
 
 
       if method == 'POST' and payload:
-        adjusted_headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        adjusted_headers['Content-Type'] = [
+            'application/x-www-form-urlencoded']
 
       passthrough_content_encoding = False
       for header in headers:
-        if header.key().title().lower() == 'user-agent':
-          adjusted_headers['User-Agent'] = (
-              '%s %s' %
-              (header.value(), adjusted_headers['User-Agent']))
+
+
+
+        header_key = header.key()
+        if header_key.lower() == 'user-agent':
+          adjusted_headers[header_key.title()] = [(
+              '%s %s' % (header.value(), adjusted_headers['User-Agent'][0]))]
+        elif header_key.lower() == 'accept-encoding':
+          passthrough_content_encoding = True
+          adjusted_headers[header_key.title()] = [header.value()]
+        elif header_key.lower() == 'content-type':
+          adjusted_headers[header_key.title()] = [header.value()]
         else:
-          if header.key().lower() == 'accept-encoding':
-            passthrough_content_encoding = True
-          adjusted_headers[header.key().title()] = header.value()
+          adjusted_headers.setdefault(header_key, []).append(header.value())
 
       if payload is not None:
         escaped_payload = payload.encode('string_escape')
@@ -434,7 +445,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
 
             socket.setdefaulttimeout(deadline)
-          connection.request(method, full_path, payload, adjusted_headers)
+          _SendRequest(connection, method, full_path, payload, adjusted_headers)
           http_response = connection.getresponse()
           if method == 'HEAD':
             http_response_data = ''
@@ -542,3 +553,30 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       for index in reversed(xrange(len(headers))):
         if headers[index].key().lower() in untrusted_headers:
           del headers[index]
+
+
+def _SendRequest(connection, method, full_path, payload, headers):
+  """Sends an HTTP request on a connection to the URL described by full_path.
+
+  Compared to httplib.HTTPConnection's request method, this preserves all values
+  for repeated headers.
+
+  Args:
+    connection: An instance or subclass of httplib.HTTPConnection.
+    method: The string HTTP method name, eg 'GET'.
+    full_path: The string full URL path for the request.
+    payload: The string request payload to send.
+    headers: A dict of headers to send with the request. The dict maps string
+      header names to lists of associated header values.
+  """
+  connection.connect()
+  header_names = [name.lower() for name in headers]
+  connection.putrequest(
+      method, full_path, skip_host='host' in header_names,
+      skip_accept_encoding='accept-encoding' in header_names)
+  for header, values in headers.iteritems():
+    for value in values:
+      connection.putheader(header, value)
+  if payload is not None and 'content-length' not in header_names:
+    connection._set_content_length(payload)
+  connection.endheaders(payload)

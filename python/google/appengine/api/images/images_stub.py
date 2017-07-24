@@ -151,6 +151,9 @@ def _BackendPremultiplication(color):
 class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
+
+  THREADSAFE = False
+
   def __init__(self, service_name='images', host_prefix=''):
     """Preloads PIL to load all modules in the unhardened environment.
 

@@ -58,7 +58,8 @@ function renderCollapsableValue(value, container) {
   var moreSpan = $('<span class="value-disclosure-more">');
   moreSpan.hide();
   for (var i = 0; i < endValue.length; i += SPLIT_LENGTH) {
-    moreSpan.append(endValue.substr(i, SPLIT_LENGTH));
+    var line = document.createTextNode(endValue.substr(i, SPLIT_LENGTH));
+    moreSpan.append(line);
     moreSpan.append('<wbr/>');
   }
   var betweenMoreText = '...(' + endValue.length + ' more) ';
@@ -207,11 +208,16 @@ function abortJob(name, mapreduce_id) {
 
 // Retrieve the detail for a job.
 function getJobDetail(jobId, resultFunc) {
+  var data = {'mapreduce_id': jobId};
+  var namespace = getNamespace();
+  if (namespace || namespace == '') {
+    data.namespace = namespace;
+  }
   $.ajax({
     type: 'GET',
     url: 'command/get_job_detail',
     dataType: 'text',
-    data: {'mapreduce_id': jobId},
+    data: data,
     statusCode: {
       404: function() {
         setButter('job ' + jobId + ' was not found.', true);
@@ -299,6 +305,16 @@ function getElapsedTimeString(start_timestamp_ms, updated_timestamp_ms) {
 function getJobId() {
   var jobId = $.url().param('mapreduce_id');
   return jobId == null ? '' : jobId;
+}
+
+
+/**
+ * Retrieves the namespace from the query string.
+ * @return {string} namespace to use in Datastore queries, may be null.
+ */
+function getNamespace() {
+  var namespace = $.url().param('namespace');
+  return namespace;
 }
 
 /********* Specific to overview status page *********/
@@ -641,9 +657,9 @@ function refreshJobDetail(jobId, detail) {
     // Round to 2 decimal places.
     var avgRate = Math.round(100.0 * value / (runtimeMs / 1000.0)) / 100.0;
     $('<li>')
-      .append($('<span class="param-key">').html(getNiceParamKey(key)))
+      .append($('<span class="param-key">').text(getNiceParamKey(key)))
       .append($('<span>').text(': '))
-      .append($('<span class="param-value">').html(value))
+      .append($('<span class="param-value">').text(value))
       .append($('<span>').text(' '))
       .append($('<span class="param-aux">').text('(' + avgRate + '/sec avg.)'))
       .appendTo(aggregatedCounters);

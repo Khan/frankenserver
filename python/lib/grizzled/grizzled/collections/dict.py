@@ -507,7 +507,7 @@ class LRUDict(dict):
         :raise KeyError: empty dictionary
         """
         if len(self) == 0:
-            raise KeyError, 'Attempted popitem() on empty dictionary'
+            raise KeyError('Attempted popitem() on empty dictionary')
 
         lru_entry = self.__lru_queue.remove_tail()
         dict.__delitem__(self, lru_entry.key)

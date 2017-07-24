@@ -75,11 +75,14 @@ except ImportError:
   from google.appengine.api import runtime
 
 
-_GCS_BUCKET_REGEX_BASE = r'[a-z0-9\.\-_]{3,63}'
+_GCS_BUCKET_REGEX_BASE = r'([a-z0-9\-_]{1,63}\.)*[a-z0-9\-_]{1,63}'
+_GCS_BUCKET_NAME_MAX_LEN = 222
+_GCS_BUCKET_NAME_MIN_LEN = 3
 _GCS_BUCKET_REGEX = re.compile(_GCS_BUCKET_REGEX_BASE + r'$')
 _GCS_BUCKET_PATH_REGEX = re.compile(r'/' + _GCS_BUCKET_REGEX_BASE + r'$')
 _GCS_PATH_PREFIX_REGEX = re.compile(r'/' + _GCS_BUCKET_REGEX_BASE + r'.*')
 _GCS_FULLPATH_REGEX = re.compile(r'/' + _GCS_BUCKET_REGEX_BASE + r'/.*')
+
 
 _GCS_METADATA = ['x-goog-meta-',
                  'content-disposition',
@@ -237,9 +240,20 @@ def validate_bucket_name(name):
     ValueError: if name is invalid.
   """
   _validate_path(name)
+  if len(name) < _GCS_BUCKET_NAME_MIN_LEN:
+    raise ValueError('GCS Buckets must have at least %d characters, '
+                     'but you specified \'%s\'. See '
+                     'https://cloud.google.com/storage/docs/naming#requirements'
+                     ' for requirements.' % (_GCS_BUCKET_NAME_MIN_LEN, name))
+  if len(name) > _GCS_BUCKET_NAME_MAX_LEN:
+    raise ValueError('GCS Buckets may have no more than %d characters, '
+                     'but you specified \'%s\'. See '
+                     'https://cloud.google.com/storage/docs/naming#requirements'
+                     ' for requirements.' % (_GCS_BUCKET_NAME_MAX_LEN, name))
   if not _GCS_BUCKET_REGEX.match(name):
-    raise ValueError('Bucket should be 3-63 characters long using only a-z,'
-                     '0-9, underscore, dash or dot but got %s' % name)
+    raise ValueError('Invalid bucket name \'%s\'. See '
+                     'https://cloud.google.com/storage/docs/naming#requirements'
+                     ' for requirements.' % name)
 
 
 def validate_bucket_path(path):

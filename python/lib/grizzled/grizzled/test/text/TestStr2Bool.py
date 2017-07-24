@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: 99b27c0fb42453577338855a901665a65a027dd4 $
 #
 # Nose program for testing grizzled.file classes/functions
@@ -7,7 +6,6 @@
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.text import str2bool
 
 # ---------------------------------------------------------------------------

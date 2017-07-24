@@ -75,6 +75,7 @@ Use an include-enabled file with the standard Python logging module:
     logging.fileConfig(includer.preprocess("mylog.cfg"))
 
 '''
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 __all__ = ['Includer', 'IncludeError', 'preprocess']
@@ -302,15 +303,15 @@ class Includer(object):
 
     def truncate(self, size=None):
         """Not supported, since ``Includer`` objects are read-only."""
-        raise IncludeError, 'Includers are read-only file objects.'
+        raise IncludeError('Includers are read-only file objects.')
 
     def write(self, s):
         """Not supported, since ``Includer`` objects are read-only."""
-        raise IncludeError, 'Includers are read-only file objects.'
+        raise IncludeError('Includers are read-only file objects.')
 
     def writelines(self, iterable):
         """Not supported, since ``Includer`` objects are read-only."""
-        raise IncludeError, 'Includers are read-only file objects.'
+        raise IncludeError('Includers are read-only file objects.')
 
     def flush(self):
         """No-op."""
@@ -333,8 +334,11 @@ class Includer(object):
             match = self.__include_pattern.search(line)
             if match:
                 if self.__nested >= self.__maxnest:
-                    raise IncludeError, 'Exceeded maximum include recursion ' \
-                                        'depth of %d' % self.__maxnest
+                    raise IncludeError(
+                        'Exceeded maximum include recursion depth of {0}'.format(
+                            self.__maxnest
+                        )
+                    )
 
                 inc_name = match.group(1)
                 logging.debug('Found include directive: %s' % line[:-1])
@@ -391,8 +395,9 @@ class Includer(object):
             log.debug('Opening "%s"' % name_to_open)
             f = open_func(name_to_open)
         except:
-            raise IncludeError, 'Unable to open "%s" as a file or a URL' %\
-                  name_to_open
+            raise IncludeError(
+                'Unable to open "{0}" as a file or a URL'.format(name_to_open)
+            )
         return (f, is_url, name_to_open)
     
 # ---------------------------------------------------------------------------
@@ -441,7 +446,7 @@ def preprocess(file_or_url, output=None, temp_suffix='.txt', temp_prefix='inc'):
 
 def _complain_if_closed(closed):
     if closed:
-        raise IncludeError, "I/O operation on closed file"
+        raise IncludeError("I/O operation on closed file")
 
 # ---------------------------------------------------------------------------
 # Main program (for testing)
@@ -459,15 +464,15 @@ if __name__ == '__main__':
         
         header = 'File: %s, via preprocess()'
         sep = '-' * len(header)
-        print '\n%s\n%s\n%s\n' % (sep, header, sep)
+        print('\n{0}\n{1}\n{2}\n'.format(sep, header, sep))
         for line in out.readlines():
             sys.stdout.write(line)
-        print sep
+        print(sep)
 
         inc = Includer(file)
         header = 'File: %s, via Includer'
         sep = '-' * len(header)
-        print '\n%s\n%s\n%s\n' % (sep, header, sep)
+        print('\n{0}\n{1}\n{2}\n'.format(sep, header, sep))
         for line in inc:
             sys.stdout.write(line)
-        print '%s' % sep
+        print(sep)

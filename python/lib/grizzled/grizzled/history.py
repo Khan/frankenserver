@@ -19,7 +19,7 @@ To get the appropriate History implementation for the current platform,
 simply call the ``get_history()`` factory method.
 """
 
-from __future__ import with_statement
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -90,16 +90,16 @@ def get_history(verbose=True):
     result = None
     if _have_pyreadline:
         if verbose:
-            print 'Using pyreadline for history management.'
+            print('Using pyreadline for history management.')
         result = PyReadlineHistory()
 
     elif _have_readline:
         if verbose:
-            print 'Using readline for history management.'
+            print('Using readline for history management.')
         result = ReadlineHistory()
 
     else:
-        print 'WARNING: Readline unavailable. There will be no history.'
+        print('WARNING: Readline unavailable. There will be no history.')
         result = DummyHistory()
 
     result.max_length = DEFAULT_MAXLENGTH
@@ -132,7 +132,7 @@ class History(object):
                 Where to dump the history.
         """
         for i in range(1, self.total + 1):
-            print >> out, '%4d: %s' % (i, self.get_item(i))
+            print('{0:4d}: {1}'.format(i, self.get_item(i)), file=out)
 
     def get_last_matching_item(self, command_name):
         """

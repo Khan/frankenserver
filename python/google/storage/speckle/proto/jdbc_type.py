@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Python equivalent of jdbc_type.h.
 
 Python definition of the JDBC type constant values defined in Java class

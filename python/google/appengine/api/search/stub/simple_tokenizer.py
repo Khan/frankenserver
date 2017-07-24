@@ -38,6 +38,10 @@ _WORD_SEPARATORS = [
 _WORD_SEPARATOR_RE = re.compile('|'.join(_WORD_SEPARATORS))
 
 
+
+_SINGLE_QUOTE_RE = re.compile('^\'*(.*?)\'*$')
+
+
 def _StripSeparators(value):
   """Remove special characters and collapse spaces."""
   return re.sub(r'  [ ]*', ' ', re.sub(_WORD_SEPARATOR_RE, ' ', value)).strip()
@@ -140,6 +144,7 @@ class SimpleTokenizer(object):
     else:
       token_strings = self._TokenizeString(value, field_type)
     for token in token_strings:
+      token = _SINGLE_QUOTE_RE.search(token).group(1)
       if ':' in token and self._split_restricts:
         for subtoken in token.split(':'):
           tokens_found.append(

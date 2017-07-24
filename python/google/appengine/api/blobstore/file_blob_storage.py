@@ -18,10 +18,10 @@
 
 
 
-"""Implementation of Blobstore stub storage based on file system.
+"""In-memory implementation of Blobstore stub storage based on file system.
 
-Contains implementation of blobstore_stub.BlobStorage that writes
-blobs directly to a filesystem.
+This module contains an implementation of `blobstore_stub.BlobStorage` that
+writes blobs directly to a file system.
 """
 
 
@@ -50,48 +50,50 @@ _local_open = __builtin__.open
 
 
 class FileBlobStorage(blobstore_stub.BlobStorage):
-  """Storage mechanism for storing blob data on local disk."""
+  """The storage mechanism that stores blob data on a local disk."""
 
   def __init__(self, storage_directory, app_id):
     """Constructor.
 
     Args:
       storage_directory: Directory within which to store blobs.
-      app_id: App id to store blobs on behalf of.
+      app_id: The application ID on whose behalf to store blobs.
     """
     self._storage_directory = storage_directory
     self._app_id = app_id
 
   @classmethod
   def _BlobKey(cls, blob_key):
-    """Normalize to instance of BlobKey."""
+    """Normalizes to an instance of `BlobKey`."""
     if not isinstance(blob_key, blobstore.BlobKey):
       return blobstore.BlobKey(unicode(blob_key))
     return blob_key
 
   def _DirectoryForBlob(self, blob_key):
-    """Determine which directory where a blob is stored.
+    """Determines the directory in which a blob is stored.
 
-    Each blob gets written to a directory underneath the storage objects
-    storage directory based on the blobs kind, app-id and first character of
-    its name.  So blobs with blob-keys:
+    Each blob is written to a directory underneath the storage objects
+    storage directory based on the kind of blobs, application ID, and first
+    character of its name. For example, the following blob keys...::
 
-      _ACFDEDG
-      _MNOPQRS
-      _RSTUVWX
+        _ACFDEDG
+        _MNOPQRS
+        _RSTUVWX
 
-    Are stored in:
 
-      <storage-dir>/blob/myapp/A
-      <storage-dir>/blob/myapp/M
-      <storage-dir>/R
+    ...are stored in the following locations::
+
+        <storage-dir>/blob/myapp/A
+        <storage-dir>/blob/myapp/M
+        <storage-dir>/R
+
 
     Args:
-      blob_key: Blob key to determine directory for.
+      blob_key: Blob key for which you need to determine the directory.
 
     Returns:
-      Directory relative to this objects storage directory to
-      where blob is stored or should be stored.
+      A directory where the blob is stored or should be stored, relative to this
+      object's storage directory.
     """
     blob_key = self._BlobKey(blob_key)
     return os.path.join(self._storage_directory,
@@ -99,25 +101,27 @@ class FileBlobStorage(blobstore_stub.BlobStorage):
                         str(blob_key)[1])
 
   def _FileForBlob(self, blob_key):
-    """Calculate full filename to store blob contents in.
+    """Calculates the full file name in which to store blob contents.
 
-    This method does not check to see if the file actually exists.
+    This method does not check to see if the file already exists.
 
     Args:
-      blob_key: Blob key of blob to calculate file for.
+      blob_key: The blob key of the blob for which to calculate the file name.
 
     Returns:
-      Complete path for file used for storing blob.
+      A string that contains the complete path for the file that is used to
+      store the blob.
     """
     blob_key = self._BlobKey(blob_key)
     return os.path.join(self._DirectoryForBlob(blob_key), str(blob_key)[1:])
 
   def StoreBlob(self, blob_key, blob_stream):
-    """Store blob stream to disk.
+    """Stores a blob stream .
 
     Args:
-      blob_key: Blob key of blob to store.
-      blob_stream: Stream or stream-like object that will generate blob content.
+      blob_key: The blob key of the blob that you want to store.
+      blob_stream: A stream or a stream-like object that will generate blob
+          content.
     """
     blob_key = self._BlobKey(blob_key)
     blob_directory = self._DirectoryForBlob(blob_key)
@@ -138,23 +142,23 @@ class FileBlobStorage(blobstore_stub.BlobStorage):
       output.close()
 
   def OpenBlob(self, blob_key):
-    """Open blob file for streaming.
+    """Opens a blob file for streaming.
 
     Args:
-      blob_key: Blob-key of existing blob to open for reading.
+      blob_key: The blob key of an existing blob that you want to open.
 
     Returns:
-      Open file stream for reading blob from disk.
+      An open file stream to read the blob.
     """
     return _local_open(self._FileForBlob(blob_key), 'rb')
 
   def DeleteBlob(self, blob_key):
-    """Delete blob data from disk.
+    """Deletes blob data.
 
     Deleting an unknown blob will not raise an error.
 
     Args:
-      blob_key: Blob-key of existing blob to delete.
+      blob_key: The blob key of an existing blob that you want to delete.
     """
     try:
       os.remove(self._FileForBlob(blob_key))

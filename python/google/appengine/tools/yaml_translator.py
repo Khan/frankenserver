@@ -80,7 +80,12 @@ class AppYamlTranslator(object):
     self.api_version = api_version
 
   def GetRuntime(self):
-    return 'java7'
+    """Returns the runtime to use for this deployment.
+
+    Returns:
+      the runtimeid to use in the runtime: section.
+    """
+    return self.app_engine_web_xml.runtime or 'java7'
 
   def GetYaml(self):
     """Returns full yaml text."""
@@ -97,6 +102,8 @@ class AppYamlTranslator(object):
     stmnt_list += self.TranslateBetaSettings()
     stmnt_list += self.TranslateVmSettings()
     stmnt_list += self.TranslateHealthCheck()
+    stmnt_list += self.TranslateLivenessCheck()
+    stmnt_list += self.TranslateReadinessCheck()
     stmnt_list += self.TranslateResources()
     stmnt_list += self.TranslateNetwork()
     stmnt_list += self.TranslateErrorHandlers()
@@ -113,7 +120,6 @@ class AppYamlTranslator(object):
 
     for entry_name, field in [
         ('application', self.app_engine_web_xml.app_id),
-        ('source_language', self.app_engine_web_xml.source_language),
         ('module', self.app_engine_web_xml.module),
         ('service', self.app_engine_web_xml.service),
         ('version', self.app_engine_web_xml.version_id)
@@ -208,7 +214,7 @@ class AppYamlTranslator(object):
   def TranslateBetaSettings(self):
     """Translates Beta settings in appengine-web.xml to yaml."""
     if ((not self.app_engine_web_xml.vm) and
-        (self.app_engine_web_xml.env != '2')):
+        (self.app_engine_web_xml.env not in ['flex', 'flexible'])):
       return []
 
     settings = self.app_engine_web_xml.beta_settings or {}
@@ -228,11 +234,10 @@ class AppYamlTranslator(object):
   def TranslateVmSettings(self):
     """Translates VM settings in appengine-web.xml to yaml."""
     if ((not self.app_engine_web_xml.vm) and
-        (self.app_engine_web_xml.env != '2')):
+        (self.app_engine_web_xml.env not in ['flex', 'flexible'])):
       return []
 
     settings = self.app_engine_web_xml.vm_settings or {}
-    settings['has_docker_image'] = 'True'
     statements = ['vm_settings:']
     for name in sorted(settings):
       statements.append(
@@ -251,6 +256,36 @@ class AppYamlTranslator(object):
                  'unhealthy_threshold', 'healthy_threshold',
                  'restart_threshold', 'host'):
       value = getattr(health_check, attr, None)
+      if value is not None:
+        statements.append('  %s: %s' % (attr, value))
+    return statements
+
+  def TranslateLivenessCheck(self):
+    """Translates <liveness-check> in appengine-web.xml to yaml."""
+    liveness_check = self.app_engine_web_xml.liveness_check
+    if not liveness_check:
+      return []
+
+    statements = ['liveness_check:']
+    for attr in ('check_interval_sec', 'timeout_sec',
+                 'failure_threshold', 'success_threshold',
+                 'initial_delay_sec', 'host', 'path'):
+      value = getattr(liveness_check, attr, None)
+      if value is not None:
+        statements.append('  %s: %s' % (attr, value))
+    return statements
+
+  def TranslateReadinessCheck(self):
+    """Translates <readiness-check> in appengine-web.xml to yaml."""
+    readiness_check = self.app_engine_web_xml.readiness_check
+    if not readiness_check:
+      return []
+
+    statements = ['readiness_check:']
+    for attr in ('check_interval_sec', 'timeout_sec',
+                 'failure_threshold', 'success_threshold',
+                 'host', 'path', 'app_start_timeout_sec'):
+      value = getattr(readiness_check, attr, None)
       if value is not None:
         statements.append('  %s: %s' % (attr, value))
     return statements
@@ -275,7 +310,7 @@ class AppYamlTranslator(object):
       return []
 
     statements = ['network:']
-    for attr in ('instance_tag', 'name'):
+    for attr in ('instance_tag', 'name', 'subnetwork_name'):
       value = getattr(network, attr, None)
       if value is not None:
         statements.append('  %s: %s' % (attr, value))

@@ -1,4 +1,4 @@
-# $Id: 0d2e5b9d01530c575fc4f6834113699dda23cc4a $
+# $Id: 6a03c356dc9c1687a195f1c09ed687dffa9e2534 $
 
 """
 Input/Output utility methods and classes.
@@ -201,7 +201,7 @@ class PushbackFile(object):
 
         :raise NotImplementedError: unconditionally
         """
-        raise NotImplementedError, 'PushbackFile is read-only'
+        raise NotImplementedError('PushbackFile is read-only')
 
     def pushback(self, s):
         """
@@ -296,7 +296,7 @@ class PushbackFile(object):
 
         :raise NotImplementedError: unconditionally
         """
-        raise NotImplementedError, 'PushbackFile is read-only'
+        raise NotImplementedError('PushbackFile is read-only')
 
     def truncate(self, size=-1):
         """
@@ -310,7 +310,7 @@ class PushbackFile(object):
 
         :raise NotImplementedError: unconditionally
         """
-        raise NotImplementedError, 'PushbackFile is read-only'
+        raise NotImplementedError('PushbackFile is read-only')
 
     def tell(self):
         """
@@ -323,7 +323,7 @@ class PushbackFile(object):
 
         :raise NotImplementedError: unconditionally
         """
-        raise NotImplementedError, 'PushbackFile is not seekable'
+        raise NotImplementedError('PushbackFile is not seekable')
 
     def seek(self, offset, whence=os.SEEK_SET):
         """
@@ -338,7 +338,7 @@ class PushbackFile(object):
 
         :raise NotImplementedError: unconditionally
         """
-        raise NotImplementedError, 'PushbackFile is not seekable'
+        raise NotImplementedError('PushbackFile is not seekable')
 
     def fileno(self):
         """

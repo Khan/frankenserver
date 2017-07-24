@@ -30,14 +30,15 @@ class HostNotReachable(Error):
   """Raised if host can't be reached at given port."""
 
 
-def wait_for_connection(host, port, retries=1):
+def wait_for_connection(host, port, process, retries=1):
   """Tries to connect to the given host and port.
 
-  Retries until success or number of retires is used up.
+  Retries until success, process death, or number of retires is used up.
 
   Args:
     host: str, Host to connect to.
     port: int, Port to connect to.
+    process: subprocess.Popen, the process we are trying to connect to.
     retries: int, Number of connection retries.
 
   Raises:
@@ -54,9 +55,9 @@ def wait_for_connection(host, port, retries=1):
       else:
         return True
 
-  while not ping() and retries > 0:
+  while not ping():
     retries -= 1
-    if not retries:
+    if process.poll() is not None or retries <= 0:
       raise HostNotReachable(
           'Cannot connect to the instance on {host}:{port}'.format(
               host=host, port=port))

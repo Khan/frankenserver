@@ -204,6 +204,7 @@ class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
 
   def get(self):
     """Show template and prepare stats and/or key+value to display/edit."""
+    super(MemcacheViewerRequestHandler, self).post()
     values = {'request': self.request,
               'message': self.request.get('message')}
 
@@ -290,6 +291,7 @@ class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
 
   def post(self):
     """Handle modifying actions and/or redirect to GET page."""
+    super(MemcacheViewerRequestHandler, self).post()
     next_param = {}
 
     if self.request.get('action:flush'):

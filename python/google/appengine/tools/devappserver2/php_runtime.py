@@ -18,8 +18,6 @@
 
 
 
-import cgi
-import logging
 import os
 import re
 import subprocess
@@ -96,62 +94,8 @@ class _PHPEnvironmentError(Exception):
   pass
 
 
-class _BadPHPEnvironmentRuntimeProxy(instance.RuntimeProxy):
-  """Serves an error page describing the problem with the user's PHP setup."""
-
-  def __init__(self, php_executable_path, exception):
-    self._php_executable_path = php_executable_path
-    self._exception = exception
-
-  def start(self):
-    pass
-
-  def quit(self):
-    pass
-
-  def handle(self, environ, start_response, url_map, match, request_id,
-             request_type):
-    """Serves a request by displaying an error page.
-
-    Args:
-      environ: An environ dict for the request as defined in PEP-333.
-      start_response: A function with semantics defined in PEP-333.
-      url_map: An appinfo.URLMap instance containing the configuration for the
-          handler matching this request.
-      match: A re.MatchObject containing the result of the matched URL pattern.
-      request_id: A unique string id associated with the request.
-      request_type: The type of the request. See instance.*_REQUEST module
-          constants.
-
-    Yields:
-      A sequence of strings containing the body of the HTTP response.
-    """
-    start_response('500 Internal Server Error',
-                   [('Content-Type', 'text/html')])
-    yield '<html><head><title>Invalid PHP Configuration</title></head>'
-    yield '<body>'
-    yield '<title>Invalid PHP Configuration</title>'
-    if isinstance(self._exception, _PHPEnvironmentError):
-      yield '<b>The PHP interpreter specified with the --php_executable_path '
-      yield ' flag (&quot;%s&quot;) is not compatible with the App Engine ' % (
-          self._php_executable_path)
-      yield 'PHP development environment.</b><br>'
-      yield '<br>'
-      yield '<pre>%s</pre>' % self._exception
-    else:
-      yield '<b>%s</b>' % cgi.escape(str(self._exception))
-
-    yield '</body></html>'
-
-
 class PHPRuntimeInstanceFactory(instance.InstanceFactory):
   """A factory that creates new PHP runtime Instances."""
-
-  # A mapping from a php executable path to the _BadPHPEnvironmentRuntimeProxy
-  # descriping why it is not useable. If the php executable is usable then the
-  # path will map to None. Only one PHP executable will be used in a run of the
-  # development server but that is not necessarily the case for tests.
-  _php_binary_to_error_proxy = {}
 
   # TODO: Use real script values.
   START_URL_MAP = appinfo.URLMap(
@@ -182,7 +126,6 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
         request_data, 8 if runtime_config_getter().threadsafe else 1)
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
-    self._bad_environment_proxy = None
 
   @classmethod
   def _check_php_version(cls, php_executable_path, env):
@@ -209,9 +152,9 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
               version_stdout))
 
     version = tuple(int(v) for v in version_match.groups())
-    if version < (5, 4):
+    if version < (5, 5):
       raise _PHPEnvironmentError(
-          'The PHP interpreter must be version >= 5.4, %d.%d found' % version)
+          'The PHP interpreter must be version >= 5.5, %d.%d found' % version)
 
   @classmethod
   def _check_gae_extension(cls, php_executable_path, gae_extension_path, env):
@@ -339,21 +282,10 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
     gae_extension_path = (
         self._GenerateConfigForRuntime().php_config.gae_extension_path)
 
-    if php_executable_path not in self._php_binary_to_error_proxy:
-      try:
-        self._check_binaries(php_executable_path, gae_extension_path)
-      except Exception as e:
-        self._php_binary_to_error_proxy[php_executable_path] = (
-            _BadPHPEnvironmentRuntimeProxy(php_executable_path, e))
-        logging.exception('The PHP runtime is not available')
-      else:
-        self._php_binary_to_error_proxy[php_executable_path] = None
+    self._check_binaries(php_executable_path, gae_extension_path)
+    proxy = http_runtime.HttpRuntimeProxy(
+        _RUNTIME_ARGS, instance_config_getter, self._module_configuration)
 
-    proxy = self._php_binary_to_error_proxy[php_executable_path]
-    if proxy is None:
-      proxy = http_runtime.HttpRuntimeProxy(_RUNTIME_ARGS,
-                                            instance_config_getter,
-                                            self._module_configuration)
     return instance.Instance(self.request_data,
                              instance_id,
                              proxy,

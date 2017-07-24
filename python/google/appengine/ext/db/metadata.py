@@ -54,8 +54,15 @@ or, using Query objects
 
 
 
-from google.appengine.api import datastore_types
-from google.appengine.ext import db
+import os
+
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import datastore_types
+  from google.appengine.ext import db
+else:
+  from google.appengine.api import datastore_types
+  from google.appengine.ext import db
 
 
 class BaseMetadata(db.Model):

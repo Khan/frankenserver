@@ -19,10 +19,12 @@
 
 from google.net.proto import ProtocolBuffer
 import array
+import base64
 import dummy_thread as thread
-
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
+try:
+  from google3.net.proto import _net_proto___parse__python
+except ImportError:
+  _net_proto___parse__python = None
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -33,6 +35,7 @@ else:
 
 from google.appengine.datastore.entity_pb import *
 import google.appengine.datastore.entity_pb
+google_dot_storage_dot_onestore_dot_v3_dot_entity__pb = __import__('google.appengine.datastore.entity_pb', {}, {}, [''])
 class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   has_service_call_name_ = 0
   service_call_name_ = ""
@@ -107,6 +110,33 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if (x.has_total_amount_of_calls()): self.set_total_amount_of_calls(x.total_amount_of_calls())
     if (x.has_total_cost_of_calls_microdollars()): self.set_total_cost_of_calls_microdollars(x.total_cost_of_calls_microdollars())
     for i in xrange(x.total_billed_ops_size()): self.add_total_billed_ops().CopyFrom(x.total_billed_ops(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.AggregateRpcStatsProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.AggregateRpcStatsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.AggregateRpcStatsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.AggregateRpcStatsProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.AggregateRpcStatsProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.AggregateRpcStatsProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -259,6 +289,12 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.AggregateRpcStatsProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KIWFwcGhvc3RpbmcuQWdncmVnYXRlUnBjU3RhdHNQcm90bxMaEXNlcnZpY2VfY2FsbF9uYW1lIAEoAjAJOAIUExoVdG90YWxfYW1vdW50X29mX2NhbGxzIAMoADADOAIUExogdG90YWxfY29zdF9vZl9jYWxsc19taWNyb2RvbGxhcnMgBCgAMAM4ARQTGhB0b3RhbF9iaWxsZWRfb3BzIAUoAjALOANKGGFwcGhvc3RpbmcuQmlsbGVkT3BQcm90b6MBqgEFY3R5cGWyAQZwcm90bzKkARS6AbsPCidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8SCmFwcGhvc3RpbmcaIHN0b3JhZ2Uvb25lc3RvcmUvdjMvZW50aXR5LnByb3RvIrEBChZBZ2dyZWdhdGVScGNTdGF0c1Byb3RvEhkKEXNlcnZpY2VfY2FsbF9uYW1lGAEgAigJEh0KFXRvdGFsX2Ftb3VudF9vZl9jYWxscxgDIAIoAxIoCiB0b3RhbF9jb3N0X29mX2NhbGxzX21pY3JvZG9sbGFycxgEIAEoAxIzChB0b3RhbF9iaWxsZWRfb3BzGAUgAygLMhkuYXBwaG9zdGluZy5CaWxsZWRPcFByb3RvIikKC0tleVZhbFByb3RvEgsKA2tleRgBIAIoCRINCgV2YWx1ZRgCIAIoCSKFAQoPU3RhY2tGcmFtZVByb3RvEhoKEmNsYXNzX29yX2ZpbGVfbmFtZRgBIAIoCRITCgtsaW5lX251bWJlchgCIAEoBRIVCg1mdW5jdGlvbl9uYW1lGAMgAigJEioKCXZhcmlhYmxlcxgEIAMoCzIXLmFwcGhvc3RpbmcuS2V5VmFsUHJvdG8i6AEKDUJpbGxlZE9wUHJvdG8SLgoCb3AYASACKA4yIi5hcHBob3N0aW5nLkJpbGxlZE9wUHJvdG8uQmlsbGVkT3ASDwoHbnVtX29wcxgCIAIoBSKVAQoIQmlsbGVkT3ASEgoOREFUQVNUT1JFX1JFQUQQABITCg9EQVRBU1RPUkVfV1JJVEUQARITCg9EQVRBU1RPUkVfU01BTEwQAhISCg5NQUlMX1JFQ0lQSUVOVBADEhAKDENIQU5ORUxfT1BFThAEEg8KC1hNUFBfU1RBTlpBEAUSFAoQQ0hBTk5FTF9QUkVTRU5DRRAGIqICChlEYXRhc3RvcmVDYWxsRGV0YWlsc1Byb3RvEhIKCnF1ZXJ5X2tpbmQYASABKAkSNgoOcXVlcnlfYW5jZXN0b3IYAiABKAsyHi5zdG9yYWdlX29uZXN0b3JlX3YzLlJlZmVyZW5jZRIYChBxdWVyeV90aGlzY3Vyc29yGAMgASgGEhgKEHF1ZXJ5X25leHRjdXJzb3IYBCABKAYSHAoUZ2V0X3N1Y2Nlc3NmdWxfZmV0Y2gYBSADKAgSMQoJa2V5c19yZWFkGAYgAygLMh4uc3RvcmFnZV9vbmVzdG9yZV92My5SZWZlcmVuY2USNAoMa2V5c193cml0dGVuGAcgAygLMh4uc3RvcmFnZV9vbmVzdG9yZV92My5SZWZlcmVuY2Ui2gMKF0luZGl2aWR1YWxScGNTdGF0c1Byb3RvEhkKEXNlcnZpY2VfY2FsbF9uYW1lGAEgAigJEhwKFHJlcXVlc3RfZGF0YV9zdW1tYXJ5GAMgASgJEh0KFXJlc3BvbnNlX2RhdGFfc3VtbWFyeRgEIAEoCRITCgthcGlfbWN5Y2xlcxgFIAEoAxIYChBhcGlfbWlsbGlzZWNvbmRzGAsgASgDEiEKGXN0YXJ0X29mZnNldF9taWxsaXNlY29uZHMYBiACKAMSIAoVZHVyYXRpb25fbWlsbGlzZWNvbmRzGAcgASgDOgEwEhMKCW5hbWVzcGFjZRgIIAEoCToAEhwKDndhc19zdWNjZXNzZnVsGAkgASgIOgR0cnVlEi8KCmNhbGxfc3RhY2sYCiADKAsyGy5hcHBob3N0aW5nLlN0YWNrRnJhbWVQcm90bxJAChFkYXRhc3RvcmVfZGV0YWlscxgMIAEoCzIlLmFwcGhvc3RpbmcuRGF0YXN0b3JlQ2FsbERldGFpbHNQcm90bxIeChZjYWxsX2Nvc3RfbWljcm9kb2xsYXJzGA0gASgDEi0KCmJpbGxlZF9vcHMYDiADKAsyGS5hcHBob3N0aW5nLkJpbGxlZE9wUHJvdG8i0wMKEFJlcXVlc3RTdGF0UHJvdG8SJAocc3RhcnRfdGltZXN0YW1wX21pbGxpc2Vjb25kcxgBIAIoAxIYCgtodHRwX21ldGhvZBgCIAEoCToDR0VUEhQKCWh0dHBfcGF0aBgDIAEoCToBLxISCgpodHRwX3F1ZXJ5GAQgASgJEhgKC2h0dHBfc3RhdHVzGAUgASgFOgMyMDASHQoVZHVyYXRpb25fbWlsbGlzZWNvbmRzGAYgAigDEhMKC2FwaV9tY3ljbGVzGAcgASgDEhkKEXByb2Nlc3Nvcl9tY3ljbGVzGAggASgDEjUKCXJwY19zdGF0cxgJIAMoCzIiLmFwcGhvc3RpbmcuQWdncmVnYXRlUnBjU3RhdHNQcm90bxIoCgdjZ2lfZW52GGUgAygLMhcuYXBwaG9zdGluZy5LZXlWYWxQcm90bxImCh5vdmVyaGVhZF93YWxsdGltZV9taWxsaXNlY29uZHMYZiABKAMSEgoKdXNlcl9lbWFpbBhnIAEoCRIQCghpc19hZG1pbhhoIAEoCBI9ChBpbmRpdmlkdWFsX3N0YXRzGGsgAygLMiMuYXBwaG9zdGluZy5JbmRpdmlkdWFsUnBjU3RhdHNQcm90b0I4CiNjb20uZ29vZ2xlLmFwcGVuZ2luZS50b29scy5hcHBzdGF0cyABKAJCC1N0YXRzUHJvdG9zSAE="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class KeyValProto(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -299,6 +335,33 @@ class KeyValProto(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_key()): self.set_key(x.key())
     if (x.has_value()): self.set_value(x.value())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.KeyValProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.KeyValProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.KeyValProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.KeyValProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.KeyValProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.KeyValProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -398,6 +461,12 @@ class KeyValProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.KeyValProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KFmFwcGhvc3RpbmcuS2V5VmFsUHJvdG8TGgNrZXkgASgCMAk4AhQTGgV2YWx1ZSACKAIwCTgCFMIBIWFwcGhvc3RpbmcuQWdncmVnYXRlUnBjU3RhdHNQcm90bw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class StackFrameProto(ProtocolBuffer.ProtocolMessage):
   has_class_or_file_name_ = 0
   class_or_file_name_ = ""
@@ -472,6 +541,33 @@ class StackFrameProto(ProtocolBuffer.ProtocolMessage):
     if (x.has_line_number()): self.set_line_number(x.line_number())
     if (x.has_function_name()): self.set_function_name(x.function_name())
     for i in xrange(x.variables_size()): self.add_variables().CopyFrom(x.variables(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.StackFrameProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.StackFrameProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.StackFrameProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.StackFrameProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.StackFrameProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.StackFrameProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -624,6 +720,12 @@ class StackFrameProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StackFrameProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KGmFwcGhvc3RpbmcuU3RhY2tGcmFtZVByb3RvExoSY2xhc3Nfb3JfZmlsZV9uYW1lIAEoAjAJOAIUExoLbGluZV9udW1iZXIgAigAMAU4ARQTGg1mdW5jdGlvbl9uYW1lIAMoAjAJOAIUExoJdmFyaWFibGVzIAQoAjALOANKFmFwcGhvc3RpbmcuS2V5VmFsUHJvdG+jAaoBBWN0eXBlsgEGcHJvdG8ypAEUwgEhYXBwaG9zdGluZy5BZ2dyZWdhdGVScGNTdGF0c1Byb3Rv"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class BilledOpProto(ProtocolBuffer.ProtocolMessage):
 
 
@@ -687,6 +789,33 @@ class BilledOpProto(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_op()): self.set_op(x.op())
     if (x.has_num_ops()): self.set_num_ops(x.num_ops())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.BilledOpProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.BilledOpProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.BilledOpProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.BilledOpProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.BilledOpProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.BilledOpProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -786,6 +915,12 @@ class BilledOpProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.BilledOpProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KGGFwcGhvc3RpbmcuQmlsbGVkT3BQcm90bxMaAm9wIAEoADAFOAJoABQTGgdudW1fb3BzIAIoADAFOAIUc3oIQmlsbGVkT3CLAZIBDkRBVEFTVE9SRV9SRUFEmAEAjAGLAZIBD0RBVEFTVE9SRV9XUklURZgBAYwBiwGSAQ9EQVRBU1RPUkVfU01BTEyYAQKMAYsBkgEOTUFJTF9SRUNJUElFTlSYAQOMAYsBkgEMQ0hBTk5FTF9PUEVOmAEEjAGLAZIBC1hNUFBfU1RBTlpBmAEFjAGLAZIBEENIQU5ORUxfUFJFU0VOQ0WYAQaMAXTCASFhcHBob3N0aW5nLkFnZ3JlZ2F0ZVJwY1N0YXRzUHJvdG8="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
   has_query_kind_ = 0
   query_kind_ = ""
@@ -820,7 +955,7 @@ class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
     if self.query_ancestor_ is None:
       self.lazy_init_lock_.acquire()
       try:
-        if self.query_ancestor_ is None: self.query_ancestor_ = Reference()
+        if self.query_ancestor_ is None: self.query_ancestor_ = google.appengine.datastore.entity_pb.Reference()
       finally:
         self.lazy_init_lock_.release()
     return self.query_ancestor_
@@ -886,7 +1021,7 @@ class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
     return self.keys_read_[i]
 
   def add_keys_read(self):
-    x = Reference()
+    x = google.appengine.datastore.entity_pb.Reference()
     self.keys_read_.append(x)
     return x
 
@@ -902,7 +1037,7 @@ class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
     return self.keys_written_[i]
 
   def add_keys_written(self):
-    x = Reference()
+    x = google.appengine.datastore.entity_pb.Reference()
     self.keys_written_.append(x)
     return x
 
@@ -918,6 +1053,33 @@ class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.get_successful_fetch_size()): self.add_get_successful_fetch(x.get_successful_fetch(i))
     for i in xrange(x.keys_read_size()): self.add_keys_read().CopyFrom(x.keys_read(i))
     for i in xrange(x.keys_written_size()): self.add_keys_written().CopyFrom(x.keys_written(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.DatastoreCallDetailsProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.DatastoreCallDetailsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.DatastoreCallDetailsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.DatastoreCallDetailsProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.DatastoreCallDetailsProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.DatastoreCallDetailsProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1146,6 +1308,12 @@ class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.DatastoreCallDetailsProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KJGFwcGhvc3RpbmcuRGF0YXN0b3JlQ2FsbERldGFpbHNQcm90bxMaCnF1ZXJ5X2tpbmQgASgCMAk4ARQTGg5xdWVyeV9hbmNlc3RvciACKAIwCzgBSh1zdG9yYWdlX29uZXN0b3JlX3YzLlJlZmVyZW5jZaMBqgEFY3R5cGWyAQZwcm90bzKkARQTGhBxdWVyeV90aGlzY3Vyc29yIAMoATAGOAEUExoQcXVlcnlfbmV4dGN1cnNvciAEKAEwBjgBFBMaFGdldF9zdWNjZXNzZnVsX2ZldGNoIAUoADAIOAMUExoJa2V5c19yZWFkIAYoAjALOANKHXN0b3JhZ2Vfb25lc3RvcmVfdjMuUmVmZXJlbmNlowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaDGtleXNfd3JpdHRlbiAHKAIwCzgDSh1zdG9yYWdlX29uZXN0b3JlX3YzLlJlZmVyZW5jZaMBqgEFY3R5cGWyAQZwcm90bzKkARTCASFhcHBob3N0aW5nLkFnZ3JlZ2F0ZVJwY1N0YXRzUHJvdG8="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   has_service_call_name_ = 0
   service_call_name_ = ""
@@ -1373,6 +1541,33 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if (x.has_datastore_details()): self.mutable_datastore_details().MergeFrom(x.datastore_details())
     if (x.has_call_cost_microdollars()): self.set_call_cost_microdollars(x.call_cost_microdollars())
     for i in xrange(x.billed_ops_size()): self.add_billed_ops().CopyFrom(x.billed_ops(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.IndividualRpcStatsProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.IndividualRpcStatsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.IndividualRpcStatsProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.IndividualRpcStatsProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.IndividualRpcStatsProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.IndividualRpcStatsProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -1713,6 +1908,12 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.IndividualRpcStatsProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KImFwcGhvc3RpbmcuSW5kaXZpZHVhbFJwY1N0YXRzUHJvdG8TGhFzZXJ2aWNlX2NhbGxfbmFtZSABKAIwCTgCFBMaFHJlcXVlc3RfZGF0YV9zdW1tYXJ5IAMoAjAJOAEUExoVcmVzcG9uc2VfZGF0YV9zdW1tYXJ5IAQoAjAJOAEUExoLYXBpX21jeWNsZXMgBSgAMAM4ARQTGhBhcGlfbWlsbGlzZWNvbmRzIAsoADADOAEUExoZc3RhcnRfb2Zmc2V0X21pbGxpc2Vjb25kcyAGKAAwAzgCFBMaFWR1cmF0aW9uX21pbGxpc2Vjb25kcyAHKAAwAzgBQgEwowGqAQdkZWZhdWx0sgEBMKQBFBMaCW5hbWVzcGFjZSAIKAIwCTgBQgCjAaoBB2RlZmF1bHSyAQIiIqQBFBMaDndhc19zdWNjZXNzZnVsIAkoADAIOAFCBHRydWWjAaoBB2RlZmF1bHSyAQR0cnVlpAEUExoKY2FsbF9zdGFjayAKKAIwCzgDShphcHBob3N0aW5nLlN0YWNrRnJhbWVQcm90b6MBqgEFY3R5cGWyAQZwcm90bzKkARQTGhFkYXRhc3RvcmVfZGV0YWlscyAMKAIwCzgBSiRhcHBob3N0aW5nLkRhdGFzdG9yZUNhbGxEZXRhaWxzUHJvdG+jAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoWY2FsbF9jb3N0X21pY3JvZG9sbGFycyANKAAwAzgBFBMaCmJpbGxlZF9vcHMgDigCMAs4A0oYYXBwaG9zdGluZy5CaWxsZWRPcFByb3RvowGqAQVjdHlwZbIBBnByb3RvMqQBFMIBIWFwcGhvc3RpbmcuQWdncmVnYXRlUnBjU3RhdHNQcm90bw=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class RequestStatProto(ProtocolBuffer.ProtocolMessage):
   has_start_timestamp_milliseconds_ = 0
   start_timestamp_milliseconds_ = 0
@@ -1951,6 +2152,33 @@ class RequestStatProto(ProtocolBuffer.ProtocolMessage):
     if (x.has_user_email()): self.set_user_email(x.user_email())
     if (x.has_is_admin()): self.set_is_admin(x.is_admin())
     for i in xrange(x.individual_stats_size()): self.add_individual_stats().CopyFrom(x.individual_stats(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.RequestStatProto', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.RequestStatProto')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.RequestStatProto')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.RequestStatProto', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.RequestStatProto', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.RequestStatProto', s)
+
 
   def Equals(self, x):
     if x is self: return 1
@@ -2317,6 +2545,12 @@ class RequestStatProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.RequestStatProto'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2V4dC9hcHBzdGF0cy9kYXRhbW9kZWwucHJvdG8KG2FwcGhvc3RpbmcuUmVxdWVzdFN0YXRQcm90bxMaHHN0YXJ0X3RpbWVzdGFtcF9taWxsaXNlY29uZHMgASgAMAM4AhQTGgtodHRwX21ldGhvZCACKAIwCTgBQgNHRVSjAaoBB2RlZmF1bHSyAQUiR0VUIqQBFBMaCWh0dHBfcGF0aCADKAIwCTgBQgEvowGqAQdkZWZhdWx0sgEDIi8ipAEUExoKaHR0cF9xdWVyeSAEKAIwCTgBFBMaC2h0dHBfc3RhdHVzIAUoADAFOAFCAzIwMKMBqgEHZGVmYXVsdLIBAzIwMKQBFBMaFWR1cmF0aW9uX21pbGxpc2Vjb25kcyAGKAAwAzgCFBMaC2FwaV9tY3ljbGVzIAcoADADOAEUExoRcHJvY2Vzc29yX21jeWNsZXMgCCgAMAM4ARQTGglycGNfc3RhdHMgCSgCMAs4A0ohYXBwaG9zdGluZy5BZ2dyZWdhdGVScGNTdGF0c1Byb3RvowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaB2NnaV9lbnYgZSgCMAs4A0oWYXBwaG9zdGluZy5LZXlWYWxQcm90b6MBqgEFY3R5cGWyAQZwcm90bzKkARQTGh5vdmVyaGVhZF93YWxsdGltZV9taWxsaXNlY29uZHMgZigAMAM4ARQTGgp1c2VyX2VtYWlsIGcoAjAJOAEUExoIaXNfYWRtaW4gaCgAMAg4ARQTGhBpbmRpdmlkdWFsX3N0YXRzIGsoAjALOANKImFwcGhvc3RpbmcuSW5kaXZpZHVhbFJwY1N0YXRzUHJvdG+jAaoBBWN0eXBlsgEGcHJvdG8ypAEUwgEhYXBwaG9zdGluZy5BZ2dyZWdhdGVScGNTdGF0c1Byb3Rv"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 if _extension_runtime:
   pass
 

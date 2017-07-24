@@ -20,31 +20,29 @@
 
 """Allows applications to identify API outages and scheduled downtime.
 
-Some examples:
-  def StoreUploadedProfileImage(self):
-    uploaded_image = self.request.get('img')
-    # If the images API is unavailable, we'll just skip the resize.
-    if CapabilitySet('images').is_enabled():
-      uploaded_image = images.resize(uploaded_image, 64, 64)
-    store(uploaded_image)
+Example::
 
-  def RenderHTMLForm(self):
-    datastore_readonly = CapabilitySet('datastore_v3', capabilities=['write'])
-    if datastore_readonly.is_enabled():
-      # ...render form normally...
-    else:
-      # self.response.out('<p>Not accepting submissions right now: %s</p>' %
-                          datastore_readonly.admin_message())
-      # ...render form with form elements disabled...
+    def StoreUploadedProfileImage(self):
+      uploaded_image = self.request.get('img')
+      # If the images API is unavailable, we'll just skip the resize.
+      if CapabilitySet('images').is_enabled():
+        uploaded_image = images.resize(uploaded_image, 64, 64)
+      store(uploaded_image)
 
-  Individual API wrapper modules should expose CapabilitySet objects
-  for users rather than relying on users to create them.  They may
-  also create convenience methods (e.g. db.IsReadOnly()) that delegate
-  to the relevant CapabilitySet.
+    def RenderHTMLForm(self):
+      datastore_readonly = CapabilitySet('datastore_v3', capabilities=['write'])
+      if datastore_readonly.is_enabled():
+        # ...render form normally...
+      else:
+        # self.response.out('<p>Not accepting submissions right now: %s</p>' %
+                            datastore_readonly.admin_message())
+        # ...render form with form elements disabled...
 
-Classes defined here:
-  CapabilitySet: encapsulates one or more capabilities, allows introspection.
-  UnknownCapabilityError: thrown when an unknown capability is requested.
+
+Individual API wrapper modules should expose `CapabilitySet` objects
+for users rather than relying on users to create them.  They can
+also create convenience methods that delegate to the relevant `CapabilitySet`;
+for example, `db.IsReadOnly()`.
 """
 
 
@@ -75,17 +73,17 @@ class UnknownCapabilityError(Exception):
 class CapabilitySet(object):
   """Encapsulates one or more capabilities.
 
-  Capabilities can either be named explicitly, or inferred from the
-  list of methods provided.  If no capabilities or methods are
-  provided, this will check whether the entire package is enabled.
+  Capabilities can either be named explicitly, or inferred from the list of
+  methods provided. If no capabilities or methods are provided, this will check
+  whether the entire package is enabled.
   """
   def __init__(self, package, capabilities=None, methods=None,
                stub_map=apiproxy_stub_map):
     """Constructor.
 
     Args:
-      capabilities: list of strings
-      methods: list of strings
+      capabilities: List of strings
+      methods: List of strings
     """
     if capabilities is None:
       capabilities = []
@@ -97,13 +95,13 @@ class CapabilitySet(object):
     self._stub_map = stub_map
 
   def is_enabled(self):
-    """Tests whether the capabilities is currently enabled.
+    """Tests whether the capabilities are currently enabled.
 
     Returns:
-      True if API calls that require these capabillities will succeed.
+      `True` if API calls that require these capabillities will succeed.
 
     Raises:
-      UnknownCapabilityError, if a specified capability was not recognized.
+      UnknownCapabilityError: If a specified capability was not recognized.
     """
     config = self._get_status()
     return config.summary_status() in (IsEnabledResponse.DEFAULT,
@@ -112,21 +110,21 @@ class CapabilitySet(object):
                                        IsEnabledResponse.SCHEDULED_NOW)
 
   def will_remain_enabled_for(self, time=60):
-    """Returns true if it will remain enabled for the specified amount of time.
+    """Returns whether a capability will remain enabled.
 
-    DEPRECATED: this method was never fully implemented and is
-    considered deprecated.  Use is_enabled() instead.
+    DEPRECATED: this method was never fully implemented and is considered
+    deprecated. Use `is_enabled()` instead.
 
     Args:
       time: Number of seconds in the future to look when checking for scheduled
-        downtime.
+          downtime.
 
     Returns:
-      True if there is no scheduled downtime for the specified capability
+      `True` if there is no scheduled downtime for the specified capability
       within the amount of time specified.
 
     Raises:
-      UnknownCapabilityError, if a specified capability was not recognized.
+      UnknownCapabilityError: If a specified capability was not recognized.
     """
     warnings.warn('will_remain_enabled_for() is deprecated: '
                   'use is_enabled instead.',
@@ -154,13 +152,14 @@ class CapabilitySet(object):
       return False
 
   def admin_message(self):
-    """Get any administrator notice messages for these capabilities.
+    """Retrieves any administrator notice messages for these capabilities.
 
     Returns:
-      A string containing one or more admin messages, or an empty string.
+      A string containing one or more administrator messages, or an empty
+      string.
 
     Raises:
-      UnknownCapabilityError, if a specified capability was not recognized.
+      UnknownCapabilityError: If a specified capability was not recognized.
     """
     message_list = []
     for config in self._get_status().config_list():
@@ -170,10 +169,10 @@ class CapabilitySet(object):
     return '  '.join(message_list)
 
   def _get_status(self):
-    """Get an IsEnabledResponse for the capabilities listed.
+    """Gets the `IsEnabledResponse` for the capabilities listed.
 
     Returns:
-      IsEnabledResponse for the specified capabilities.
+      `IsEnabledResponse` for the specified capabilities.
 
     Raises:
       UnknownCapabilityError: If an unknown capability was requested.

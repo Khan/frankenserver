@@ -30,15 +30,25 @@ Library for parsing dos.yaml files and working with these in memory.
 
 
 
+import os
 import re
 import google
 import ipaddr
 
-from google.appengine.api import appinfo
-from google.appengine.api import validation
-from google.appengine.api import yaml_builder
-from google.appengine.api import yaml_listener
-from google.appengine.api import yaml_object
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+else:
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+
 
 _DESCRIPTION_REGEX = r'^.{0,499}$'
 

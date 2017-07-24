@@ -34,3 +34,6 @@ class AppConfigNotFoundError(Error):
 class DockerfileError(Error):
   """Raised if a Dockerfile was found along with a non-custom runtime."""
 
+
+class GrpcPortError(Error):
+  """Raised if a grpc port was not allocated as desired."""

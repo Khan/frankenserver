@@ -77,10 +77,10 @@ Example usage:
     entity.put()
 
   # Use default URL and queue name, no task name, execute ASAP.
-  deferred.defer(do_something_later, 20)
+  deferred.defer(do_something_later, my_key, 20)
 
   # Providing non-default task queue arguments
-  deferred.defer(do_something_later, 20, _queue="foo", countdown=60)
+  deferred.defer(do_something_later, my_key, 20, _queue="foo", _countdown=60)
 """
 
 
@@ -97,10 +97,18 @@ import os
 import pickle
 import types
 
-from google.appengine.api import taskqueue
-from google.appengine.ext import db
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp.util import run_wsgi_app
+
+if os.environ.get("APPENGINE_RUNTIME") == "python27":
+  from google.appengine.api import taskqueue
+  from google.appengine.ext import db
+  from google.appengine.ext import webapp
+  from google.appengine.ext.webapp.util import run_wsgi_app
+else:
+  from google.appengine.api import taskqueue
+  from google.appengine.ext import db
+  from google.appengine.ext import webapp
+  from google.appengine.ext.webapp.util import run_wsgi_app
+
 
 
 _DEFAULT_LOG_LEVEL = logging.INFO
@@ -281,9 +289,9 @@ class TaskHandler(webapp.RequestHandler):
   def run_from_request(self):
     """Default behavior for POST requests to deferred handler."""
 
-    if 'X-AppEngine-TaskName' not in self.request.headers:
-      logging.critical('Detected an attempted XSRF attack. The header '
-                       '"X-AppEngine-Taskname" was not set.')
+    if "X-AppEngine-TaskName" not in self.request.headers:
+      logging.error("Detected an attempted XSRF attack. The header "
+                    '"X-AppEngine-Taskname" was not set.')
       self.response.set_status(403)
       return
 
@@ -292,8 +300,8 @@ class TaskHandler(webapp.RequestHandler):
     in_prod = (
         not self.request.environ.get("SERVER_SOFTWARE").startswith("Devel"))
     if in_prod and self.request.environ.get("REMOTE_ADDR") != "0.1.0.2":
-      logging.critical('Detected an attempted XSRF attack. This request did '
-                       'not originate from Task Queue.')
+      logging.error("Detected an attempted XSRF attack. This request did "
+                    "not originate from Task Queue.")
       self.response.set_status(403)
       return
 

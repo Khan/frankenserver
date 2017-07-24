@@ -31,11 +31,11 @@ use google\appengine\UserAppLogGroup;
 
 /**
  * The LogService allows an application to query for request and application
- * logs.  Application logs are added to a the current request log by calling
- * {@link http://php.net/manual/en/function.syslog.php syslog(int $priority,
- * string $message)}. The $priority used when creating the application log is
- * translated into a different scale of severity used by the LogService based
- * on the following mappings,
+ * logs. Application logs are added to a the current request log by calling
+ * <code><a href="https://secure.php.net/manual/en/function.syslog.php">
+ * syslog(int $priority, string $message)</a></code>. The $priority used when
+ * creating the application log is translated into a different scale of severity
+ * used by the LogService based on the following mappings,
  * <ul>
  *   <li>LOG_DEBUG => LogService::LEVEL_DEBUG</li>
  *   <li>LOG_INFO => LogService::LEVEL_INFO</li>

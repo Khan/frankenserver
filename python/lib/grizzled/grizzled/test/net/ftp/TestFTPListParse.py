@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: 30ba7ab5303adb95edaa7bc695c6afaa26fda210 $
 
 """
@@ -11,7 +10,6 @@ Tester.
 
 import time
 
-import google3
 from grizzled.net.ftp.parse import *
 
 # ---------------------------------------------------------------------------

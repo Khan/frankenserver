@@ -647,15 +647,16 @@ class HTTPS(HTTP):
   """
 
   # App Engine Note: The public interface is identical to the interface provided
-  #    in Python 2.7 except that key and certificate files are not supported.
+  # in Python 2.7 except that key, ssl context and certificate files
+  # are not supported.
 
   _connection_class = HTTPSConnection
 
   def __init__(self, host='', port=None, key_file=None, cert_file=None,
-               strict=None):
-    if key_file is not None or cert_file is not None:
+               strict=None, context=None):
+    if key_file is not None or cert_file is not None or context is not None:
       raise NotImplementedError(
-          'key_file and cert_file arguments are not implemented')
+          'key_file, context and cert_file arguments are not implemented')
 
     # provide a default host, pass the X509 cert info
 

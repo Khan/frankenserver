@@ -66,15 +66,17 @@ A few caveats:
 
 
 
-import google
+import Cookie
+import hashlib
+import httplib
 import os
 import pickle
 import random
 import sys
 import thread
 import threading
+import google
 import yaml
-import hashlib
 
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -94,8 +96,9 @@ else:
 
 from google.appengine.tools import appengine_rpc
 
-
 _REQUEST_ID_HEADER = 'HTTP_X_APPENGINE_REQUEST_ID'
+_DEVAPPSERVER_LOGIN_COOKIE = 'test@example.com:True:'
+TIMEOUT_SECONDS = 10
 
 
 class Error(Exception):
@@ -108,6 +111,10 @@ class ConfigurationError(Error):
 
 class UnknownJavaServerError(Error):
   """Exception for exceptions returned from a Java remote_api handler."""
+
+
+class MissingGrpcProxyPortError(Error):
+  """Exception for missing grpc proxy port."""
 
 
 def GetUserAgent():
@@ -170,19 +177,29 @@ class RemoteStub(object):
 
   _local = threading.local()
 
-  def __init__(self, server, path, _test_stub_map=None):
+  def __init__(self,
+               server,
+               path,
+               _test_stub_map=None,
+               grpc_apis=(),
+               grpc_proxy_port=None):
     """Constructs a new RemoteStub that communicates with the specified server.
 
     Args:
       server: An instance of a subclass of
         google.appengine.tools.appengine_rpc.AbstractRpcServer.
       path: The path to the handler this stub should send requests to.
+      _test_stub_map: If supplied, send RPC calls to stubs in this map instead
+        of over the wire.
+      grpc_apis: an iterable of strings representing APIs that use grpc. If
+        'all' is in the list, then every API speaks grpc.
+      grpc_proxy_port: Int, the port on which grpc proxy server listens.
     """
-
-
     self._server = server
     self._path = path
     self._test_stub_map = _test_stub_map
+    self._grpc_apis = grpc_apis
+    self._grpc_proxy_port = grpc_proxy_port
 
   def _PreHookHandler(self, service, call, request, response):
     pass
@@ -213,18 +230,25 @@ class RemoteStub(object):
     cls._local.request_id = request_id
 
   def _MakeRealSyncCall(self, service, call, request, response):
+    """Constructs, sends and receives remote_api.proto & grpc_service.proto."""
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
     request_pb.set_request(request.Encode())
     if hasattr(self._local, 'request_id'):
-
-
       request_pb.set_request_id(self._local.request_id)
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()
-    encoded_response = self._server.Send(self._path, encoded_request)
+    if service in self._grpc_apis or 'all' in self._grpc_apis:
+      if not self._grpc_proxy_port:
+        raise MissingGrpcProxyPortError()
+      conn = httplib.HTTPConnection('localhost', self._grpc_proxy_port)
+      conn.request('POST', '', encoded_request)
+      encoded_response = conn.getresponse().read()
+    else:
+      encoded_response = self._server.Send(self._path, encoded_request)
+
     response_pb.ParseFromString(encoded_response)
 
     if response_pb.has_application_error():
@@ -234,13 +258,28 @@ class RemoteStub(object):
     elif response_pb.has_exception():
       raise pickle.loads(response_pb.exception())
     elif response_pb.has_java_exception():
-      raise UnknownJavaServerError("An unknown error has occured in the "
-                                   "Java remote_api handler for this call.")
+      raise UnknownJavaServerError('An unknown error has occured in the '
+                                   'Java remote_api handler for this call.')
     else:
       response.ParseFromString(response_pb.response())
 
   def CreateRPC(self):
     return apiproxy_rpc.RPC(stub=self)
+
+  def SetConsistencyPolicy(self, policy):
+    """This is for passing ndb.metadata_test.MetadataTests.HRTest.
+
+    The scenario for this test is: running ndb unittest aginst apiserver + cloud
+    datastore emulator. The tests triggers stub.SetConsistencyPolicy, which is
+    implemented by datastore v3 stubs. See
+    //apphosting/datastore/datastore_stub_util.py for the original method
+    definition. We don't want to change the tests, just add this fake method to
+    pass them. For more details please refer to b/62039789.
+
+    Args:
+      policy: A obj inheriting from BaseConsistencyPolicy.
+    """
+    pass
 
 
 class RemoteDatastoreStub(RemoteStub):
@@ -580,9 +619,14 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
   return app_info['app_id']
 
 
-def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
+def ConfigureRemoteApiFromServer(server,
+                                 path,
+                                 app_id,
+                                 services=None,
+                                 apiproxy=None,
                                  default_auth_domain=None,
-                                 use_remote_datastore=True):
+                                 use_remote_datastore=True,
+                                 **kwargs):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Args:
@@ -592,12 +636,15 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
     app_id: The app_id of your app, as declared in app.yaml.
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
+    apiproxy: An apiproxy_stub_map.APIProxyStubMap object. Supplied when there's
+      already a apiproxy stub map set up. One example use case is when testbed
+      configures remote_api for part of the APIs.
     default_auth_domain: The authentication domain to use by default.
     use_remote_datastore: Whether to use RemoteDatastoreStub instead of passing
       through datastore requests. RemoteDatastoreStub batches transactional
       datastore requests since, in production, datastore requires are scoped to
       a single request.
-
+    **kwargs: Additional kwargs to pass to RemoteStub constructor.
   Raises:
     urllib2.HTTPError: if app_id is not provided and there is an error while
       retrieving it.
@@ -614,12 +661,13 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
 
   os.environ['APPLICATION_ID'] = app_id
   os.environ.setdefault('AUTH_DOMAIN', default_auth_domain or 'gmail.com')
-  apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
+  if not apiproxy:
+    apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
   if 'datastore_v3' in services and use_remote_datastore:
     services.remove('datastore_v3')
     datastore_stub = RemoteDatastoreStub(server, path)
     apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
-  stub = RemoteStub(server, path)
+  stub = RemoteStub(server, path, **kwargs)
   for service in services:
     apiproxy_stub_map.apiproxy.RegisterStub(service, stub)
 
@@ -745,7 +793,8 @@ def ConfigureRemoteApiForOAuth(
             _OAUTH_SCOPES)
     else:
       credentials = client.GoogleCredentials.get_application_default()
-      credentials = credentials.create_scoped(_OAUTH_SCOPES)
+      if credentials and credentials.create_scoped_required():
+        credentials = credentials.create_scoped(_OAUTH_SCOPES)
 
 
     oauth2_parameters = (
@@ -777,10 +826,12 @@ def ConfigureRemoteApi(app_id,
                        rtok=None,
                        secure=False,
                        services=None,
+                       apiproxy=None,
                        default_auth_domain=None,
                        save_cookies=False,
                        auth_tries=3,
-                       use_remote_datastore=True):
+                       use_remote_datastore=True,
+                       **kwargs):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
@@ -795,10 +846,13 @@ def ConfigureRemoteApi(app_id,
     app_id: The app_id of your app, as declared in app.yaml, or None.
     path: The path to the remote_api handler for your app
       (for example, '/_ah/remote_api').
-    auth_func: A function that takes no arguments and returns a
+    auth_func: If rpc_server_factory=appengine_rpc.HttpRpcServer, auth_func is
+      a function that takes no arguments and returns a
       (username, password) tuple. This will be called if your application
       requires authentication to access the remote_api handler (it should!)
       and you do not already have a valid auth cookie.
+      If rpc_server_factory=appengine_rpc_httplib2.HttpRpcServerOAuth2,
+      auth_func is appengine_rpc_httplib2.HttpRpcServerOAuth2.OAuth2Parameters.
     servername: The hostname your app is deployed on. Defaults to
       <app_id>.appspot.com.
     rpc_server_factory: A factory to construct the rpc server for the datastore.
@@ -807,6 +861,9 @@ def ConfigureRemoteApi(app_id,
     secure: Use SSL when communicating with the server.
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
+    apiproxy: An apiproxy_stub_map.APIProxyStubMap object. Supplied when there's
+      already a apiproxy stub map set up. One example use case is when testbed
+      configures remote_api for part of the APIs.
     default_auth_domain: The authentication domain to use by default.
     save_cookies: Forwarded to rpc_server_factory function.
     auth_tries: Number of attempts to make to authenticate.
@@ -814,7 +871,7 @@ def ConfigureRemoteApi(app_id,
       through datastore requests. RemoteDatastoreStub batches transactional
       datastore requests since, in production, datastore requires are scoped to
       a single request.
-
+    **kwargs: Additional kwargs to pass to ConfigureRemoteApiFromServer.
   Returns:
     server, the server created by rpc_server_factory, which may be useful for
       calling the application directly.
@@ -828,15 +885,28 @@ def ConfigureRemoteApi(app_id,
     raise ConfigurationError('app_id or servername required')
   if not servername:
     servername = '%s.appspot.com' % (app_id,)
+  extra_headers = {}
+  if servername.startswith('localhost'):
+
+
+
+
+
+    cookie = Cookie.SimpleCookie()
+    cookie['dev_appserver_login'] = _DEVAPPSERVER_LOGIN_COOKIE
+    extra_headers['COOKIE'] = cookie['dev_appserver_login'].OutputString()
   server = rpc_server_factory(
       servername, auth_func, GetUserAgent(), GetSourceName(),
-      save_cookies=save_cookies, auth_tries=auth_tries, debug_data=False,
-      secure=secure)
+      extra_headers=extra_headers, save_cookies=save_cookies,
+      auth_tries=auth_tries, debug_data=False, secure=secure)
   if not app_id:
     app_id = GetRemoteAppIdFromServer(server, path, rtok)
 
-  ConfigureRemoteApiFromServer(server, path, app_id, services,
-                               default_auth_domain, use_remote_datastore)
+  ConfigureRemoteApiFromServer(
+      server, path, app_id, services=services, apiproxy=apiproxy,
+      default_auth_domain=default_auth_domain,
+      use_remote_datastore=use_remote_datastore,
+      **kwargs)
   return server
 
 

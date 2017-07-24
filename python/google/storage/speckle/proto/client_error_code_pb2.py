@@ -36,9 +36,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage/speckle/proto/client_error_code.proto',
   package='speckle.sql',
   syntax='proto2',
-  serialized_pb=_b('\n-storage/speckle/proto/client_error_code.proto\x12\x0bspeckle.sql\"\xdf\t\n\x15SqlServiceClientError\"\xc5\t\n\x0f\x43lientErrorCode\x12\x06\n\x02OK\x10\x00\x12\x13\n\x0fTRANSIENT_ERROR\x10\x01\x12\x12\n\x0eINTERNAL_ERROR\x10\x02\x12\x13\n\x0fINVALID_REQUEST\x10\x03\x12\x16\n\x12\x44\x45PRECATED_TIMEOUT\x10\x04\x12\x1d\n\x19\x44\x45PRECATED_NOT_AUTHORIZED\x10\x05\x12\x1a\n\x16\x44\x45PRECATED_RDBMS_ERROR\x10\x06\x12\"\n\x1d\x45RROR_PUBLIC_ERROR_CODE_START\x10\xe8\x07\x12\x10\n\x0b\x45RROR_RDBMS\x10\xe9\x07\x12\x12\n\rERROR_TIMEOUT\x10\xea\x07\x12\x19\n\x14\x45RROR_NOT_AUTHORIZED\x10\xeb\x07\x12\x1d\n\x18\x45RROR_INSTANCE_SUSPENDED\x10\xec\x07\x12\x1c\n\x17\x45RROR_INVALID_PARAMETER\x10\xed\x07\x12\"\n\x1d\x45RROR_NOT_ALL_VARIABLES_BOUND\x10\xee\x07\x12\x1d\n\x18\x45RROR_UNKNOWN_CONNECTION\x10\xef\x07\x12\x1c\n\x17\x45RROR_UNKNOWN_STATEMENT\x10\xf0\x07\x12\x1a\n\x15\x45RROR_UNKNOWN_CATALOG\x10\xf1\x07\x12\x19\n\x14\x45RROR_UNKNOWN_CURSOR\x10\xf2\x07\x12\x1b\n\x16\x45RROR_CURSOR_EXHAUSTED\x10\xfc\x07\x12\x1e\n\x19\x45RROR_NOT_YET_IMPLEMENTED\x10\x86\x08\x12\x1a\n\x15\x45RROR_NOT_IMPLEMENTED\x10\x87\x08\x12\x1f\n\x1a\x45RROR_INSTANCE_MAINTENANCE\x10\x88\x08\x12\'\n\"ERROR_TOO_MANY_CONCURRENT_REQUESTS\x10\x89\x08\x12\"\n\x1d\x45RROR_RESOURCE_DOES_NOT_EXIST\x10\x8a\x08\x12\"\n\x1d\x45RROR_RESOURCE_ALREADY_EXISTS\x10\x8b\x08\x12\x1c\n\x17\x45RROR_CONNECTION_IN_USE\x10\x8c\x08\x12!\n\x1c\x45RROR_CLIENT_VERSION_TOO_OLD\x10\x8d\x08\x12\x1b\n\x16\x45RROR_RESPONSE_PENDING\x10\x8e\x08\x12(\n#ERROR_INSTANCE_SUSPENDED_BY_BILLING\x10\x8f\x08\x12\x1e\n\x19\x45RROR_RESULTSET_TOO_LARGE\x10\x90\x08\x12)\n$ERROR_ACTIVATION_POLICY_SET_TO_NEVER\x10\x91\x08\x12&\n!ERROR_INSTANCE_SUSPENDED_BY_LEGAL\x10\x92\x08\x12\x19\n\x14\x45RROR_QUOTA_EXCEEDED\x10\x93\x08\x12\x32\n-ERROR_INVALID_BINLOG_COORDINATES_IN_DUMP_FILE\x10\x94\x08\x12,\n\'ERROR_GAE_APP_CONNECTION_LIMIT_EXCEEDED\x10\x95\x08\x12\x1b\n\x16\x45RROR_INSTANCE_DELETED\x10\x96\x08\x12%\n ERROR_UNABLE_TO_SERVE_CONNECTION\x10\x97\x08\x12\x1e\n\x19\x45RROR_UNSUPPORTED_BACKEND\x10\x98\x08\x12\x18\n\x13\x45RROR_TLS_HANDSHAKE\x10\x99\x08\x42%\n\x1b\x63om.google.protos.cloud.sql\x10\x02 \x02(\x02P\x01')
+  serialized_pb=_b('\n-storage/speckle/proto/client_error_code.proto\x12\x0bspeckle.sql\"\xbe\x0b\n\x15SqlServiceClientError\"\xa4\x0b\n\x0f\x43lientErrorCode\x12\x06\n\x02OK\x10\x00\x12\x13\n\x0fTRANSIENT_ERROR\x10\x01\x12\x12\n\x0eINTERNAL_ERROR\x10\x02\x12\x13\n\x0fINVALID_REQUEST\x10\x03\x12\x16\n\x12\x44\x45PRECATED_TIMEOUT\x10\x04\x12\x1d\n\x19\x44\x45PRECATED_NOT_AUTHORIZED\x10\x05\x12\x1a\n\x16\x44\x45PRECATED_RDBMS_ERROR\x10\x06\x12\"\n\x1d\x45RROR_PUBLIC_ERROR_CODE_START\x10\xe8\x07\x12\x10\n\x0b\x45RROR_RDBMS\x10\xe9\x07\x12\x12\n\rERROR_TIMEOUT\x10\xea\x07\x12\x19\n\x14\x45RROR_NOT_AUTHORIZED\x10\xeb\x07\x12\x1d\n\x18\x45RROR_INSTANCE_SUSPENDED\x10\xec\x07\x12\x1c\n\x17\x45RROR_INVALID_PARAMETER\x10\xed\x07\x12\"\n\x1d\x45RROR_NOT_ALL_VARIABLES_BOUND\x10\xee\x07\x12\x1d\n\x18\x45RROR_UNKNOWN_CONNECTION\x10\xef\x07\x12\x1c\n\x17\x45RROR_UNKNOWN_STATEMENT\x10\xf0\x07\x12\x1a\n\x15\x45RROR_UNKNOWN_CATALOG\x10\xf1\x07\x12\x19\n\x14\x45RROR_UNKNOWN_CURSOR\x10\xf2\x07\x12\x1b\n\x16\x45RROR_CURSOR_EXHAUSTED\x10\xfc\x07\x12\x1e\n\x19\x45RROR_NOT_YET_IMPLEMENTED\x10\x86\x08\x12\x1a\n\x15\x45RROR_NOT_IMPLEMENTED\x10\x87\x08\x12\x1f\n\x1a\x45RROR_INSTANCE_MAINTENANCE\x10\x88\x08\x12\'\n\"ERROR_TOO_MANY_CONCURRENT_REQUESTS\x10\x89\x08\x12\"\n\x1d\x45RROR_RESOURCE_DOES_NOT_EXIST\x10\x8a\x08\x12\"\n\x1d\x45RROR_RESOURCE_ALREADY_EXISTS\x10\x8b\x08\x12\x1c\n\x17\x45RROR_CONNECTION_IN_USE\x10\x8c\x08\x12!\n\x1c\x45RROR_CLIENT_VERSION_TOO_OLD\x10\x8d\x08\x12\x1b\n\x16\x45RROR_RESPONSE_PENDING\x10\x8e\x08\x12(\n#ERROR_INSTANCE_SUSPENDED_BY_BILLING\x10\x8f\x08\x12\x1e\n\x19\x45RROR_RESULTSET_TOO_LARGE\x10\x90\x08\x12)\n$ERROR_ACTIVATION_POLICY_SET_TO_NEVER\x10\x91\x08\x12&\n!ERROR_INSTANCE_SUSPENDED_BY_LEGAL\x10\x92\x08\x12\x19\n\x14\x45RROR_QUOTA_EXCEEDED\x10\x93\x08\x12\x32\n-ERROR_INVALID_BINLOG_COORDINATES_IN_DUMP_FILE\x10\x94\x08\x12,\n\'ERROR_GAE_APP_CONNECTION_LIMIT_EXCEEDED\x10\x95\x08\x12\x1b\n\x16\x45RROR_INSTANCE_DELETED\x10\x96\x08\x12\x30\n+DEPRECATED_ERROR_UNABLE_TO_SERVE_CONNECTION\x10\x97\x08\x12)\n$DEPRECATED_ERROR_UNSUPPORTED_BACKEND\x10\x98\x08\x12#\n\x1e\x44\x45PRECATED_ERROR_TLS_HANDSHAKE\x10\x99\x08\x12\x33\n.DEPRECATED_ERROR_BACKEND_ADDRESS_LOOKUP_FAILED\x10\x9a\x08\x12+\n&DEPRECATED_ERROR_BACKEND_NOT_REACHABLE\x10\x9b\x08\x12%\n DEPRECATED_ERROR_IAM_RPC_FAILURE\x10\x9c\x08\x12\x33\n.DEPRECATED_ERROR_TOO_MANY_LOOKUP_INSTANCE_RPCS\x10\x9d\x08\x42%\n\x1b\x63om.google.protos.cloud.sql\x10\x02 \x02(\x02P\x01')
 )
-_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -193,22 +192,38 @@ _SQLSERVICECLIENTERROR_CLIENTERRORCODE = _descriptor.EnumDescriptor(
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ERROR_UNABLE_TO_SERVE_CONNECTION', index=36, number=1047,
+      name='DEPRECATED_ERROR_UNABLE_TO_SERVE_CONNECTION', index=36, number=1047,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ERROR_UNSUPPORTED_BACKEND', index=37, number=1048,
+      name='DEPRECATED_ERROR_UNSUPPORTED_BACKEND', index=37, number=1048,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ERROR_TLS_HANDSHAKE', index=38, number=1049,
+      name='DEPRECATED_ERROR_TLS_HANDSHAKE', index=38, number=1049,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DEPRECATED_ERROR_BACKEND_ADDRESS_LOOKUP_FAILED', index=39, number=1050,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DEPRECATED_ERROR_BACKEND_NOT_REACHABLE', index=40, number=1051,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DEPRECATED_ERROR_IAM_RPC_FAILURE', index=41, number=1052,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DEPRECATED_ERROR_TOO_MANY_LOOKUP_INSTANCE_RPCS', index=42, number=1053,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
   serialized_start=89,
-  serialized_end=1310,
+  serialized_end=1533,
 )
 _sym_db.RegisterEnumDescriptor(_SQLSERVICECLIENTERROR_CLIENTERRORCODE)
 
@@ -234,11 +249,12 @@ _SQLSERVICECLIENTERROR = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=63,
-  serialized_end=1310,
+  serialized_end=1533,
 )
 
 _SQLSERVICECLIENTERROR_CLIENTERRORCODE.containing_type = _SQLSERVICECLIENTERROR
 DESCRIPTOR.message_types_by_name['SqlServiceClientError'] = _SQLSERVICECLIENTERROR
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 SqlServiceClientError = _reflection.GeneratedProtocolMessageType('SqlServiceClientError', (_message.Message,), dict(
   DESCRIPTOR = _SQLSERVICECLIENTERROR,

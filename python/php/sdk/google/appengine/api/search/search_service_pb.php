@@ -5593,6 +5593,23 @@ namespace google\appengine {
     public function hasFacetDepth() {
       return isset($this->facet_depth);
     }
+    public function getEnableQueryRewrite() {
+      if (!isset($this->enable_query_rewrite)) {
+        return false;
+      }
+      return $this->enable_query_rewrite;
+    }
+    public function setEnableQueryRewrite($val) {
+      $this->enable_query_rewrite = $val;
+      return $this;
+    }
+    public function clearEnableQueryRewrite() {
+      unset($this->enable_query_rewrite);
+      return $this;
+    }
+    public function hasEnableQueryRewrite() {
+      return isset($this->enable_query_rewrite);
+    }
     public function clear() {
       $this->clearIndexSpec();
       $this->clearQuery();
@@ -5611,6 +5628,7 @@ namespace google\appengine {
       $this->clearFacetRefinement();
       $this->clearFacetAutoDetectParam();
       $this->clearFacetDepth();
+      $this->clearEnableQueryRewrite();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -5683,6 +5701,9 @@ namespace google\appengine {
       if (isset($this->facet_depth)) {
         $res += 2;
         $res += $this->lengthVarInt64($this->facet_depth);
+      }
+      if (isset($this->enable_query_rewrite)) {
+        $res += 3;
       }
       return $res;
     }
@@ -5765,6 +5786,10 @@ namespace google\appengine {
         $out->putVarInt32(152);
         $out->putVarInt32($this->facet_depth);
       }
+      if (isset($this->enable_query_rewrite)) {
+        $out->putVarInt32(160);
+        $out->putBoolean($this->enable_query_rewrite);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -5846,6 +5871,9 @@ namespace google\appengine {
           case 152:
             $this->setFacetDepth($d->getVarInt32());
             break;
+          case 160:
+            $this->setEnableQueryRewrite($d->getBoolean());
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -5924,6 +5952,9 @@ namespace google\appengine {
       if ($x->hasFacetDepth()) {
         $this->setFacetDepth($x->getFacetDepth());
       }
+      if ($x->hasEnableQueryRewrite()) {
+        $this->setEnableQueryRewrite($x->getEnableQueryRewrite());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -5967,6 +5998,8 @@ namespace google\appengine {
       if (isset($this->facet_auto_detect_param) && !$this->facet_auto_detect_param->equals($x->facet_auto_detect_param)) return false;
       if (isset($this->facet_depth) !== isset($x->facet_depth)) return false;
       if (isset($this->facet_depth) && !$this->integerEquals($this->facet_depth, $x->facet_depth)) return false;
+      if (isset($this->enable_query_rewrite) !== isset($x->enable_query_rewrite)) return false;
+      if (isset($this->enable_query_rewrite) && $this->enable_query_rewrite !== $x->enable_query_rewrite) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6021,6 +6054,9 @@ namespace google\appengine {
       }
       if (isset($this->facet_depth)) {
         $res .= $prefix . "facet_depth: " . $this->debugFormatInt32($this->facet_depth) . "\n";
+      }
+      if (isset($this->enable_query_rewrite)) {
+        $res .= $prefix . "enable_query_rewrite: " . $this->debugFormatBool($this->enable_query_rewrite) . "\n";
       }
       return $res;
     }

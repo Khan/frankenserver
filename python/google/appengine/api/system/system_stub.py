@@ -45,6 +45,10 @@ class SystemServiceStub(apiproxy_stub.APIProxyStub):
 
   _ACCEPTS_REQUEST_ID = True
 
+
+
+  THREADSAFE = False
+
   def __init__(self, default_cpu=None, default_memory=None, request_data=None):
     """Constructor.
 

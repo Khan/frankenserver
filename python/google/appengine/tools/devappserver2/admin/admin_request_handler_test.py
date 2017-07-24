@@ -27,7 +27,7 @@ import google
 import mox
 import webapp2
 
-from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2 import metrics
 from google.appengine.tools.devappserver2.admin import admin_request_handler
 
 
@@ -119,26 +119,56 @@ class ConstructUrlTest(unittest.TestCase):
                      urlparse.parse_qs(parsed_url.query))
 
 
-class GetSDKVersionTest(unittest.TestCase):
-  """Tests for _get_sdk_version."""
+class MyAdminServerHandler(admin_request_handler.AdminRequestHandler):
+  """Dummy class used for testing in AdminRequestHandlerMetricsLoggingTest."""
+
+  def get(self):
+    super(MyAdminServerHandler, self).get()
+
+  def post(self):
+    super(MyAdminServerHandler, self).post()
+
+
+class AdminRequestHandlerMetricsLoggingTest(unittest.TestCase):
+  """Tests for metrics logging in AdminRequestHandler.get and .post."""
 
   def setUp(self):
     self.mox = mox.Mox()
+    self.mox.StubOutWithMock(metrics._MetricsLogger, 'LogOnceOnStop')
 
   def tearDown(self):
     self.mox.UnsetStubs()
 
-  def test_version_file_exists(self):
-    self.assertNotEqual(admin_request_handler._DEFAULT_SDK_VERSION,
-                        admin_request_handler._get_sdk_version())
-
-  def test_version_file_missing(self):
-    self.mox.StubOutWithMock(sdk_update_checker, 'GetVersionObject')
-    sdk_update_checker.GetVersionObject().AndReturn(None)
-
+  def test_get(self):
+    handler = admin_request_handler.AdminRequestHandler(None, None)
+    metrics._MetricsLogger().LogOnceOnStop(
+        'admin-console', 'AdminRequestHandler.get')
     self.mox.ReplayAll()
-    self.assertEqual(admin_request_handler._DEFAULT_SDK_VERSION,
-                     admin_request_handler._get_sdk_version())
+    handler.get()
+    self.mox.VerifyAll()
+
+  def test_post(self):
+    handler = admin_request_handler.AdminRequestHandler(None, None)
+    metrics._MetricsLogger().LogOnceOnStop(
+        'admin-console', 'AdminRequestHandler.post')
+    self.mox.ReplayAll()
+    handler.post()
+    self.mox.VerifyAll()
+
+  def test_get_with_subclassed_handler(self):
+    handler = MyAdminServerHandler(None, None)
+    metrics._MetricsLogger().LogOnceOnStop(
+        'admin-console', 'MyAdminServerHandler.get')
+    self.mox.ReplayAll()
+    handler.get()
+    self.mox.VerifyAll()
+
+  def test_post_with_subclassed_handler(self):
+    handler = MyAdminServerHandler(None, None)
+    metrics._MetricsLogger().LogOnceOnStop(
+        'admin-console', 'MyAdminServerHandler.post')
+    self.mox.ReplayAll()
+    handler.post()
     self.mox.VerifyAll()
 
 

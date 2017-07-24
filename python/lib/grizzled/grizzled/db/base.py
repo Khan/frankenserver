@@ -1,4 +1,4 @@
-# $Id: 969e4c5fd51bb174563d06c1357489c2742813ec $
+# $Id: 7ca80da449a1ff0fe685752216092c2bb4b04324 $
 
 """
 Base classes for enhanced DB drivers.
@@ -119,9 +119,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__cursor.close()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def execute(self, statement, parameters=None):
@@ -153,9 +153,9 @@ class Cursor(object):
                 self.__rowcount = -1
             self.__description = self.__cursor.description
             return result
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
         except:
             raise Error(sys.exc_info()[1])
@@ -182,9 +182,9 @@ class Cursor(object):
             self.__rowcount = self.__cursor.rowcount
             self.__description = self.__cursor.description
             return result
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     executeMany = executemany
@@ -203,9 +203,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__cursor.fetchone()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def fetchall(self):
@@ -222,9 +222,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__cursor.fetchall()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     fetchAll = fetchall
@@ -248,9 +248,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             self.__cursor.fetchmany(n)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     fetchMany = fetchmany
@@ -278,9 +278,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__driver.get_rdbms_metadata(self.__cursor)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def get_table_metadata(self, table):
@@ -322,9 +322,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__driver.get_table_metadata(table, self.__cursor)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def get_index_metadata(self, table):
@@ -356,9 +356,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__driver.get_index_metadata(table, self.__cursor)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def get_tables(self):
@@ -377,9 +377,9 @@ class Cursor(object):
         dbi = self.__driver.get_import()
         try:
             return self.__driver.get_tables(self.__cursor)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
 class DB(object):
@@ -608,9 +608,9 @@ class DB(object):
         dbi = self.__driver.get_import()
         try:
             return Cursor(self.__db.cursor(), self.__driver)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def commit(self):
@@ -623,9 +623,9 @@ class DB(object):
         dbi = self.__driver.get_import()
         try:
             self.__db.commit()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def rollback(self):
@@ -638,9 +638,9 @@ class DB(object):
         dbi = self.__driver.get_import()
         try:
             self.__db.rollback()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     def close(self):
@@ -653,9 +653,9 @@ class DB(object):
         dbi = self.__driver.get_import()
         try:
             self.__db.close()
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
 class DBDriver(object):
@@ -735,9 +735,9 @@ class DBDriver(object):
                                        password=password,
                                        database=database)
             return DB(self.__db, self)
-        except dbi.Warning, val:
+        except dbi.Warning as val:
             raise Warning(val)
-        except dbi.Error, val:
+        except dbi.Error as val:
             raise Error(val)
 
     @abstract
@@ -959,7 +959,7 @@ class DBDriver(object):
         :raise Error: bad table name
         """
         if not self._is_valid_table(cursor, table_name):
-            raise Error, 'No such table: "%s"' % table_name
+            raise Error('No such table: "{0}"'.format(table_name))
 
     def _is_valid_table(self, cursor, table_name):
         """

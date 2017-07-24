@@ -38,7 +38,6 @@ from google.appengine.api.images import images_service_pb
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.memcache import memcache_service_pb
 from google.appengine.api.modules import modules_service_pb
-from google.appengine.api.prospective_search import prospective_search_pb
 from google.appengine.api.remote_socket import remote_socket_service_pb
 from google.appengine.api.search import search_service_pb
 from google.appengine.api.system import system_service_pb
@@ -153,18 +152,6 @@ SERVICE_PB_MAP = {
     'mail': {
         'Send': (mail_service_pb.MailMessage, api_base_pb.VoidProto),
         'SendToAdmins': (mail_service_pb.MailMessage, api_base_pb.VoidProto),
-    },
-    'matcher': {
-        'Subscribe': (prospective_search_pb.SubscribeRequest,
-                      prospective_search_pb.SubscribeResponse),
-        'Unsubscribe': (prospective_search_pb.UnsubscribeRequest,
-                        prospective_search_pb.UnsubscribeResponse),
-        'ListSubscriptions': (prospective_search_pb.ListSubscriptionsRequest,
-                              prospective_search_pb.ListSubscriptionsResponse),
-        'ListTopics': (prospective_search_pb.ListTopicsRequest,
-                       prospective_search_pb.ListTopicsResponse),
-        'Match': (prospective_search_pb.MatchRequest,
-                  prospective_search_pb.MatchResponse),
     },
     'memcache': {
         'Get': (memcache_service_pb.MemcacheGetRequest,
@@ -311,8 +298,6 @@ SERVICE_PB_MAP = {
                             user_service_pb.CreateLogoutURLResponse),
         'GetOAuthUser': (user_service_pb.GetOAuthUserRequest,
                          user_service_pb.GetOAuthUserResponse),
-        'CheckOAuthSignature': (user_service_pb.CheckOAuthSignatureRequest,
-                                user_service_pb.CheckOAuthSignatureResponse),
     },
     'xmpp': {
         'GetPresence': (xmpp_service_pb.PresenceRequest,

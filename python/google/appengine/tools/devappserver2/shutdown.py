@@ -58,9 +58,15 @@ def wait_until_shutdown():
 
 
 def install_signal_handlers():
-  """Installs a signal handler for SIGTERM and SIGINT to do orderly shutdown."""
+  """Installs a signal handler to do orderly shutdown."""
   signal.signal(signal.SIGTERM, _async_terminate)
   signal.signal(signal.SIGINT, _async_terminate)
+
+  # Following signals are platform dependent
+  # we add all GNU termination signals except SIGKILL, which cannot be handled.
+  for sig in ['SIGHUP', 'SIGQUIT']:
+    if hasattr(signal, sig):
+      signal.signal(getattr(signal, sig), _async_terminate)
 
 
 def shutting_down():

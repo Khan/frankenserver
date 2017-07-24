@@ -18,7 +18,6 @@
 
 
 
-
 """SQlite-based stub for the Python datastore API.
 
 Entities are stored in an sqlite database in a similar fashion to the production
@@ -531,6 +530,7 @@ class NamespacePseudoKind(object):
     records = map(datastore_stub_util.EntityRecord, namespace_entities)
     return datastore_stub_util._ExecuteQuery(records, query, [], [], [])
 
+
 class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
                           apiproxy_stub.APIProxyStub,
                           datastore_stub_util.DatastoreStub):
@@ -548,6 +548,9 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
   READ_ERROR_MSG = ('Data in %s is corrupt or a different version. '
                     'Try running with the --clear_datastore flag.\n%r')
+
+
+  THREADSAFE = False
 
   def __init__(self,
                app_id,
@@ -900,11 +903,14 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     Returns:
       The number of rows deleted.
     """
+    num_rows_deleted = 0
     keys = sorted((x.app(), x.name_space(), x) for x in keys)
     for (app_id, ns), group in itertools.groupby(keys, lambda x: x[:2]):
       path_strings = [self.__EncodeIndexPB(x[2].path()) for x in group]
       prefix = self._GetTablePrefix((app_id, ns))
-      return self.__DeleteRows(conn, path_strings, '%s!%s' % (prefix, table))
+      num_rows_deleted += self.__DeleteRows(conn, path_strings,
+                                            '%s!%s' % (prefix, table))
+    return num_rows_deleted
 
   def __DeleteIndexEntries(self, conn, keys):
     """Deletes entities from the index.
@@ -1406,7 +1412,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       assert c.rowcount == 1
     else:
 
-      start = next_id;
+      start = next_id
       next_id += size
       block_size -= size
       id_map[prefix] = (next_id, block_size)
@@ -1414,7 +1420,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     return start, end
 
   def __AdvanceIdCounter(self, conn, prefix, max_id, table):
-    datastore_stub_util.Check(max_id >=0,
+    datastore_stub_util.Check(max_id >= 0,
                               'Max must be greater than or equal to 0.')
     c = conn.execute('SELECT next_id FROM %s WHERE prefix = ? LIMIT 1'
                      % table, (prefix,))

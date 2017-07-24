@@ -3968,9 +3968,9 @@ def to_dict(model_instance, dictionary=None):
       dictionary.update.  If dictionary is None, a new dictionary instance is
       created and returned.
 
-    Returns:
-      New dictionary appropriate populated with model instances values
-      if entity is None, else entity.
+  Returns:
+    New dictionary appropriate populated with model instances values
+    if entity is None, else entity.
   """
   if dictionary is None:
     dictionary = {}

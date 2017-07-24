@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Type conversions for rdbms.
 
 This module defines a dictionary called 'converters' which provides a mapping

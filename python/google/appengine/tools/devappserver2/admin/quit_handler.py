@@ -23,6 +23,7 @@ from google.appengine.tools.devappserver2.admin import admin_request_handler
 class QuitHandler(admin_request_handler.AdminRequestHandler):
 
   def get(self):
+    super(QuitHandler, self).get()
     self.response.status_int = 200
     self.response.content_type = 'text/plain'
     self.response.write('devappserver2 quitting')

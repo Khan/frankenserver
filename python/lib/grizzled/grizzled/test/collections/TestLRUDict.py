@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: d013d05ce2f81cd44ec98b5568c26fef11333e0e $
 
 """
@@ -11,7 +10,6 @@ Tester.
 
 from timeit import Timer
 
-import google3
 from grizzled.collections import LRUDict
 
 # ---------------------------------------------------------------------------
@@ -66,7 +64,7 @@ class TestLRUDict(object):
         print lru
         print lru.keys()
         assert lru.keys() == ['f', 'b', 'e', 'd', 'a']
-
+        
         def on_remove(key, value, the_list):
             print 'on_remove("%s")' % key
             the_list.append(key)
@@ -80,7 +78,7 @@ class TestLRUDict(object):
         assert ejected == ['a', 'd']
         print lru.keys()
         assert lru.keys() == ['f', 'b', 'e']
-
+        
         print 'Testing popitem()'
         key, value = lru.popitem()
         print lru

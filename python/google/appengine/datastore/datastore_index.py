@@ -81,7 +81,7 @@ from google.appengine.datastore import datastore_pb
 class Property(validation.Validated):
   """Representation for a property of an index as it appears in YAML.
 
-  Attributes:
+  Attributes (all in string form):
     name: Name of attribute to sort by.
     direction: Direction of sort.
     mode: How the property is indexed. Either 'geospatial'
@@ -231,8 +231,7 @@ def IndexDefinitionsToKeys(indexes):
   Returns:
     A set of keys constructed from the argument, each key being a
     tuple of the form (kind, ancestor, properties) where properties is
-    a tuple of (name, direction) pairs, direction being ASCENDING or
-    DESCENDING (the enums).
+    a tuple of PropertySpec objects.
   """
   keyset = set()
   if indexes is not None:
@@ -594,8 +593,8 @@ def CompositeIndexForQuery(query):
       properties: A tuple consisting of:
       - the prefix, represented by a set of property names
       - the postfix, represented by a tuple consisting of any number of:
-        - Sets of property names: Indicates these properties can appear in any
-          order with any direction.
+        - Sets of property names or PropertySpec objects: these
+          properties can appear in any order.
         - Sequences of PropertySpec objects: Indicates the properties
           must appear in the given order, with the specified direction (if
           specified in the PropertySpec).
@@ -614,6 +613,8 @@ def CompositeIndexForQuery(query):
     assert filter.op() != datastore_pb.Query_Filter.IN, 'Filter.op()==IN'
     nprops = len(filter.property_list())
     assert nprops == 1, 'Filter has %s properties, expected 1' % nprops
+    if filter.op() == datastore_pb.Query_Filter.CONTAINED_IN_REGION:
+      return CompositeIndexForGeoQuery(query)
 
   if not kind:
 
@@ -700,11 +701,42 @@ def CompositeIndexForQuery(query):
   return required, kind, ancestor, props
 
 
+def CompositeIndexForGeoQuery(query):
+  """Builds a descriptor for a composite index needed for a geo query.
+
+  Args:
+    query: A datastore_pb.Query instance.
+
+  Returns:
+    A tuple in the same form as produced by CompositeIndexForQuery.
+  """
+  required = True
+  kind = query.kind()
+
+  assert not query.has_ancestor()
+  ancestor = False
+  filters = query.filter_list()
+  preintersection_props = set()
+  geo_props = set()
+  for filter in filters:
+    name = filter.property(0).name()
+    if filter.op() == datastore_pb.Query_Filter.EQUAL:
+      preintersection_props.add(PropertySpec(name=name))
+    else:
+
+      assert filter.op() == datastore_pb.Query_Filter.CONTAINED_IN_REGION
+      geo_props.add(PropertySpec(name=name, mode=GEOSPATIAL))
+
+  prefix = frozenset(preintersection_props)
+  postfix = (frozenset(geo_props),)
+  return required, kind, ancestor, (prefix, postfix)
+
+
 def GetRecommendedIndexProperties(properties):
   """Converts the properties returned by datastore_index.CompositeIndexForQuery
   into a recommended list of index properties with the desired constraints.
 
-  Sets of property names without constraints are sorted, so as to
+  Sets (of property names or PropertySpec objects) are sorted, so as to
   normalize them.
 
   Args:
@@ -720,11 +752,11 @@ def GetRecommendedIndexProperties(properties):
   for sub_list in itertools.chain((prefix,), postfix):
     if isinstance(sub_list, (frozenset, set)):
 
-      for name in sorted(sub_list):
-        result.append(PropertySpec(name=name, direction=ASCENDING))
+
+
+      result.extend([(p if isinstance(p, PropertySpec)
+                      else PropertySpec(name=p)) for p in sorted(sub_list)])
     else:
-
-
       result.extend([(PropertySpec(name=p.name, direction=ASCENDING)
                       if p.direction is None else p) for p in sub_list])
 
@@ -902,9 +934,6 @@ def IndexYamlForQuery(kind, ancestor, props):
     A string with the YAML for the composite index needed by the query.
   """
 
-
-
-
   serialized_yaml = []
   serialized_yaml.append('- kind: %s' % kind)
   if ancestor:
@@ -949,10 +978,12 @@ def IndexXmlForQuery(kind, ancestor, props):
   for prop in props:
     if prop.mode is GEOSPATIAL:
       qual = ' mode="geospatial"'
+    elif is_geo:
+      qual = ''
     else:
 
-      qual = ' direction="%s"' % ('asc' if prop.direction == ASCENDING
-                                  else 'desc')
+      qual = ' direction="%s"' % ('desc' if prop.direction == DESCENDING
+                                  else 'asc')
     serialized_xml.append('    <property name="%s"%s />' % (prop.name, qual))
   serialized_xml.append('  </datastore-index>')
   return '\n'.join(serialized_xml)

@@ -17,7 +17,6 @@
 
 
 
-
 """Stub version of the memcache API, keeping all data in process memory."""
 
 
@@ -42,7 +41,6 @@ MemcacheSetRequest = memcache_service_pb.MemcacheSetRequest
 MemcacheIncrementRequest = memcache_service_pb.MemcacheIncrementRequest
 MemcacheIncrementResponse = memcache_service_pb.MemcacheIncrementResponse
 MemcacheDeleteResponse = memcache_service_pb.MemcacheDeleteResponse
-
 
 MAX_REQUEST_SIZE = 32 << 20
 
@@ -125,8 +123,8 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       gettime: time.time()-like function used for testing.
       service_name: Service name expected for all calls.
     """
-    super(MemcacheServiceStub, self).__init__(service_name,
-                                              max_request_size=MAX_REQUEST_SIZE)
+    super(MemcacheServiceStub, self).__init__(
+        service_name, max_request_size=MAX_REQUEST_SIZE)
     self._next_cas_id = 1
     self._gettime = lambda: int(gettime())
     self._ResetStats()
@@ -222,9 +220,8 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
           (set_policy == MemcacheSetRequest.REPLACE and old_entry is not None)):
 
 
-        if (old_entry is None or
-            set_policy == MemcacheSetRequest.SET
-            or not old_entry.CheckLocked()):
+        if (old_entry is None or set_policy == MemcacheSetRequest.SET or
+            not old_entry.CheckLocked()):
           set_status = MemcacheSetResponse.STORED
 
       elif (set_policy == MemcacheSetRequest.CAS and item.has_cas_id()):
@@ -238,11 +235,12 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       if set_status == MemcacheSetResponse.STORED:
         if namespace not in self._the_cache:
           self._the_cache[namespace] = {}
-        self._the_cache[namespace][key] = CacheEntry(item.value(),
-                                                     item.expiration_time(),
-                                                     item.flags(),
-                                                     self._next_cas_id,
-                                                     gettime=self._gettime)
+        self._the_cache[namespace][key] = CacheEntry(
+            item.value(),
+            item.expiration_time(),
+            item.flags(),
+            self._next_cas_id,
+            gettime=self._gettime)
         self._next_cas_id += 1
 
       response.add_set_status(set_status)
@@ -293,11 +291,12 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       flags = 0
       if request.has_initial_flags():
         flags = request.initial_flags()
-      self._the_cache[namespace][key] = CacheEntry(str(request.initial_value()),
-                                                   expiration=0,
-                                                   flags=flags,
-                                                   cas_id=self._next_cas_id,
-                                                   gettime=self._gettime)
+      self._the_cache[namespace][key] = CacheEntry(
+          str(request.initial_value()),
+          expiration=0,
+          flags=flags,
+          cas_id=self._next_cas_id,
+          gettime=self._gettime)
       self._next_cas_id += 1
       entry = self._GetKey(namespace, key)
       assert entry is not None
@@ -365,8 +364,7 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       request: A MemcacheFlushRequest.
       response: A MemcacheFlushResponse.
     """
-    self._the_cache.clear()
-    self._ResetStats()
+    self.Clear()
 
   @apiproxy_stub.Synchronized
   def _Dynamic_Stats(self, request, response):
@@ -391,3 +389,9 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
 
 
     stats.set_oldest_item_age(self._gettime() - self._cache_creation_time)
+
+  @apiproxy_stub.Synchronized
+  def Clear(self):
+    """Clears the memcache stub and resets stats."""
+    self._the_cache.clear()
+    self._ResetStats()

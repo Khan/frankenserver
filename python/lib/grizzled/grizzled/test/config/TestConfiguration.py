@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: fa0cb7de413daf47d5326583abff1efa6e2eab94 $
 #
 # Nose program for testing grizzled.config.Configuration
@@ -7,7 +6,6 @@
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.config import (Configuration, NoVariableError)
 from cStringIO import StringIO
 import os
@@ -177,3 +175,4 @@ var1 = ${bar}
             pass
         except:
             assert False, 'Unexpected exception'
+        

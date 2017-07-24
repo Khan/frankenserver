@@ -32,14 +32,17 @@
       {% for job in cronjobs %}
         <tr>
           <td>
-            <h3>{{ job.url }}</h3>
-            <p>
-              {{ job.description }}
-            </p>
+            <div> URL: {{ job.url }} </div>
+            <div>
+              Module: {% if job.target %} {{ job.target }} {% else %} default {% endif %}
+            </div>
+            <div> Description: {{ job.description }} </div>
           </td>
           <td>
             <strong>{{ job.schedule }}</strong>
-            <button class="ae-cron-run ae-button" name="{{ job.url }}">Run now</button>
+            <button class="ae-cron-run ae-button" name="{{ job.url }}" target="{{ job.target }}">
+              Run now
+            </button>
             {% if job.timezone %}
               <div><strong>Timezone: {{ job.timezone }}</strong></div>
             {% endif %}
@@ -73,7 +76,8 @@
   <script>
 $('.ae-cron-run').click(function() {
   var url = $(this).attr('name');
-  var data = {'url': url, 'xsrf_token': '{{ xsrf_token }}'};
+  var target = $(this).attr('target');
+  var data = {'url': url, 'target': target, 'xsrf_token': '{{ xsrf_token }}'};
   var request = $.ajax({
     url: '/cron',
     type: 'POST',

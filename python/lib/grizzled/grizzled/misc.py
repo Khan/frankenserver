@@ -104,10 +104,12 @@ class ReadOnly(object):
         if thing == 'wrapped':
             object.__setattr__(self, thing, value)
         else:
-            raise ReadOnlyObjectError(thing,
-                                      'Attempt to access field "%s" of '
-                                      'read-only %s object' %
-                                      (thing, self.wrapped.__class__.__name__))
+            raise ReadOnlyObjectError(
+                thing,
+                'Attempt to access field "{0}" of read-only {1} object'.format(
+                    thing, self.wrapped.__class__.__name__
+                )
+            )
 
 # ---------------------------------------------------------------------------
 # Public functions

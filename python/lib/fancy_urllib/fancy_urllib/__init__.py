@@ -13,6 +13,7 @@ import base64
 import httplib
 import logging
 import socket
+import sys
 from urllib import splitpasswd
 from urllib import splittype
 from urllib import splituser
@@ -186,12 +187,16 @@ def create_fancy_connection(tunnel_host=None, key_file=None,
       return False
 
     def connect(self):
-      # TODO(frew): When we drop support for <2.6 (in the far distant future),
-      # change this to socket.create_connection.
-      self.sock = _create_connection((self.host, self.port))
+      httplib.HTTPConnection.connect(self)
 
-      if self._tunnel_host:
-        self._tunnel()
+      # If httplib.HTTPConnection has _tunnel, then
+      # httplib.HTTPConnection.connect will have called it if needed, so we
+      # shouldn't call it again. (See
+      # https://hg.python.org/cpython/log?rev=1424152 for when _tunnel was
+      # introduced.)
+      if not hasattr(httplib.HTTPConnection, "_tunnel"):
+        if self._tunnel_host:
+          self._tunnel()
 
       # ssl and FakeSocket got deprecated. Try for the new hotness of wrap_ssl,
       # with fallback. Note: Since can_validate_certs() just checks for the
@@ -199,11 +204,38 @@ def create_fancy_connection(tunnel_host=None, key_file=None,
       # the function, but doesn't require a dynamic import, which doesn't
       # play nicely with dev_appserver.
       if can_validate_certs():
-        self.sock = ssl.wrap_socket(self.sock,
-                                    keyfile=self.key_file,
-                                    certfile=self.cert_file,
-                                    ca_certs=self.ca_certs,
-                                    cert_reqs=self.cert_reqs)
+        # SNI(Server Name Indication) is required by many websites when talking
+        # HTTPS, SSLContext is introduced in python 2.7.9, its wrap_socket()
+        # supports SNI while ssl.wrap_socket does not.
+        if sys.version_info[2] >= 9:
+          context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+          context.verify_mode = self.cert_reqs
+          if self.ca_certs:
+            try:
+              context.load_verify_locations(ca_certs)
+            except Exception, e:
+              raise SSLError(e)
+          if self.cert_file:
+            context.load_cert_chain(self.cert_file, self.key_file)
+          # Since python 2.7.9, server_hostname is always allowed to be passed
+          # even if OpenSSL does not have SNI.
+          self.sock = context.wrap_socket(self.sock, server_hostname=self.host)
+        else:
+          logging.debug("Unable to create SSLContext because your python27 "
+                        "version is below 2.7.9, using ssl.wrap_socket.")
+          try:
+            self.sock = ssl.wrap_socket(self.sock,
+                                        keyfile=self.key_file,
+                                        certfile=self.cert_file,
+                                        ca_certs=self.ca_certs,
+                                        cert_reqs=self.cert_reqs)
+          except SSLError, e:
+            # Example scenario(b/30594951): running on python2.7.6,
+            # fetching https://readme.io
+            logging.error("ssl.wrap_socket faled with %s\ncurrent python "
+                          "version is:\n %s\ntry upgrading your python.",
+                          str(e), sys.version)
+            raise SSLError(e)
 
         if self.cert_reqs & ssl.CERT_REQUIRED:
           cert = self.sock.getpeercert()
@@ -218,40 +250,6 @@ def create_fancy_connection(tunnel_host=None, key_file=None,
         self.sock = httplib.FakeSocket(self.sock, ssl_socket)
 
   return PresetProxyHTTPSConnection
-
-
-# Here to end of _create_connection copied wholesale from Python 2.6"s socket.py
-_GLOBAL_DEFAULT_TIMEOUT = object()
-
-
-def _create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT):
-  """Connect to *address* and return the socket object.
-
-  Convenience function.  Connect to *address* (a 2-tuple ``(host,
-  port)``) and return the socket object.  Passing the optional
-  *timeout* parameter will set the timeout on the socket instance
-  before attempting to connect.  If no *timeout* is supplied, the
-  global default timeout setting returned by :func:`getdefaulttimeout`
-  is used.
-  """
-
-  msg = "getaddrinfo returns an empty list"
-  host, port = address
-  for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-    af, socktype, proto, canonname, sa = res
-    sock = None
-    try:
-      sock = socket.socket(af, socktype, proto)
-      if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
-        sock.settimeout(timeout)
-      sock.connect(sa)
-      return sock
-
-    except socket.error, msg:
-      if sock is not None:
-        sock.close()
-
-  raise socket.error, msg
 
 
 class FancyRequest(urllib2.Request):

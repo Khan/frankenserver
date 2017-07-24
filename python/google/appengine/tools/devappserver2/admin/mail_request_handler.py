@@ -28,11 +28,13 @@ REMOTE_IP = '0.1.0.20'
 class MailRequestHandler(admin_request_handler.AdminRequestHandler):
 
   def get(self):
+    super(MailRequestHandler, self).get()
     # TODO: Generate a warning if mail is not configured when the
     # configuration is sorted in the new servers world.
     self.response.write(self.render('mail.html', {}))
 
   def post(self):
+    super(MailRequestHandler, self).post()
     to = self.request.get('to')
     from_ = self.request.get('from')
     cc = self.request.get('cc')

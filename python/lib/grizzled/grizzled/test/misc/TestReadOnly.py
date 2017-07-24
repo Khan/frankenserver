@@ -1,4 +1,3 @@
-#!/usr/bin/python2.4
 # $Id: 5a432ced2c81b94f1e4793cbec98258787f6bc92 $
 
 """
@@ -9,7 +8,6 @@ Tester.
 # Imports
 # ---------------------------------------------------------------------------
 
-import google3
 from grizzled.misc import ReadOnly, ReadOnlyObjectError
 
 # ---------------------------------------------------------------------------
