@@ -47,9 +47,9 @@ def return_minus_one(*unused_args, **unused_kwargs):
 def log_access_check_fail(filename):
   # This gets the sandboxed version of the logging module
   logging = __import__('logging')
-  logging.info('Sandbox prevented access to file "%s"', filename)
-  logging.info('If it is a static file, check that '
-               '`application_readable: true` is set in your app.yaml')
+  logging.debug('Sandbox prevented access to file "%s"', filename)
+  logging.debug('If it is a static file, check that '
+                '`application_readable: true` is set in your app.yaml')
 
 
 def fake_uname():

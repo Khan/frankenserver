@@ -46,6 +46,7 @@ class StubsTest(unittest.TestCase):
     self.mox.StubOutWithMock(util, 'get_platform')
     self.mox.StubOutWithMock(stubs.FakeFile, 'is_file_accessible')
     self.mox.StubOutWithMock(logging, 'info')
+    self.mox.StubOutWithMock(logging, 'debug')
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -92,9 +93,9 @@ class StubsTest(unittest.TestCase):
 
   def test_fake_open_inaccessible(self):
     stubs.FakeFile.is_file_accessible(__file__).AndReturn(False)
-    logging.info('Sandbox prevented access to file "%s"', __file__)
-    logging.info('If it is a static file, check that '
-                 '`application_readable: true` is set in your app.yaml')
+    logging.debug('Sandbox prevented access to file "%s"', __file__)
+    logging.debug('If it is a static file, check that '
+                  '`application_readable: true` is set in your app.yaml')
     self.mox.ReplayAll()
     with self.assertRaises(OSError) as cm:
       stubs.fake_open(__file__, os.O_RDONLY)
@@ -157,9 +158,9 @@ class StubsTest(unittest.TestCase):
   def test_restricted_path_function_not_allowed(self):
     fake_function = self.mox.CreateMockAnything()
     stubs.FakeFile.is_file_accessible('foo').AndReturn(False)
-    logging.info('Sandbox prevented access to file "%s"', 'foo')
-    logging.info('If it is a static file, check that '
-                 '`application_readable: true` is set in your app.yaml')
+    logging.debug('Sandbox prevented access to file "%s"', 'foo')
+    logging.debug('If it is a static file, check that '
+                  '`application_readable: true` is set in your app.yaml')
     self.mox.ReplayAll()
     restricted_path_fake_function = stubs.RestrictedPathFunction(fake_function)
     with self.assertRaises(OSError) as cm:
