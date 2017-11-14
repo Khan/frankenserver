@@ -377,6 +377,28 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
     self.Read()
 
+  @staticmethod
+  def _FooCopy(thing_to_copy):
+    copied = collections.defaultdict(dict)
+    copied.update({
+      k: dict(v) for k, v in thing_to_copy.iteritems()})
+
+    return copied
+
+  def GetRestorableState(self):
+    return {
+      "__id_counters": dict(self.__id_counters),
+      "_commit_timestamp": self._commit_timestamp,
+      "__entities_by_kind": self._FooCopy(self.__entities_by_kind),
+      "__entities_by_group": self._FooCopy(self.__entities_by_group),
+    }
+
+  def RestoreState(self, state):
+    self.__id_counters = dict(state["__id_counters"])
+    self._commit_timestamp = state["_commit_timestamp"]
+    self.__entities_by_kind = self._FooCopy(state["__entities_by_kind"])
+    self.__entities_by_group = self._FooCopy(state["__entities_by_group"])
+
   def Clear(self):
     """ Clears the datastore by deleting all currently stored entities and
     queries. """
