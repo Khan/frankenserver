@@ -183,7 +183,7 @@ class RemoteSocketServiceStub(apiproxy_stub.APIProxyStub):
     ap_proto.set_port(ap_tuple[1])
 
   def _BindAllowed(self, addr, port):
-    if addr in ('0.0.0.0', '::') and port == 0:
+    if addr in ('0.0.0.0', '::', '::ffff:0.0.0.0') and port == 0:
       return True
     return False
 

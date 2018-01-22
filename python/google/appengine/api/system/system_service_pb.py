@@ -1112,14 +1112,7 @@ class SystemService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new SystemService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _SystemService_ClientStub(
@@ -1131,7 +1124,7 @@ class SystemService(_server_stub_base_class):
     """Creates a new SystemService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
@@ -1151,7 +1144,7 @@ class SystemService(_server_stub_base_class):
       request: a GetSystemStatsRequest that contains the client request
       response: a GetSystemStatsResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def StartBackgroundRequest(self, rpc, request, response):
@@ -1162,7 +1155,7 @@ class SystemService(_server_stub_base_class):
       request: a StartBackgroundRequestRequest that contains the client request
       response: a StartBackgroundRequestResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

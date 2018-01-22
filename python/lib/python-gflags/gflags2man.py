@@ -39,7 +39,7 @@ Usage:
   gflags2man <program> [program] ...
 """
 
-# TODO(csilvers): work with windows paths (\) as well as unix (/)
+# TODO(user): work with windows paths (\) as well as unix (/)
 
 # This may seem a bit of an end run, but it:  doesn't bloat flags, can
 # support python/java/C++, supports older executables, and can be

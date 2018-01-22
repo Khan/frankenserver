@@ -83,7 +83,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     if not content_type:
       return _HTTP_BAD_REQUEST(environ, start_response)
 
-    # TODO(rafek): Handle alternate encodings.
+    # TODO(user): Handle alternate encodings.
     content_type = cgi.parse_header(content_type)[0]
 
     request_method = environ['REQUEST_METHOD']
@@ -157,7 +157,7 @@ def service_mapping(service_factory, service_path=r'.*', protocols=None):
     initialize_request_state = getattr(
       instance, 'initialize_request_state', None)
     if initialize_request_state:
-      # TODO(rafek): This is not currently covered by tests.
+      # TODO(user): This is not currently covered by tests.
       server_port = environ.get('SERVER_PORT', None)
       if server_port:
         server_port = int(server_port)

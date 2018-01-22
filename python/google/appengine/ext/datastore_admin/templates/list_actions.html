@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block body %}
   <h2>Datastore Admin of {{hosting_app_id}}</h2>
+  <div class="ae-promo ae-rounded-sml">
+    <strong>
+      A new Cloud Datastore service has launched to beta for
+      <a target="_blank"
+         href="https://cloud.google.com/datastore/docs/export-import-entities">
+        Exporting and Importing.
+      </a>
+    </strong>
+  </div>
   {% if run_as_a_service %}
     <div class="ae-message ae-rounded-sml">
       Backup/Restore running as a service.
@@ -31,10 +40,10 @@
             Entity statistics last updated
             {{ last_stats_update|date:"M j, Y g:i a T" }}
           {% else %}
-            Entity statistics unavailable.
+            Entity statistics are temporarily unavailable and should appear within 48 hours.
           {% endif %}
           <a target="_blank"
-             href="https://developers.google.com/appengine/docs/adminconsole/datastorestats">
+             href="https://cloud.google.com/appengine/docs/standard/python/console/datastore-statistics">
             <img class="ae-help-icon" src="{{ base_path }}/static/img/help.gif"
               height="14" width="14" alt="help">
           </a>

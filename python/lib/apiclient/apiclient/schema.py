@@ -57,7 +57,7 @@ For example, given the schema:
 The constructor takes a discovery document in which to look up named schema.
 """
 
-# TODO(jcgregorio) support format, enum, minimum, maximum
+# TODO(user) support format, enum, minimum, maximum
 
 __author__ = 'jcgregorio@google.com (Joe Gregorio)'
 

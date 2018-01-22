@@ -2430,9 +2430,7 @@ class BaseIndexManager(object):
     Check(index.state() == stored_index.state() or
           index.state() in self._INDEX_STATE_TRANSITIONS[stored_index.state()],
           'cannot move index state from %s to %s' %
-          (entity_pb.CompositeIndex.State_Name(stored_index.state()),
-           (entity_pb.CompositeIndex.State_Name(index.state()))))
-
+          (stored_index.state(), index.state()))
 
     self.__indexes_lock.acquire()
     try:

@@ -843,20 +843,6 @@ def python_2_unicode_compatible(klass):
     return klass
 
 
-# MOE:begin_strip
-#######################################################################
-## Google modification
-##
-## We explicitly import the test file here, before the package
-## manipulation below, so that we can see it in tests. This does make
-## the test module visible to six users, but that seems fairly
-## harmless.
-try:
-  import google.third_party.py.six.test_six
-except ImportError:
-  pass
-#######################################################################
-# MOE:end_strip
 
 # Complete the moves implementation.
 # This code is at the end of this module to speed up module loading.

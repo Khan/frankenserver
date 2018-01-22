@@ -67,8 +67,9 @@ A few caveats:
 
 
 import Cookie
+import datetime
 import hashlib
-import httplib
+import inspect
 import os
 import pickle
 import random
@@ -77,6 +78,7 @@ import thread
 import threading
 import google
 import yaml
+
 
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -94,6 +96,11 @@ else:
   from google.appengine.ext.remote_api import remote_api_services
   from google.appengine.runtime import apiproxy_errors
 
+from google.appengine.api import api_base_pb
+from google.appengine.api import apiproxy_stub
+from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.taskqueue import taskqueue_stub
+from google.appengine.api.taskqueue import taskqueue_stub_service_pb
 from google.appengine.tools import appengine_rpc
 
 _REQUEST_ID_HEADER = 'HTTP_X_APPENGINE_REQUEST_ID'
@@ -111,10 +118,6 @@ class ConfigurationError(Error):
 
 class UnknownJavaServerError(Error):
   """Exception for exceptions returned from a Java remote_api handler."""
-
-
-class MissingGrpcProxyPortError(Error):
-  """Exception for missing grpc proxy port."""
 
 
 def GetUserAgent():
@@ -177,12 +180,7 @@ class RemoteStub(object):
 
   _local = threading.local()
 
-  def __init__(self,
-               server,
-               path,
-               _test_stub_map=None,
-               grpc_apis=(),
-               grpc_proxy_port=None):
+  def __init__(self, server, path, _test_stub_map=None):
     """Constructs a new RemoteStub that communicates with the specified server.
 
     Args:
@@ -191,23 +189,29 @@ class RemoteStub(object):
       path: The path to the handler this stub should send requests to.
       _test_stub_map: If supplied, send RPC calls to stubs in this map instead
         of over the wire.
-      grpc_apis: an iterable of strings representing APIs that use grpc. If
-        'all' is in the list, then every API speaks grpc.
-      grpc_proxy_port: Int, the port on which grpc proxy server listens.
     """
     self._server = server
     self._path = path
     self._test_stub_map = _test_stub_map
-    self._grpc_apis = grpc_apis
-    self._grpc_proxy_port = grpc_proxy_port
 
   def _PreHookHandler(self, service, call, request, response):
+    """Executed at the beginning of a MakeSyncCall method call."""
     pass
 
   def _PostHookHandler(self, service, call, request, response):
+    """Executed at the end of a MakeSyncCall method call."""
     pass
 
   def MakeSyncCall(self, service, call, request, response):
+    """The APIProxy entry point for a synchronous API call.
+
+    Args:
+      service: A string representing which service to call, e.g: 'datastore_v3'.
+      call: A string representing which function to call, e.g: 'put'.
+      request: A protocol message for the request, e.g: datastore_pb.PutRequest.
+      response: A protocol message for the response, e.g:
+        datastore_pb.PutResponse.
+    """
     self._PreHookHandler(service, call, request, response)
     try:
       test_stub = self._test_stub_map and self._test_stub_map.GetStub(service)
@@ -230,7 +234,7 @@ class RemoteStub(object):
     cls._local.request_id = request_id
 
   def _MakeRealSyncCall(self, service, call, request, response):
-    """Constructs, sends and receives remote_api.proto & grpc_service.proto."""
+    """Constructs, sends and receives remote_api.proto."""
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
@@ -240,14 +244,7 @@ class RemoteStub(object):
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()
-    if service in self._grpc_apis or 'all' in self._grpc_apis:
-      if not self._grpc_proxy_port:
-        raise MissingGrpcProxyPortError()
-      conn = httplib.HTTPConnection('localhost', self._grpc_proxy_port)
-      conn.request('POST', '', encoded_request)
-      encoded_response = conn.getresponse().read()
-    else:
-      encoded_response = self._server.Send(self._path, encoded_request)
+    encoded_response = self._server.Send(self._path, encoded_request)
 
     response_pb.ParseFromString(encoded_response)
 
@@ -258,28 +255,13 @@ class RemoteStub(object):
     elif response_pb.has_exception():
       raise pickle.loads(response_pb.exception())
     elif response_pb.has_java_exception():
-      raise UnknownJavaServerError('An unknown error has occured in the '
+      raise UnknownJavaServerError('An unknown error has occurred in the '
                                    'Java remote_api handler for this call.')
     else:
       response.ParseFromString(response_pb.response())
 
   def CreateRPC(self):
     return apiproxy_rpc.RPC(stub=self)
-
-  def SetConsistencyPolicy(self, policy):
-    """This is for passing ndb.metadata_test.MetadataTests.HRTest.
-
-    The scenario for this test is: running ndb unittest aginst apiserver + cloud
-    datastore emulator. The tests triggers stub.SetConsistencyPolicy, which is
-    implemented by datastore v3 stubs. See
-    //apphosting/datastore/datastore_stub_util.py for the original method
-    definition. We don't want to change the tests, just add this fake method to
-    pass them. For more details please refer to b/62039789.
-
-    Args:
-      policy: A obj inheriting from BaseConsistencyPolicy.
-    """
-    pass
 
 
 class RemoteDatastoreStub(RemoteStub):
@@ -584,6 +566,243 @@ class RemoteDatastoreStub(RemoteStub):
         'The remote datastore does not support index manipulation.')
 
 
+class DatastoreStubTestbedDelegate(RemoteStub):
+  """A stub for testbed calling datastore_v3 service in api_server."""
+
+  def __init__(self, server, path,
+               max_request_size=apiproxy_stub.MAX_REQUEST_SIZE):
+    super(DatastoreStubTestbedDelegate, self).__init__(server, path)
+    self._error_dict = {}
+    self._error = None
+    self._error_rate = None
+    self._max_request_size = max_request_size
+
+  def _PreHookHandler(self, service, call, request, unused_response):
+    """Raises an error if request size is too large."""
+    if request.ByteSize() > self._max_request_size:
+      raise apiproxy_errors.RequestTooLargeError(
+          apiproxy_stub.REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (
+              service, call))
+
+  def SetConsistencyPolicy(self, policy):
+    """A dummy method for backward compatibility with unittests.
+
+    The scenario for this test is: running ndb unittest aginst apiserver + cloud
+    datastore emulator. The tests triggers stub.SetConsistencyPolicy, which is
+    implemented by datastore v3 stubs. See
+    //apphosting/datastore/datastore_stub_util.py for the original method
+    definition. We don't want to change the tests, just add this fake method to
+    pass them. For more details please refer to b/62039789.
+
+    Args:
+      policy: A obj inheriting from BaseConsistencyPolicy.
+    """
+
+    pass
+
+  def SetTrusted(self, trusted):
+    """A dummy method for backward compatibility unittests.
+
+    Using emulator, the trusted bit is always True.
+
+    Args:
+      trusted: boolean. This bit indicates that the app calling the stub is
+        trusted. A trusted app can write to datastores of other apps.
+    """
+    pass
+
+  def __CheckError(self, call):
+
+    exception_type, frequency = self._error_dict.get(call, (None, None))
+    if exception_type and frequency:
+      if random.random() <= frequency:
+        raise exception_type
+
+    if self._error:
+      if random.random() <= self._error_rate:
+        raise self._error
+
+  def SetError(self, error, method=None, error_rate=1):
+    """Set an error condition that may be raised when calls are made to stub.
+
+    If a method is specified, the error will only apply to that call.
+    The error rate is applied to the method specified or all calls if
+    method is not set.
+
+    Args:
+      error: An instance of apiproxy_errors.Error or None for no error.
+      method: A string representing the method that the error will affect. e.g:
+        'RunQuery'.
+      error_rate: a number from [0, 1] that sets the chance of the error,
+        defaults to 1.
+    """
+    if not (error is None or isinstance(error, apiproxy_errors.Error)):
+      raise TypeError(
+          'error should be None or an instance of apiproxy_errors.Error')
+    if method and error:
+      self._error_dict[method] = error, error_rate
+    else:
+      self._error_rate = error_rate
+      self._error = error
+
+  def Clear(self):
+    """Clears the datastore, deletes all entities and queries."""
+    self._server.Send('/clear?service=datastore_v3')
+
+  def MakeSyncCall(self, service, call, request, response):
+    self.__CheckError(call)
+    super(DatastoreStubTestbedDelegate, self).MakeSyncCall(
+        service, call, request, response)
+
+
+class TaskqueueStubTestbedDelegate(RemoteStub):
+  """A stub for testbed calling taskqueue service in api_server.
+
+  Some tests directly call taskqueue_stub methods. When taskqueue service use
+  RemoteStub, we need to continue supporting these interfaces.
+  """
+
+  def __init__(self, server, path):
+    super(TaskqueueStubTestbedDelegate, self).__init__(server, path)
+    self.service = 'taskqueue'
+    self.get_filtered_tasks = self.GetFilteredTasks
+    self._queue_yaml_parser = None
+
+  def SetUpStub(self, **stub_kw_args):
+    self._root_path = None
+    self._RemoteSetUpStub(**stub_kw_args)
+
+  def GetQueues(self):
+    """Delegating TaskQueueServiceStub.GetQueues."""
+    request = api_base_pb.VoidProto()
+    response = taskqueue_stub_service_pb.GetQueuesResponse()
+    self.MakeSyncCall('taskqueue', 'GetQueues', request, response)
+    return taskqueue_stub.ConvertGetQueuesResponseToQueuesDicts(response)
+
+  def GetTasks(self, queue_name):
+    """Delegating TaskQueueServiceStub.GetTasks.
+
+    Args:
+      queue_name: String, the name of the queue to return tasks for.
+
+    Returns:
+      A list of dictionaries, where each dictionary contains one task's
+        attributes.
+    """
+    request = taskqueue_stub_service_pb.GetFilteredTasksRequest()
+    request.add_queue_names(queue_name)
+    response = taskqueue_stub_service_pb.GetFilteredTasksResponse()
+    self.MakeSyncCall('taskqueue', 'GetFilteredTasks', request, response)
+    res = []
+    for i, eta_delta in enumerate(response.eta_delta_list()):
+
+
+
+      task_dict = taskqueue_stub.QueryTasksResponseToDict(
+          queue_name, response.query_tasks_response().task(i),
+
+
+          datetime.datetime.now())
+      task_dict['eta_delta'] = eta_delta
+      res.append(task_dict)
+    return res
+
+  def DeleteTask(self, queue_name, task_name):
+    """Delegating TaskQueueServiceStub.DeleteTask.
+
+    Args:
+      queue_name: String, the name of the queue to delete the task from.
+      task_name: String, the name of the task to delete.
+    """
+    request = taskqueue_service_pb.TaskQueueDeleteRequest()
+    request.set_queue_name(queue_name)
+    request.add_task_name(task_name)
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'DeleteTask', request, response)
+
+  def FlushQueue(self, queue_name):
+    """Delegating TaskQueueServiceStub.FlushQueue.
+
+    Args:
+      queue_name: String, the name of the queue to flush.
+    """
+    request = taskqueue_stub_service_pb.FlushQueueRequest()
+    request.set_queue_name(queue_name)
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'FlushQueue', request, response)
+
+  def GetFilteredTasks(self, url='', name='', queue_names=()):
+    """Delegating TaskQueueServiceStub.get_filtered_tasks.
+
+    Args:
+      url: A String URL that represents the URL all returned tasks point at.
+      name: The string name of all returned tasks.
+      queue_names: A string queue_name, or a list of string queue names to
+        retrieve tasks from. If left blank this will get default to all
+        queues available.
+
+    Returns:
+      A list of taskqueue.Task objects.
+    """
+    request = taskqueue_stub_service_pb.GetFilteredTasksRequest()
+    request.set_url(url)
+    request.set_name(name)
+
+    if isinstance(queue_names, basestring):
+      queue_names = [queue_names]
+    map(request.add_queue_names, queue_names)
+    response = taskqueue_stub_service_pb.GetFilteredTasksResponse()
+    self.MakeSyncCall('taskqueue', 'GetFilteredTasks', request, response)
+
+    res = []
+    for i, eta_delta in enumerate(response.eta_delta_list()):
+
+      task_dict = taskqueue_stub.QueryTasksResponseToDict(
+
+          '', response.query_tasks_response().task(i),
+          datetime.datetime.now())
+      task_dict['eta_delta'] = eta_delta
+      res.append(taskqueue_stub.ConvertTaskDictToTaskObject(task_dict))
+    return res
+
+  @property
+  def queue_yaml_parser(self):
+    """Returns the queue_yaml_parser property."""
+    return self._queue_yaml_parser
+
+  @queue_yaml_parser.setter
+  def queue_yaml_parser(self, queue_yaml_parser):
+    """Sets the queue_yaml_parser as a property."""
+    if not callable(queue_yaml_parser):
+      raise TypeError(
+          'queue_yaml_parser should be callable. Received type: %s' %
+          type(queue_yaml_parser))
+    request = taskqueue_stub_service_pb.PatchQueueYamlParserRequest()
+    request.set_patched_return_value(pickle.dumps(queue_yaml_parser(
+        self._root_path)))
+    response = api_base_pb.VoidProto()
+    self._queue_yaml_parser = queue_yaml_parser
+    self.MakeSyncCall('taskqueue', 'PatchQueueYamlParser', request, response)
+
+  def _RemoteSetUpStub(self, **kwargs):
+    """Set up the stub in api_server with the parameters needed by user test.
+
+    Args:
+      **kwargs: Key word arguments that are passed to the service stub
+        constructor.
+    """
+    request = taskqueue_stub_service_pb.SetUpStubRequest()
+    init_args = inspect.getargspec(taskqueue_stub.TaskQueueServiceStub.__init__)
+    for field in set(init_args.args[1:]) - set(['request_data']):
+      if field in kwargs:
+        prefix = 'set' if field.startswith('_') else 'set_'
+        getattr(request, prefix + field)(kwargs[field])
+    if 'request_data' in kwargs:
+      request.set_request_data(pickle.dumps(kwargs['request_data']))
+    response = api_base_pb.VoidProto()
+    self.MakeSyncCall('taskqueue', 'SetUpStub', request, response)
+
+
 ALL_SERVICES = set(remote_api_services.SERVICE_PB_MAP)
 
 
@@ -595,8 +814,10 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
     path: The path to the remote_api handler for your app
       (for example, '/_ah/remote_api').
     remote_token: Token to validate that the response was to this request.
+
   Returns:
     App ID as reported by the remote server.
+
   Raises:
     ConfigurationError: The server returned an invalid response.
   """

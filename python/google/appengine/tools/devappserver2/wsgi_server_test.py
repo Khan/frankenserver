@@ -19,6 +19,7 @@
 
 
 import errno
+import httplib
 import json
 import os
 import select
@@ -557,6 +558,110 @@ class _SingleAddressWsgiServerStartupTest(unittest.TestCase):
     self.mox.ReplayAll()
     self.server.quit()
     self.mox.VerifyAll()
+
+
+class WsgiHostCheckTest(unittest.TestCase):
+
+  def setUp(self):
+    # Since WsgiHostCheck is middleware and doesn't listen for requests,
+    # we wrap it behind a _SingleAddressWsgiServer to send HTTP requests to it
+    self.server = wsgi_server._SingleAddressWsgiServer(('localhost', 0), None)
+    self.server.start()
+
+  def tearDown(self):
+    self.server.quit()
+
+  def add_host_check_with_whitelisted_hosts(self, whitelisted_hosts):
+    def wsgi_application(environ, start_response):
+      del environ  # Unused for test wsgi app
+      start_response('200 OK', [])
+      return ['Host check passed']
+
+    self.server.set_app(wsgi_server.WsgiHostCheck(whitelisted_hosts,
+                                                  wsgi_application))
+
+  def send_http_10_request_as_host(self, host):
+    class HTTPv1Connection(httplib.HTTPConnection):
+      _http_vsn = 10
+      _http_vsn_str = 'HTTP/1.0'
+
+    class HTTPv1Handler(urllib2.HTTPHandler):
+
+      def http_open(self, req):
+        return self.do_open(HTTPv1Connection, req)
+
+    http_10_opener = urllib2.build_opener(HTTPv1Handler)
+    request = urllib2.Request('http://localhost:%d' % self.server.port,
+                              None,
+                              {'Host': host})
+    return http_10_opener.open(request)
+
+  def send_request_as_host(self, host):
+    request = urllib2.Request('http://localhost:%d' % self.server.port,
+                              None,
+                              {'Host': host})
+    return urllib2.urlopen(request)
+
+  def assert_host_check_passes_with_request_host(self, host, use_http_10=False):
+    if use_http_10:
+      response = self.send_http_10_request_as_host(host)
+    else:
+      response = self.send_request_as_host(host)
+    self.assertEqual(200, response.code)
+    self.assertEqual('Host check passed', response.read())
+
+  def assert_host_check_fails_with_request_host(self, host, use_http_10=False):
+    try:
+      if use_http_10:
+        self.send_http_10_request_as_host(host)
+      else:
+        self.send_request_as_host(host)
+    except urllib2.HTTPError, error:
+      self.assertEqual(400, error.code)
+    else:
+      self.fail('Did not receive expected http error')
+
+  def test_whitelisted_host_passes_host_check(self):
+    self.add_host_check_with_whitelisted_hosts(['local.dev',
+                                                '2001:db8::1:0:0:1'])
+
+    # with port
+    self.assert_host_check_passes_with_request_host('local.dev:8080')
+    self.assert_host_check_passes_with_request_host('localhost:8080')
+    self.assert_host_check_passes_with_request_host('127.0.0.1:8080')
+
+    # without port
+    self.assert_host_check_passes_with_request_host('local.dev')
+    self.assert_host_check_passes_with_request_host('localhost')
+    self.assert_host_check_passes_with_request_host('127.0.0.1')
+
+    # ipv6
+    self.assert_host_check_passes_with_request_host('[::1]')
+    self.assert_host_check_passes_with_request_host('[::1]:8080')
+    self.assert_host_check_passes_with_request_host('[0:0:0:0:0:0:0:1]')
+    self.assert_host_check_passes_with_request_host('[0:0:0:0:0:0:0:1]:8080')
+    self.assert_host_check_passes_with_request_host('[2001:db8::1:0:0:1]')
+    self.assert_host_check_passes_with_request_host('[2001:db8::1:0:0:1]:8080')
+
+  def test_non_whitelisted_host_fails_host_check(self):
+    self.add_host_check_with_whitelisted_hosts([])
+
+    self.assert_host_check_fails_with_request_host('evilhost')
+    self.assert_host_check_fails_with_request_host('evilhost:8080')
+    self.assert_host_check_fails_with_request_host('[2001:db8:85a3:8d3:1319'
+                                                   ':8a2e:370:7348]')
+    self.assert_host_check_fails_with_request_host('[2001:db8:85a3:8d3:1319'
+                                                   ':8a2e:370:7348]:8080')
+    self.assert_host_check_fails_with_request_host('[evilhost]:8080')
+
+  def test_http_11_request_with_no_http_host_always_fails_host_check(self):
+    self.add_host_check_with_whitelisted_hosts([])
+    self.assert_host_check_fails_with_request_host('')
+
+  def test_http_10_request_with_no_http_host_passes_host_check(self):
+    self.add_host_check_with_whitelisted_hosts([])
+    self.assert_host_check_passes_with_request_host('', use_http_10=True)
+
 
 if __name__ == '__main__':
   unittest.main()

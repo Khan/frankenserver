@@ -38,7 +38,10 @@ from google.appengine.tools import app_engine_web_xml_parser
 from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import web_xml_parser
 from google.appengine.tools import yaml_translator
+from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import errors
+from google.appengine.tools.devappserver2.java import java_dir
+
 
 # Constants passed to functions registered with
 # ModuleConfiguration.add_change_callback.
@@ -68,16 +71,29 @@ _HEALTH_CHECK_DEFAULTS = {
 
 def java_supported():
   """True if this SDK supports running Java apps in the dev appserver."""
-  java_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'java')
-  return os.path.isdir(java_dir)
+  return os.path.isdir(java_dir.get_java_dir())
 
 
 class ModuleConfiguration(object):
   """Stores module configuration information.
 
-  Configuration options are guaranteed to be constant for the lifetime
-  of the instance.
+  Most configuration options are mutable and may change any time
+  check_for_updates is called. Client code must be able to cope with these
+  changes.
+
+  Other properties are immutable (see _IMMUTABLE_PROPERTIES) and are guaranteed
+  to be constant for the lifetime of the instance.
   """
+
+  _IMMUTABLE_PROPERTIES = [
+      ('application', 'application'),
+      ('version', 'major_version'),
+      ('runtime', 'runtime'),
+      ('threadsafe', 'threadsafe'),
+      ('module', 'module_name'),
+      ('basic_scaling', 'basic_scaling_config'),
+      ('manual_scaling', 'manual_scaling_config'),
+      ('automatic_scaling', 'automatic_scaling_config')]
 
   def __init__(self, config_path, app_id=None, runtime=None,
                env_variables=None):
@@ -135,9 +151,9 @@ class ModuleConfiguration(object):
     self._module_name = self._app_info_external.module
     self._version = self._app_info_external.version
     self._threadsafe = self._app_info_external.threadsafe
-    self._basic_scaling = self._app_info_external.basic_scaling
-    self._manual_scaling = self._app_info_external.manual_scaling
-    self._automatic_scaling = self._app_info_external.automatic_scaling
+    self._basic_scaling_config = self._app_info_external.basic_scaling
+    self._manual_scaling_config = self._app_info_external.manual_scaling
+    self._automatic_scaling_config = self._app_info_external.automatic_scaling
     self._runtime = runtime or self._app_info_external.runtime
     self._effective_runtime = self._app_info_external.GetEffectiveRuntime()
 
@@ -219,6 +235,30 @@ class ModuleConfiguration(object):
 
     self._health_check = _set_health_check_defaults(health_check)
 
+    # Configure the _is_{typeof}_scaling, _instance_class, and _memory_limit
+    # attributes.
+    self._is_manual_scaling = None
+    self._is_basic_scaling = None
+    self._is_automatic_scaling = None
+    self._instance_class = self._app_info_external.instance_class
+    if self._manual_scaling_config or self._runtime == 'vm':
+      # TODO: Remove this 'or' when we support auto-scaled VMs.
+      self._is_manual_scaling = True
+      self._instance_class = (
+          self._instance_class or
+          constants.DEFAULT_MANUAL_SCALING_INSTANCE_CLASS)
+    elif self._basic_scaling_config:
+      self._is_basic_scaling = True
+      self._instance_class = (
+          self._instance_class or
+          constants.DEFAULT_BASIC_SCALING_INSTANCE_CLASS)
+    else:
+      self._is_automatic_scaling = True
+      self._instance_class = (
+          self._instance_class or constants.DEFAULT_AUTO_SCALING_INSTANCE_CLASS)
+    self._memory_limit = constants.INSTANCE_CLASS_MEMORY_LIMIT.get(
+        self._instance_class)
+
   @property
   def application_root(self):
     """The directory containing the application e.g. "/home/user/myapp"."""
@@ -290,16 +330,28 @@ class ModuleConfiguration(object):
     return self._threadsafe
 
   @property
-  def basic_scaling(self):
-    return self._basic_scaling
+  def basic_scaling_config(self):
+    return self._basic_scaling_config
 
   @property
-  def manual_scaling(self):
-    return self._manual_scaling
+  def manual_scaling_config(self):
+    return self._manual_scaling_config
 
   @property
-  def automatic_scaling(self):
-    return self._automatic_scaling
+  def automatic_scaling_config(self):
+    return self._automatic_scaling_config
+
+  @property
+  def is_basic_scaling(self):
+    return self._is_basic_scaling
+
+  @property
+  def is_manual_scaling(self):
+    return self._is_manual_scaling
+
+  @property
+  def is_automatic_scaling(self):
+    return self._is_automatic_scaling
 
   @property
   def normalized_libraries(self):
@@ -326,6 +378,14 @@ class ModuleConfiguration(object):
     return self._app_info_external.inbound_services
 
   @property
+  def instance_class(self):
+    return self._instance_class
+
+  @property
+  def memory_limit(self):
+    return self._memory_limit
+
+  @property
   def env_variables(self):
     return self._app_info_external.env_variables
 
@@ -341,11 +401,15 @@ class ModuleConfiguration(object):
   def health_check(self):
     return self._health_check
 
+  @property
+  def default_expiration(self):
+    return self._app_info_external.default_expiration
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     new_mtimes = self._get_mtimes(self._mtimes.keys())
@@ -355,7 +419,7 @@ class ModuleConfiguration(object):
     try:
       app_info_external, files_to_check = self._parse_configuration(
           self._config_path)
-    except Exception, e:
+    except Exception, e:  # pylint: disable=broad-except
       failure_message = str(e)
       if failure_message != self._last_failure_message:
         logging.error('Configuration is not valid: %s', failure_message)
@@ -364,6 +428,26 @@ class ModuleConfiguration(object):
     self._last_failure_message = None
 
     self._mtimes = self._get_mtimes(files_to_check)
+
+    for app_info_attribute, self_attribute in self._IMMUTABLE_PROPERTIES:
+      app_info_value = getattr(app_info_external, app_info_attribute)
+      self_value = getattr(self, self_attribute)
+      if (app_info_value == self_value or
+          app_info_value == getattr(self._app_info_external,
+                                    app_info_attribute)):
+        # Only generate a warning if the value is both different from the
+        # immutable value *and* different from the last loaded value.
+        continue
+
+      if isinstance(app_info_value, types.StringTypes):
+        logging.warning('Restart the development module to see updates to "%s" '
+                        '["%s" => "%s"]',
+                        app_info_attribute,
+                        self_value,
+                        app_info_value)
+      else:
+        logging.warning('Restart the development module to see updates to "%s"',
+                        app_info_attribute)
 
     changes = set()
     if (app_info_external.GetNormalizedLibraries() !=
@@ -558,7 +642,7 @@ class BackendsConfiguration(object):
           updates.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     with self._update_lock:
@@ -593,12 +677,12 @@ class BackendConfiguration(object):
     self._backend_entry = backend_entry
 
     if backend_entry.dynamic:
-      self._basic_scaling = appinfo.BasicScaling(
+      self._basic_scaling_config = appinfo.BasicScaling(
           max_instances=backend_entry.instances or 1)
-      self._manual_scaling = None
+      self._manual_scaling_config = None
     else:
-      self._basic_scaling = None
-      self._manual_scaling = appinfo.ManualScaling(
+      self._basic_scaling_config = None
+      self._manual_scaling_config = appinfo.ManualScaling(
           instances=backend_entry.instances or 1)
     self._minor_version_id = ''.join(random.choice(string.digits) for _ in
                                      range(18))
@@ -664,16 +748,36 @@ class BackendConfiguration(object):
     return self._module_configuration.threadsafe
 
   @property
-  def basic_scaling(self):
-    return self._basic_scaling
+  def basic_scaling_config(self):
+    return self._basic_scaling_config
 
   @property
-  def manual_scaling(self):
-    return self._manual_scaling
+  def manual_scaling_config(self):
+    return self._manual_scaling_config
 
   @property
-  def automatic_scaling(self):
+  def automatic_scaling_config(self):
     return None
+
+  @property
+  def is_basic_scaling(self):
+    return bool(self._basic_scaling_config)
+
+  @property
+  def is_manual_scaling(self):
+    return bool(self._manual_scaling_config)
+
+  @property
+  def is_automatic_scaling(self):
+    return False
+
+  @property
+  def instance_class(self):
+    return self._module_configuration.instance_class
+
+  @property
+  def memory_limit(self):
+    return self._module_configuration.memory_limit
 
   @property
   def normalized_libraries(self):
@@ -720,11 +824,15 @@ class BackendConfiguration(object):
   def health_check(self):
     return self._module_configuration.health_check
 
+  @property
+  def default_expiration(self):
+    return self._module_configuration.default_expiration
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
     Returns:
-      A set containing the changes that occured. See the *_CHANGED module
+      A set containing the changes that occurred. See the *_CHANGED module
       constants.
     """
     changes = self._backends_configuration.check_for_updates(
@@ -756,13 +864,13 @@ class DispatchConfiguration(object):
       self._mtime = mtime
       try:
         dispatch_info_external = self._parse_configuration(self._config_path)
-      except Exception, e:
+      except Exception, e:  # pylint: disable=broad-except
         failure_message = str(e)
         logging.error('Configuration is not valid: %s', failure_message)
         return
       self._process_dispatch_entries(dispatch_info_external)
 
-  def _process_dispatch_entries(self, dispatch_info_external):
+  def _process_dispatch_entries(self, dispatch_info_external):  # pylint: disable=missing-docstring
     path_only_entries = []
     hostname_entries = []
     for entry in dispatch_info_external.dispatch:

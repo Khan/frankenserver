@@ -132,7 +132,7 @@ __all__ = ['EnumDescriptor',
 
 # NOTE: MessageField is missing because message fields cannot have
 # a default value at this time.
-# TODO(rafek): Support default message values.
+# TODO(user): Support default message values.
 #
 # Map to functions that convert default values of fields of a given type
 # to a string.  The function must return a value that is compatible with
@@ -164,7 +164,7 @@ class EnumValueDescriptor(messages.Message):
     number: Number of enumeration value.
   """
 
-  # TODO(rafek): Why are these listed as optional in descriptor.proto.
+  # TODO(user): Why are these listed as optional in descriptor.proto.
   # Harmonize?
   name = messages.StringField(1, required=True)
   number = messages.IntegerField(2,
@@ -282,7 +282,7 @@ class FileDescriptor(messages.Message):
 
   package = messages.StringField(2)
 
-  # TODO(rafek): Add dependency field
+  # TODO(user): Add dependency field
 
   message_types = messages.MessageField(MessageDescriptor, 4, repeated=True)
   enum_types = messages.MessageField(EnumDescriptor, 5, repeated=True)
@@ -470,7 +470,7 @@ def describe_file(module):
   """
   # May not import remote at top of file because remote depends on this
   # file
-  # TODO(rafek): Straighten out this dependency.  Possibly move these functions
+  # TODO(user): Straighten out this dependency.  Possibly move these functions
   # from descriptor to their own module.
   from . import remote
 

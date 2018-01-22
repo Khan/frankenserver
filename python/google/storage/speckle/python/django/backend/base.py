@@ -58,10 +58,12 @@ import os
 import sys
 import time
 
+
 from django.core import exceptions
 from django.db import backends
 from django.db.backends import signals
 from django.utils import safestring
+
 
 from google.appengine.api import apiproxy_stub_map
 from google.storage.speckle.python.api import rdbms
@@ -152,7 +154,7 @@ def Connect(driver_name=None, oauth2_refresh_token=None, **kwargs):
       token for authenticating requests made by the Google API driver; defaults
       to the value provided by the GOOGLE_SQL_OAUTH2_REFRESH_TOKEN environment
       variable, if present.
-    kwargs: Additional keyword arguments to pass to the driver's connect
+    **kwargs: Additional keyword arguments to pass to the driver's connect
       function.
 
   Returns:

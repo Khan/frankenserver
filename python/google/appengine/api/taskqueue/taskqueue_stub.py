@@ -47,15 +47,17 @@ import base64
 import bisect
 import calendar
 import datetime
+import inspect
 import logging
 import os
+import pickle
 import random
 import string
 import threading
 import time
 
-import taskqueue_service_pb
 import taskqueue
+import taskqueue_service_pb
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
@@ -121,6 +123,8 @@ AUTOMATIC_QUEUES = {
 
     '__cron': (1, 1, '1/s')}
 
+TIME_STR_FMT = '%Y/%m/%d %H:%M:%S'
+
 
 def _GetAppId(request):
   """Returns the app id to use for the given request.
@@ -165,7 +169,7 @@ def _UsecToSec(t):
 def _FormatEta(eta_usec):
   """Formats a task ETA as a date string in UTC."""
   eta = datetime.datetime.utcfromtimestamp(_UsecToSec(eta_usec))
-  return eta.strftime('%Y/%m/%d %H:%M:%S')
+  return eta.strftime(TIME_STR_FMT)
 
 
 def _TruncDelta(timedelta):
@@ -226,6 +230,7 @@ def QueryTasksResponseToDict(queue_name, task_response, now):
   task['eta_usec'] = task_response.eta_usec()
   task['eta_delta'] = _EtaDelta(task_response.eta_usec(), now)
   task['body'] = base64.b64encode(task_response.body())
+  task['creation_time_usec'] = task_response.creation_time_usec()
 
 
 
@@ -252,6 +257,131 @@ def QueryTasksResponseToDict(queue_name, task_response, now):
   task['headers'] = headers
 
   return task
+
+
+def _AddDictToQueryTasksResponse(task_dict, response):
+  """Adds a dict into GetFilteredTasksResponse.
+
+  Args:
+    task_dict: A dict in the format same as QueryTasksResponseToDict returns.
+    response: An instance of GetFilteredTasksResponse.
+  """
+  task = response.mutable_query_tasks_response().add_task()
+  task.set_task_name(task_dict['name'])
+  task.set_url(task_dict['url'])
+  task.set_method(getattr(
+      taskqueue_service_pb.TaskQueueQueryTasksResponse_Task,
+      task_dict['method']))
+  task.set_eta_usec(task_dict['eta_usec'])
+  task.set_body(base64.b64decode(task_dict['body']))
+  task.set_creation_time_usec(task_dict['creation_time_usec'])
+  for h in task_dict['headers']:
+    header_key = h[0].lower()
+    if header_key == 'x-appengine-taskretrycount':
+      task.set_retry_count(int(h[1]))
+    elif header_key == 'x-appengine-taskexecutioncount':
+      task.set_execution_count(int(h[1]))
+    elif header_key == 'x-appengine-taskpreviousresponse':
+      rl = task.mutable_runlog()
+      rl.set_response_code(int(h[1]))
+
+
+      rl.set_dispatched_usec(0)
+      rl.set_lag_usec(0)
+      rl.set_elapsed_usec(0)
+    elif header_key not in BUILT_IN_HEADERS:
+      user_header = task.add_header()
+      user_header.set_key(h[0])
+      user_header.set_value(h[1])
+  response.add_eta_delta(task_dict['eta_delta'])
+
+
+def ConvertGetQueuesResponseToQueuesDicts(response):
+  """Translate taskqueue_stub_service_pb.GetQueuesResponse objects into dicts.
+
+  This method combines the translation in
+  taskqueue_stub._Queue.FetchQueues_Rpc and _Group._GetQueuesAsDicts().
+
+  Args:
+    response: A taskqueue_stub_service_pb.GetQueuesResponse instance.
+
+  Returns:
+    A list of dicts same as taskqueue_stub.GetQueues returns.
+  """
+  queues = []
+  for i, queue in enumerate(response.fetch_queues_response().queue_list()):
+
+    queue_dict = {}
+
+    queue_stat = response.fetch_queue_stats_response().queuestats(i)
+
+    queue_dict['name'] = queue.queue_name()
+    queue_dict['bucket_size'] = queue.bucket_capacity()
+    queue_dict['max_rate'] = (
+        queue.user_specified_rate() if queue.has_user_specified_rate() else '')
+    queue_dict['mode'] = (
+        'pull' if queue.mode() == taskqueue_service_pb.TaskQueueMode.PULL
+        else 'push')
+    if queue.has_acl():
+      queue_dict['acl'] = queue.acl()
+    oldest_eta = queue_stat.oldest_eta_usec()
+
+
+    if oldest_eta == -1:
+      queue_dict['oldest_task'] = ''
+      queue_dict['eta_delta'] = ''
+    else:
+      queue_dict['oldest_task'] = _FormatEta(queue_stat.oldest_eta_usec())
+      queue_dict['eta_delta'] = _EtaDelta(
+          oldest_eta, datetime.datetime.utcnow())
+    queue_dict['tasks_in_queue'] = queue_stat.num_tasks()
+
+    if queue.has_retry_parameters():
+      retry_param = queue.retry_parameters()
+      retry_dict = {}
+
+      if retry_param.has_retry_limit():
+        retry_dict['retry_limit'] = retry_param.retry_limit()
+      if retry_param.has_age_limit_sec():
+        retry_dict['age_limit_sec'] = retry_param.age_limit_sec()
+      if retry_param.has_min_backoff_sec():
+        retry_dict['min_backoff_sec'] = retry_param.min_backoff_sec()
+      if retry_param.has_max_backoff_sec():
+        retry_dict['max_backoff_sec'] = retry_param.max_backoff_sec()
+      if retry_param.has_max_doublings():
+        retry_dict['max_doublings'] = retry_param.max_doublings()
+
+      queue_dict['retry_parameters'] = retry_dict
+    queues.append(queue_dict)
+  return queues
+
+
+def ConvertTaskDictToTaskObject(task):
+  """Translate a dict into taskqueue.Task.
+
+  Args:
+    task: A dict in the format same as QueryTasksResponseToDict returns.
+  Returns:
+    A taskqueue.Task object.
+  """
+
+  payload = base64.b64decode(task['body'])
+
+  headers = dict(task['headers'])
+  headers['Content-Length'] = str(len(payload))
+
+
+  eta = datetime.datetime.strptime(task['eta'], TIME_STR_FMT)
+
+
+  eta = eta.replace(tzinfo=taskqueue._UTC)
+
+
+
+
+  return taskqueue.Task(name=task['name'], method=task['method'],
+                        url=task['url'], headers=headers,
+                        payload=payload, eta=eta)
 
 
 class _Group(object):
@@ -385,6 +515,11 @@ class _Group(object):
     """
     self._ReloadQueuesFromYaml()
     return self._queues[queue_name]
+
+  def GetQueues(self):
+    """Gets all _Queue instances from this group."""
+    self._ReloadQueuesFromYaml()
+    return self._queues
 
   def GetNextPushTask(self):
     """Finds the task with the lowest eta.
@@ -2524,21 +2659,107 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
     self._GetGroup().ModifyTaskLease_Rpc(request, response)
 
+  def _Dynamic_SetUpStub(self, request, response):
+    """Local implementation of TaskQueueStubService.SetUpStub.
+
+    Args:
+      request: A taskqueue_stub_service_pb.SetUpStubRequest.
+      response: An api_base.VoidProto.
+    """
+    init_args = inspect.getargspec(TaskQueueServiceStub.__init__)
+    kwargs = dict(zip(init_args.args[1:], init_args.defaults))
+    for k in kwargs.iterkeys():
+      field_name = k[1:] if k.startswith('_') else k
+      if getattr(request, 'has_' + field_name)():
+        kwargs[k] = getattr(request, field_name)()
+    if request.has_request_data():
+      kwargs['request_data'] = pickle.loads(request.request_data())
+    apiproxy_stub_map.apiproxy.ReplaceStub(
+        'taskqueue', TaskQueueServiceStub(**kwargs))
 
 
 
+  def _Dynamic_GetQueues(self, request, response):
+    """Local implementation of TaskQueueStubService.GetQueues.
 
-  def get_filtered_tasks(self, url=None, name=None, queue_names=None):
+    Args:
+      request: An api_base.VoidProto.
+      response: A taskqueue_stub_service_pb.GetQueuesResponse.
+    """
+    group = self._GetGroup()
+    queues = group.GetQueuesAsDicts()
+    response.mutable_fetch_queues_response().CopyFrom(
+        taskqueue_service_pb.TaskQueueFetchQueuesResponse())
+    response.mutable_fetch_queue_stats_response().CopyFrom(
+        taskqueue_service_pb.TaskQueueFetchQueueStatsResponse())
+    stats_request = taskqueue_service_pb.TaskQueueFetchQueueStatsRequest()
+    for queue in queues:
+      queue_name = queue['name']
+      group.GetQueue(queue_name).FetchQueues_Rpc(
+          taskqueue_service_pb.TaskQueueFetchQueuesRequest(),
+          response.fetch_queues_response())
+      stats_request.add_queue_name(queue_name)
+    group.FetchQueueStats_Rpc(stats_request,
+                              response.fetch_queue_stats_response())
+
+  def _Dynamic_DeleteTask(self, request, response):
+    """Local implementation of TaskQueueStubService.DeleteTask.
+
+    This guarantees task deletion, while _Dynamic_Delete intentionally
+    introduces transient error which has 1/20 chance to happen.
+
+    Args:
+      request: a taskqueue_service_pb.TaskQueueDeleteRequest.
+      response: A api_base.VoidProto.
+    """
+    self.DeleteTask(request.queue_name(), request.task_name(0))
+
+  def _Dynamic_FlushQueue(self, request, response):
+    """Local implementation of TaskQueueStubService.FlushQueue.
+
+    Args:
+      request: a taskqueue_service_pb.FlushQueueRequest.
+      response: An api_base.VoidProto.
+    """
+    self.FlushQueue(request.queue_name())
+
+  def _Dynamic_GetFilteredTasks(self, request, response):
+    """Local implementation of TaskQueueStubService.GetFilteredTasks.
+
+    Args:
+      request: A taskqueue_stub_service_pb,GetFilteredTasksRequest.
+      response: A taskqueue_stub_service_pb.GetFilteredTasksResponse.
+    """
+    filtered_dicts = self._get_filtered_task_dicts(
+        request.url() or None, request.name() or None,
+        request.queue_names_list() or None)
+    for task_dict in filtered_dicts:
+      _AddDictToQueryTasksResponse(task_dict, response)
+
+  def _Dynamic_PatchQueueYamlParser(self, request, response):
+    """Local implementation of TaskQueueStubService.PatchQueueYamlParser.
+
+    NOTE, this is ONLY for backward-supporting some existing python tests. DO
+    NOT use it if you are writing new tests.
+
+    Args:
+      request: A taskqueue_stub_service_pb.PatchQueueYamlParserRequest.
+      response: An api_base.VoidProto.
+    """
+    func = lambda _: pickle.loads(request.patched_return_value())
+    self.queue_yaml_parser = func
+
+  def _get_filtered_task_dicts(self, url=None, name=None, queue_names=None):
     """Get the tasks in the task queue with filters.
 
     Args:
       url: A URL that all returned tasks should point at.
       name: The name of all returned tasks.
       queue_names: A list of queue names to retrieve tasks from. If left blank
-        this will get default to all queues available.
+          this will get default to all queues available.
 
     Returns:
-      A list of taskqueue.Task objects.
+      A filtered list of dicts from self.GetTasks.
     """
     all_queue_names = [queue['name'] for queue in self.GetQueues()]
 
@@ -2560,21 +2781,23 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           if name is not None and task['name'] != name:
             continue
           task_dicts.append(task)
-
-    tasks = []
-    for task in task_dicts:
-
-      payload = base64.b64decode(task['body'])
-
-      headers = dict(task['headers'])
-      headers['Content-Length'] = str(len(payload))
+    return task_dicts
 
 
-      eta = datetime.datetime.strptime(task['eta'], '%Y/%m/%d %H:%M:%S')
-      eta = eta.replace(tzinfo=taskqueue._UTC)
 
-      task_object = taskqueue.Task(name=task['name'], method=task['method'],
-                                   url=task['url'], headers=headers,
-                                   payload=payload, eta=eta)
-      tasks.append(task_object)
-    return tasks
+
+
+  def get_filtered_tasks(self, url=None, name=None, queue_names=None):
+    """Gets the tasks in the task queue with filters.
+
+    Args:
+      url: A URL that all returned tasks should point at.
+      name: The name of all returned tasks.
+      queue_names: A list of queue names to retrieve tasks from. If left blank
+          this will get default to all queues available.
+
+    Returns:
+      A list of taskqueue.Task objects.
+    """
+    task_dicts = self._get_filtered_task_dicts(url, name, queue_names)
+    return map(ConvertTaskDictToTaskObject, task_dicts)

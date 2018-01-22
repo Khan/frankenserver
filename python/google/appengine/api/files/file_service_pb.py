@@ -7225,14 +7225,7 @@ class FileService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new FileService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _FileService_ClientStub(
@@ -7244,7 +7237,7 @@ class FileService(_server_stub_base_class):
     """Creates a new FileService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
@@ -7264,7 +7257,7 @@ class FileService(_server_stub_base_class):
       request: a CreateRequest that contains the client request
       response: a CreateResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Open(self, rpc, request, response):
@@ -7275,7 +7268,7 @@ class FileService(_server_stub_base_class):
       request: a OpenRequest that contains the client request
       response: a OpenResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Close(self, rpc, request, response):
@@ -7286,7 +7279,7 @@ class FileService(_server_stub_base_class):
       request: a CloseRequest that contains the client request
       response: a CloseResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Append(self, rpc, request, response):
@@ -7297,7 +7290,7 @@ class FileService(_server_stub_base_class):
       request: a AppendRequest that contains the client request
       response: a AppendResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Stat(self, rpc, request, response):
@@ -7308,7 +7301,7 @@ class FileService(_server_stub_base_class):
       request: a StatRequest that contains the client request
       response: a StatResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Delete(self, rpc, request, response):
@@ -7319,7 +7312,7 @@ class FileService(_server_stub_base_class):
       request: a DeleteRequest that contains the client request
       response: a DeleteResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Read(self, rpc, request, response):
@@ -7330,7 +7323,7 @@ class FileService(_server_stub_base_class):
       request: a ReadRequest that contains the client request
       response: a ReadResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def ReadKeyValue(self, rpc, request, response):
@@ -7341,7 +7334,7 @@ class FileService(_server_stub_base_class):
       request: a ReadKeyValueRequest that contains the client request
       response: a ReadKeyValueResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Shuffle(self, rpc, request, response):
@@ -7352,7 +7345,7 @@ class FileService(_server_stub_base_class):
       request: a ShuffleRequest that contains the client request
       response: a ShuffleResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetShuffleStatus(self, rpc, request, response):
@@ -7363,7 +7356,7 @@ class FileService(_server_stub_base_class):
       request: a GetShuffleStatusRequest that contains the client request
       response: a GetShuffleStatusResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetCapabilities(self, rpc, request, response):
@@ -7374,7 +7367,7 @@ class FileService(_server_stub_base_class):
       request: a GetCapabilitiesRequest that contains the client request
       response: a GetCapabilitiesResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Finalize(self, rpc, request, response):
@@ -7385,7 +7378,7 @@ class FileService(_server_stub_base_class):
       request: a FinalizeRequest that contains the client request
       response: a FinalizeResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def ListDir(self, rpc, request, response):
@@ -7396,7 +7389,7 @@ class FileService(_server_stub_base_class):
       request: a ListDirRequest that contains the client request
       response: a ListDirResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetDefaultGsBucketName(self, rpc, request, response):
@@ -7407,7 +7400,7 @@ class FileService(_server_stub_base_class):
       request: a GetDefaultGsBucketNameRequest that contains the client request
       response: a GetDefaultGsBucketNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

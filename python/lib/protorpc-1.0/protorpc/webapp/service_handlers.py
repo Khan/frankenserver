@@ -619,7 +619,7 @@ class ServiceHandler(webapp.RequestHandler):
       return
 
 
-# TODO(rafek): Support tag-id only forms.
+# TODO(user): Support tag-id only forms.
 class URLEncodedRPCMapper(RPCMapper):
   """Request mapper for application/x-www-form-urlencoded forms.
 

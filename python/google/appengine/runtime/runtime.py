@@ -121,10 +121,17 @@ def HandleRequest(environ, handler_name, url, post_data, application_root,
       logs: A list of tuples (timestamp_usec, severity, message) of log entries.
           timestamp_usec is a long, severity is int and message is str. Severity
           levels are 0..4 for Debug, Info, Warning, Error, Critical.
+      stats: A list of strings, for internal stats collection.
   """
   try:
     error = logservice.LogsBuffer()
-    request_environment.current_request.Init(error, environ)
+    runtime_stats = {
+
+
+
+        'ssl_cert_verify_result': {},
+    }
+    request_environment.current_request.Init(error, environ, runtime_stats)
     url = urlparse.urlsplit(url)
     environ.update(CgiDictFromParsedUrl(url))
     if post_data:
@@ -151,6 +158,8 @@ def HandleRequest(environ, handler_name, url, post_data, application_root,
       response = wsgi.HandleRequest(environ, handler_name, url, post_data,
                                     error)
     response['logs'] = error.parse_logs()
+    response['runtime_stats'] = (
+        request_environment.current_request.runtime_stats)
     return response
   finally:
     request_environment.current_request.Clear()

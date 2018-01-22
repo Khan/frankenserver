@@ -449,6 +449,22 @@ class AppEngineWebXmlParser(object):
             'unrecognized element within <network>: <%s>' % tag)
     self.app_engine_web_xml.network = network
 
+  def ProcessStagingNode(self, node):
+    """Process the local staging config node."""
+    staging = Staging()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      text = child.text or ''
+      if tag in ('jar-splitting-excludes', 'compile-encoding'):
+        setattr(staging, tag.replace('-', '_'), text)
+      elif tag in ('enable-jar-splitting', 'disable-jar-jsps',
+                   'enable-jar-classes', 'delete-jsps'):
+        value = xml_parser_utils.BooleanValue(text)
+        setattr(staging, tag.replace('-', '_'), value)
+      else:
+        self.errors.append('unrecognized element within <staging>: <%s>' % tag)
+    self.app_engine_web_xml.staging = staging
+
   def CheckScalingConstraints(self):
     """Checks that at most one type of scaling is enabled."""
     scaling_num = sum([x is not None for x in [
@@ -502,6 +518,7 @@ class AppEngineWebXml(ValueMixin):
     self.readiness_check = None
     self.resources = None
     self.network = None
+    self.staging = None
     self.env_variables = {}
     self.instance_class = None
     self.automatic_scaling = None
@@ -728,3 +745,7 @@ class BetaSettings(ValueMixin):
 
 class Network(ValueMixin):
   """Instances contain information about network settings."""
+
+
+class Staging(ValueMixin):
+  """Instances contain information about local staging settings."""

@@ -691,7 +691,7 @@ class HTTPResponse:
         reading. If the bytes are truly not available (due to EOF), then the
         IncompleteRead exception can be used to detect the problem.
         """
-        # NOTE(gps): As of svn r74426 socket._fileobject.read(x) will never
+        # NOTE(user): As of svn r74426 socket._fileobject.read(x) will never
         # return less than x bytes unless EOF is encountered.  It now handles
         # signal interruptions (socket.error EINTR) internally.  This code
         # never caught that exception anyways.  It seems largely pointless.

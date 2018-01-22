@@ -7382,14 +7382,7 @@ class DatastoreV4Service(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new DatastoreV4Service Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _DatastoreV4Service_ClientStub(
@@ -7401,7 +7394,7 @@ class DatastoreV4Service(_server_stub_base_class):
     """Creates a new DatastoreV4Service Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
@@ -7421,7 +7414,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a BeginTransactionRequest that contains the client request
       response: a BeginTransactionResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Rollback(self, rpc, request, response):
@@ -7432,7 +7425,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a RollbackRequest that contains the client request
       response: a RollbackResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Commit(self, rpc, request, response):
@@ -7443,7 +7436,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a CommitRequest that contains the client request
       response: a CommitResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def RunQuery(self, rpc, request, response):
@@ -7454,7 +7447,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a RunQueryRequest that contains the client request
       response: a RunQueryResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def ContinueQuery(self, rpc, request, response):
@@ -7465,7 +7458,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a ContinueQueryRequest that contains the client request
       response: a ContinueQueryResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Lookup(self, rpc, request, response):
@@ -7476,7 +7469,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a LookupRequest that contains the client request
       response: a LookupResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def AllocateIds(self, rpc, request, response):
@@ -7487,7 +7480,7 @@ class DatastoreV4Service(_server_stub_base_class):
       request: a AllocateIdsRequest that contains the client request
       response: a AllocateIdsResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

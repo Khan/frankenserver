@@ -5495,14 +5495,7 @@ class LogService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new LogService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _LogService_ClientStub(
@@ -5514,7 +5507,7 @@ class LogService(_server_stub_base_class):
     """Creates a new LogService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
@@ -5534,7 +5527,7 @@ class LogService(_server_stub_base_class):
       request: a FlushRequest that contains the client request
       response: a google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def SetStatus(self, rpc, request, response):
@@ -5545,7 +5538,7 @@ class LogService(_server_stub_base_class):
       request: a SetStatusRequest that contains the client request
       response: a google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Read(self, rpc, request, response):
@@ -5556,7 +5549,7 @@ class LogService(_server_stub_base_class):
       request: a LogReadRequest that contains the client request
       response: a LogReadResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Usage(self, rpc, request, response):
@@ -5567,7 +5560,7 @@ class LogService(_server_stub_base_class):
       request: a LogUsageRequest that contains the client request
       response: a LogUsageResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

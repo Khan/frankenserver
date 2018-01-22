@@ -146,6 +146,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'cherrypy'),
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'endpoints-1.0'),
+        os.path.join(dir_path, 'lib', 'portpicker'),
     ]
 
 
@@ -181,8 +182,8 @@ class Paths(object):
 
 
 
-    php_runtime_dir = os.path.join(devappserver2_dir, 'php')
-    python_runtime_dir = os.path.join(devappserver2_dir, 'python')
+    php_runtime_dir = os.path.join(devappserver2_dir, 'php', 'runtime')
+    python_runtime_dir = os.path.join(devappserver2_dir, 'python', 'runtime')
 
     stub_paths = [
         os.path.join(dir_path, 'lib', 'antlr3'),
@@ -223,6 +224,7 @@ class Paths(object):
         dir_path,
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'portpicker'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
@@ -248,6 +250,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
         os.path.join(dir_path, 'lib', 'fancy_urllib'),
+        os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'protorpc-1.0'),
         os.path.join(dir_path, 'lib', 'yaml-3.10'),
     ]
@@ -356,6 +359,11 @@ class Paths(object):
 
     return [path for path in paths
             if os.path.normcase(path) not in sys_paths_to_scrub]
+
+
+
+
+
 
   def add_grpc_path(self, script_name):
     """Adds grpcio-1.0.0 to sys.path and avoid hard-coding.

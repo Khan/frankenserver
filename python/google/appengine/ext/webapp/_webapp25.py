@@ -18,48 +18,13 @@
 
 
 
-"""An extremely simple WSGI web application framework.
+"""An extremely simple WSGI web application framework for Python 2.5.
 
-This module exports three primary classes: Request, Response, and
-RequestHandler. You implement a web application by subclassing RequestHandler.
-As WSGI requests come in, they are passed to instances of your RequestHandlers.
-The RequestHandler class provides access to the easy-to-use Request and
-Response objects so you can interpret the request and write the response with
-no knowledge of the esoteric WSGI semantics.  Here is a simple example:
+Note:
+  This framework is for Python 2.5 applications which have been deprecated.
+  The submodule `mail_handlers` is still valid for use with Python 2.7
+  applications.
 
-  from google.appengine.ext import webapp
-  from google.appengine.ext.webapp.util import run_wsgi_app
-
-  class MainPage(webapp.RequestHandler):
-    def get(self):
-      self.response.out.write(
-        '<html><body><form action="/hello" method="post">'
-        'Name: <input name="name" type="text" size="20"> '
-        '<input type="submit" value="Say Hello"></form></body></html>')
-
-  class HelloPage(webapp.RequestHandler):
-    def post(self):
-      self.response.headers['Content-Type'] = 'text/plain'
-      self.response.out.write('Hello, %s' % self.request.get('name'))
-
-  application = webapp.WSGIApplication([
-    ('/', MainPage),
-    ('/hello', HelloPage)
-  ], debug=True)
-
-  def main():
-    run_wsgi_app(application)
-
-  if __name__ == "__main__":
-    main()
-
-The WSGIApplication class maps URI regular expressions to your RequestHandler
-classes.  It is a WSGI-compatible application object, so you can use it in
-conjunction with wsgiref to make your web application into, e.g., a CGI
-script or a simple HTTP server, as in the example above.
-
-The framework does not support streaming output. All output from a response
-is stored in memory before it is written.
 """
 
 

@@ -19,6 +19,7 @@
 
 
 import logging
+import urlparse
 
 import google
 import webapp2
@@ -45,7 +46,7 @@ from google.appengine.tools.devappserver2.admin import xmpp_request_handler
 class AdminApplication(webapp2.WSGIApplication):
   """A WSGI application that serves an administrative UI for the application."""
 
-  def __init__(self, dispatch, configuration):
+  def __init__(self, dispatch, configuration, host, port):
     """Initializer for AdminApplication.
 
     Args:
@@ -53,6 +54,8 @@ class AdminApplication(webapp2.WSGIApplication):
           provide state about running servers.
       configuration: An application_configuration.ApplicationConfiguration
           instance containing the configuration for the application.
+      host: The string hostname that the admin server is bound to.
+      port: The integer port that the admin server is bound to.
     """
     super(AdminApplication, self).__init__(
         [('/datastore', datastore_viewer.DatastoreRequestHandler),
@@ -77,6 +80,7 @@ class AdminApplication(webapp2.WSGIApplication):
          ('/search/document', search_handler.SearchDocumentHandler),
          ('/search/index', search_handler.SearchIndexHandler),
          ('/assets/(.+)', static_file_handler.StaticFileHandler),
+         ('/templates/(.+)', static_file_handler.JsTemplateHandler),
          ('/instances', modules_handler.ModulesHandler),
          webapp2.Route('/',
                        webapp2.RedirectHandler,
@@ -84,12 +88,30 @@ class AdminApplication(webapp2.WSGIApplication):
         debug=True)
     self.dispatcher = dispatch
     self.configuration = configuration
+    self.host = host
+    self.port = port
+
+  def __call__(self, environ, start_response):
+    """Blocks all requests that have an invalid "Origin" header."""
+    origin = environ.get('HTTP_ORIGIN')
+    if origin:
+      parsed_origin = urlparse.urlparse(origin)
+      if (parsed_origin.hostname != self.host or
+          parsed_origin.port != self.port):
+        start_response('400 Bad Request', [])
+        return [
+            'The development server\'s admin console only accepts "Origin" '
+            'headers if the value matches the admin console\'s host ({}) and '
+            'port ({}). Received: {}.'.format(self.host, self.port, origin)]
+
+    return super(AdminApplication, self).__call__(environ, start_response)
 
 
 class AdminServer(wsgi_server.WsgiServer):
   """Serves an administrative UI for the application over HTTP."""
 
-  def __init__(self, host, port, dispatch, configuration, xsrf_token_path):
+  def __init__(self, host, port, dispatch, configuration, xsrf_token_path,
+               enable_host_checking=True):
     """Initializer for AdminServer.
 
     Args:
@@ -102,11 +124,19 @@ class AdminServer(wsgi_server.WsgiServer):
           instance containing the configuration for the application.
       xsrf_token_path: A string containing the path to a file that contains the
           XSRF configuration for the admin UI.
+      enable_host_checking: A bool indicating that HTTP Host checking should
+          be enforced for incoming requests.
+
     """
     self._host = host
     self._xsrf_token_path = xsrf_token_path
-    super(AdminServer, self).__init__((host, port),
-                                      AdminApplication(dispatch, configuration))
+
+    admin_app = AdminApplication(dispatch, configuration, host, port)
+    if enable_host_checking:
+      admin_app_module = wsgi_server.WsgiHostCheck([host], admin_app)
+    else:
+      admin_app_module = admin_app
+    super(AdminServer, self).__init__((host, port), admin_app_module)
 
   def start(self):
     """Start the AdminServer."""

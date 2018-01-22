@@ -30,7 +30,7 @@ from google.appengine.api import request_info
 from google.appengine.datastore import datastore_stub_util
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import gcs_server
-from google.appengine.tools.devappserver2.php import runtime
+from google.appengine.tools.devappserver2.php.runtime import runtime
 
 
 def _get_gcs_server():

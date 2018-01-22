@@ -60,11 +60,11 @@ class ModuleConfigurationStub(object):
     self.normalized_libraries = []
     self.env_variables = []
     if manual_scaling:
-      self.automatic_scaling = appinfo.AutomaticScaling()
-      self.manual_scaling = None
+      self.automatic_scaling_config = appinfo.AutomaticScaling()
+      self.manual_scaling_config = None
     else:
-      self.automatic_scaling = None
-      self.manual_scaling = appinfo.ManualScaling(instances=1)
+      self.automatic_scaling_config = None
+      self.manual_scaling_config = appinfo.ManualScaling(instances=1)
     self.inbound_services = None
 
   def add_change_callback(self, fn):
@@ -232,7 +232,7 @@ class DispatcherTest(unittest.TestCase):
 
   def setUp(self):
     self.mox = mox.Mox()
-    api_server.test_setup_stubs()
+    api_server.setup_test_stubs()
     self.dispatch_config = DispatchConfigurationStub()
     app_config = ApplicationConfigurationStub(MODULE_CONFIGURATIONS)
     self.dispatcher = _make_dispatcher(app_config)
@@ -247,12 +247,18 @@ class DispatcherTest(unittest.TestCase):
                                              host='0.0.0.0')
 
     self.mox.StubOutWithMock(self.dispatcher, '_create_module')
+    self.mox.StubOutWithMock(self.dispatcher._port_registry, 'has')
+    self.dispatcher._port_registry.has(1).AndReturn(False)
     self.dispatcher._create_module(app_config.modules[0], 1).AndReturn(
-        (self.module1, 2))
+        self.module1)
+    self.dispatcher._port_registry.has(1).AndReturn(True)
+    self.dispatcher._port_registry.has(2).AndReturn(False)
     self.dispatcher._create_module(app_config.modules[1], 2).AndReturn(
-        (self.module2, 3))
+        self.module2)
+    self.dispatcher._port_registry.has(2).AndReturn(True)
+    self.dispatcher._port_registry.has(3).AndReturn(False)
     self.dispatcher._create_module(app_config.modules[2], 3).AndReturn(
-        (self.module3, 4))
+        self.module3)
     self.mox.ReplayAll()
     self.dispatcher.start('localhost', 12345, object())
     app_config.dispatch = self.dispatch_config

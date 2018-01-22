@@ -2516,7 +2516,7 @@ class AppVersionUpload(object):
                         '(max %d bytes, file is %d bytes).%s',
                         path, max_size, file_length, extra_msg)
         else:
-          logging.debug('Processing file \'%s\'', path)
+          logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
       finally:
         file_handle.close()
@@ -2657,12 +2657,12 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
 
       if os.path.isfile(fullname):
         if skip_files.match(name):
-          logging.debug('Ignoring file \'%s\': File matches ignore regex.', name)
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
         else:
           yield name
       elif os.path.isdir(fullname):
         if skip_files.match(name):
-          logging.debug(
+          logging.info(
               'Ignoring directory \'%s\': Directory matches ignore regex.',
               name)
         else:

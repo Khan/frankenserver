@@ -100,6 +100,23 @@ class APIProxyStub(object):
     """
     return apiproxy_rpc.RPC(stub=self)
 
+  def CheckRequest(self, service, call, request):
+    """Check if a request meet some common restrictions.
+
+    Args:
+      service: Must be name as provided to service_name of constructor.
+      call: A string representing the rpc to make.
+      request: A protocol buffer of the type corresponding to 'call'.
+    """
+    assert service == self.__service_name, ('Expected "%s" service name, '
+                                            'was "%s"' % (self.__service_name,
+                                                          service))
+    if request.ByteSize() > self.__max_request_size:
+      raise apiproxy_errors.RequestTooLargeError(
+          REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (service, call))
+    messages = []
+    assert request.IsInitialized(messages), messages
+
   def MakeSyncCall(self, service, call, request, response, request_id=None):
     """The main RPC entry point.
 
@@ -112,14 +129,7 @@ class APIProxyStub(object):
       request_id: A unique string identifying the request associated with the
           API call.
     """
-    assert service == self.__service_name, ('Expected "%s" service name, '
-                                            'was "%s"' % (self.__service_name,
-                                                          service))
-    if request.ByteSize() > self.__max_request_size:
-      raise apiproxy_errors.RequestTooLargeError(
-          REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (service, call))
-    messages = []
-    assert request.IsInitialized(messages), messages
+    self.CheckRequest(service, call, request)
 
 
 

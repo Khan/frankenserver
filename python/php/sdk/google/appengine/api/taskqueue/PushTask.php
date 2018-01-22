@@ -36,7 +36,7 @@ use google\appengine\TaskQueueAddRequest\RequestMethod;
 
 /**
  * A PushTask encapsulates a unit of work that an application places onto a
- * Push Queue for asnychronous execution. The queue executes that work by
+ * Push Queue for asynchronous execution. The queue executes that work by
  * sending the task back to the application in the form of an HTTP request to
  * one of the application's handlers.
  * This class is immutable.
@@ -83,7 +83,7 @@ final class PushTask {
    * a set of key value pairs. This data will be encoded using
    * http_build_query() and will be either:
    * <ul>
-   *   <li>Added to the payload of the http request if the task's method is POST
+   *   <li>Added to the payload of the HTTP request if the task's method is POST
    *    or PUT.</li>
    *   <li>Added to the URL if the task's method is GET, HEAD, or DELETE.</li>
    * </ul>
@@ -255,8 +255,8 @@ final class PushTask {
   /**
    * Return the task's HTTP method.
    *
-   * @return string The task's HTTP method, i.e. one of 'DELETE', 'GET', 'HEAD',
-   * 'POST', 'PUT'.
+   * @return string The task's HTTP method: 'DELETE', 'GET', 'HEAD',
+   * 'POST', or 'PUT'.
    */
   public function getMethod() {
     return $this->options['method'];

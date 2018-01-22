@@ -1,4 +1,4 @@
-{# Author: Justin Bronn, Travis Pinney & Dane Springmeyer #}
+{
 {% block vars %}var {{ module }} = {};
 {{ module }}.map = null; {{ module }}.controls = null; {{ module }}.panel = null; {{ module }}.re = new RegExp("^SRID=\d+;(.+)", "i"); {{ module }}.layers = {};
 {{ module }}.modifiable = {{ modifiable|yesno:"true,false" }};

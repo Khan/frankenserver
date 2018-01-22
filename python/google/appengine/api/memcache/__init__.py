@@ -78,6 +78,9 @@ ERROR = MemcacheSetResponse.ERROR
 EXISTS = MemcacheSetResponse.EXISTS
 
 
+
+
+
 MAX_KEY_SIZE = 250
 MAX_VALUE_SIZE = 10**6
 
@@ -777,7 +780,7 @@ class Client(object):
         MemcacheSetRequest.SET, key, value, time=time, namespace=namespace)
 
   def add(self, key, value, time=0, min_compress_len=0, namespace=None):
-    """Sets a key's value, iff item is not already in memcache.
+    """Sets a key's value if the item is not already in memcache.
 
     Args:
       key: Key to set.  See docs on Client for details.
@@ -1071,7 +1074,7 @@ class Client(object):
                 key_prefix='',
                 min_compress_len=0,
                 namespace=None):
-    """Set multiple keys' values iff items are not already in memcache.
+    """Set multiple keys' values if items are not already in memcache.
 
     Args:
       mapping: Dictionary of keys to values.

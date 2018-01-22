@@ -2,7 +2,8 @@
 {% block page_title %}Datastore Stats{% endblock %}
 
 {% block page_head %}
-  <style type="text/css">{% include "datastore_stats.css" %}</style>
+  <script src="/templates/datastore_stats.js"></script>
+  <link type="text/css" rel="stylesheet" href="/assets/datastore_stats.css">
 {% endblock %}
 
 {% block body %}
@@ -26,32 +27,5 @@
   please be patient.
   </p>
   <button id="generate-stats" class="ae-button ae-button-submit">Generate stats</button>
-  <script>
-$('#generate-stats').click(function() {
-  var button = $(this);
-  button.attr('disabled', true);
-  button.addClass('disabled');
-  var data = {'action:compute_stats': '1',
-              'xsrf_token': '{{ xsrf_token }}',
-             };
-
-  var request = $.ajax({
-    url: '/datastore-stats',
-    type: 'POST',
-    data: data
-  })
-  .done(function(data) {
-    $('#stats-feedback').removeClass().addClass('messagebox').text(data);
-  })
-  .fail(function(xhr, textStatus) {
-    $('#stats-feedback').removeClass().addClass('errorbox').text(
-        'Stats generation failed' + request.status);
-  })
-  .always(function() {
-    button.attr('disabled', false);
-    button.removeClass('disabled');
-  })
-});
-  </script>
 </div>
 {% endblock %}

@@ -411,6 +411,12 @@ class SimpleIndex(object):
     """Returns the index specification for the index."""
     return self._index_spec
 
+  def _ValidateDocument(self, document):
+    """Extra validations beyond search._NewDocumentFromPb."""
+    for facet in document.facet_list():
+      if not facet.value().string_value():
+        raise ValueError('Facet value is empty')
+
   def IndexDocuments(self, documents, response):
     """Indexes an iterable DocumentPb.Document."""
     for document in documents:
@@ -426,6 +432,7 @@ class SimpleIndex(object):
 
 
       try:
+        self._ValidateDocument(document)
         search._NewDocumentFromPb(document)
       except ValueError, e:
         new_status = response.add_status()
@@ -1049,7 +1056,15 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       return
 
     facet_analyzer = simple_facet.SimpleFacet(params)
-    results = facet_analyzer.RefineResults(results)
+    try:
+      results = facet_analyzer.RefineResults(results)
+    except ValueError, e:
+
+      self._InvalidRequest(response.mutable_status(), e)
+      response.set_matched_count(0)
+      response.clear_result()
+      return
+
     response.set_matched_count(len(results))
     offset = 0
     if params.has_cursor():
@@ -1093,9 +1108,16 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
                              _ScoreRequested(params),
                              params.query(), response, field_names,
                              params.keys_only())
-    facet_analyzer.FillFacetResponse(results, response)
+    try:
+      facet_analyzer.FillFacetResponse(results, response)
+      response.mutable_status().set_code(
+          search_service_pb.SearchServiceError.OK)
 
-    response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
+    except ValueError, e:
+
+      self._InvalidRequest(response.mutable_status(), e)
+      response.set_matched_count(0)
+      response.clear_result()
 
   def _EncodeCursor(self, document, query):
     """Encodes a cursor (doc id) in the context of the given query."""
@@ -1105,7 +1127,12 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
   def _DecodeCursor(self, encoded_cursor, query):
     """Decodes a cursor, expecting it to be valid for the given query."""
-    cursor = base64.urlsafe_b64decode(encoded_cursor)
+    try:
+      cursor = base64.urlsafe_b64decode(encoded_cursor)
+    except TypeError:
+      raise _InvalidCursorException(
+          'Failed to parse search request "%s"; Invalid cursor string: %s' %
+          (query, encoded_cursor))
     separator = cursor.find('|')
     if separator < 0:
       raise _InvalidCursorException('Invalid cursor string: ' + encoded_cursor)

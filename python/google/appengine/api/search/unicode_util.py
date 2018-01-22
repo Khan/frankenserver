@@ -38,7 +38,7 @@ def _SplitUnicode(s):
   (> 64K) to surrogate pairs. Leaves lower codepoints
   unchanged.
 
-  See go/wiki/UTF-16#U.2B10000_to_U.2B10FFFF.
+  See https://wikipedia.org/wiki/UTF-16#U.2B10000_to_U.2B10FFFF
 
   Args:
     s: a unicode string, possibly containing 32-bit characters
@@ -63,7 +63,7 @@ def LimitUnicode(s):
   appropriate surrogate pairs. If there are no such characters,
   returns the same string instance.
 
-  See go/wiki/UTF-16#U.2B10000_to_U.2B10FFFF.
+  See https://wikipedia.org/wiki/UTF-16#U.2B10000_to_U.2B10FFFF
 
   Args:
     s: a string, possibly of unicode type, to be converted

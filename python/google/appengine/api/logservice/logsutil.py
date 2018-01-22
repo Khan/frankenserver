@@ -52,7 +52,7 @@ _DEFAULT_LEVEL = LOG_LEVEL_ERROR
 
 
 def _CurrentTimeMicro():
-  return int(time.time() * _U_SEC)
+  return long(time.time() * _U_SEC)
 
 
 def _Clean(e):
@@ -71,7 +71,7 @@ def RequestID():
 
 
 def _StrictParseLogEntry(entry, clean_message=True):
-  """Parses a single log entry emitted by app_logging.AppLogsHandler.
+  r"""Parses a single log entry emitted by app_logging.AppLogsHandler.
 
   Parses a log entry of the form LOG <level> <timestamp> <message> where the
   level is in the range [0, 4]. If the entry is not of that form, ValueError is
@@ -92,7 +92,7 @@ def _StrictParseLogEntry(entry, clean_message=True):
   if magic != 'LOG':
     raise ValueError()
 
-  timestamp, level = int(timestamp), int(level)
+  timestamp, level = long(timestamp), int(level)
   if level not in LOG_LEVELS:
     raise ValueError()
 
@@ -220,7 +220,7 @@ def RecordFromLine(line):
   """Create the correct type of record based on what the line looks like.
 
   With the classic streaming API, we did not distinguish between a message
-  that came through the logging infrastructure and one that came throught stderr
+  that came through the logging infrastructure and one that came through stderr
   or logservice.write but had been written to look like it came from logging.
 
   Note that this code does not provide 100% accuracy with the old stream

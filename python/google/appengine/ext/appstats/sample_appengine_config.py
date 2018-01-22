@@ -189,7 +189,7 @@ appstats_CALC_RPC_COSTS = False
 
 # should_record() can be used to record a random percentage of calls.
 # The argument is the CGI or WSGI environment dict.  The default
-# implementation returns True iff the request matches FILTER_LIST (see
+# implementation returns True if the request matches FILTER_LIST (see
 # above) *and* random.random() < RECORD_FRACTION.
 
 def appstats_should_record(env):

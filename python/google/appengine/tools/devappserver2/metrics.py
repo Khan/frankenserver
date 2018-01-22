@@ -52,6 +52,7 @@ import httplib
 import json
 import logging
 import os
+import platform
 import sys
 import urllib
 from google.pyglib import singleton
@@ -93,7 +94,9 @@ GOOGLE_ANALYTICS_DIMENSIONS = {
     'PythonVersion': 'cd4',
     'AppEngineEnvironment': 'cd5',
     'FileWatcherType': 'cd6',
-    'IsDevShell': 'cd7'
+    'IsDevShell': 'cd7',
+    'Platform': 'cd8',
+    'Is64Bits': 'cd9',
 }
 
 # Devappserver Google Analytics Custom Metrics.
@@ -101,10 +104,6 @@ GOOGLE_ANALYTICS_METRICS = {
     'FileChangeDetectionAverageTime': 'cm1',
     'FileChangeEventCount': 'cm2'
 }
-
-
-class MetricsLoggerError(Exception):
-  """Used for MetricsLogger related errors."""
 
 
 class _MetricsLogger(object):
@@ -124,6 +123,8 @@ class _MetricsLogger(object):
     self._sdk_version = (
         sdk_update_checker.GetVersionObject() or {}).get('release')
     self._is_dev_shell = constants.DEVSHELL_ENV in os.environ
+    self._is_64_bits = sys.maxsize > 2**32
+    self._platform = platform.platform()
 
     # Stores events for batch logging once Stop has been called.
     self._log_once_on_stop_events = {}
@@ -171,10 +172,6 @@ class _MetricsLogger(object):
       value: A number to use as the Google Analytics event value.
       **kwargs: Additional Google Analytics event parameters to include in the
         request body.
-
-    Raises:
-      MetricsLoggerError: Raised if the _client_id attribute has not been set
-        on the MetricsLogger.
     """
     self._SendRequestToGoogleAnalytics(
         _GOOGLE_ANALYTICS_COLLECT_ENDPOINT,
@@ -219,14 +216,11 @@ class _MetricsLogger(object):
     Args:
       endpoint: The string endpoint path for the request, eg "/collect".
       body: The string body to send with the request.
-
-    Raises:
-      MetricsLoggerError: Raised if the _client_id attribute has not been set
-        on the MetricsLogger.
     """
     if not self._client_id:
-      raise MetricsLoggerError(
-          'The Client ID must be set to log devappserver metrics.')
+      logging.debug('Google Analytics is not configured. '
+                    'If it were, we would send %r:', body)
+      return
 
     headers = {'User-Agent': self._user_agent} if self._user_agent else {}
 
@@ -268,7 +262,8 @@ class _MetricsLogger(object):
         GOOGLE_ANALYTICS_DIMENSIONS['AppEngineEnvironment']:
             self._environment,
         GOOGLE_ANALYTICS_DIMENSIONS['IsDevShell']: self._is_dev_shell,
-
+        GOOGLE_ANALYTICS_DIMENSIONS['Platform']: self._platform,
+        GOOGLE_ANALYTICS_DIMENSIONS['Is64Bits']: self._is_64_bits,
         # Required event data
         'ec': category,
         'ea': action

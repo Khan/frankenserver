@@ -396,7 +396,7 @@ class AbstractRpcServer(object):
 
           return response
         except urllib2.HTTPError, e:
-          logger.debug("Got http error, this is try #%s", tries)
+          logger.debug("Got http error, this is try %d: %s", tries, e)
 
 
           if tries > self.rpc_tries:

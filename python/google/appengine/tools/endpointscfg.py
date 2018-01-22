@@ -543,7 +543,7 @@ def MakeParser(prog):
 
 
 def main(argv):
-  api_server.test_setup_stubs(app_id='_')
+  api_server.setup_test_stubs(app_id='_')
 
   parser = MakeParser(argv[0])
   args = parser.parse_args(argv[1:])

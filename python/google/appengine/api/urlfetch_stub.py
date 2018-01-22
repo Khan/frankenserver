@@ -18,8 +18,6 @@
 
 
 
-
-
 """Stub version of the urlfetch API, based on httplib."""
 
 
@@ -105,7 +103,10 @@ _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'x-forwarded-for',
 ])
 
-_MAX_URL_LENGTH = 2048
+
+
+
+_MAX_URL_LENGTH = 10240
 
 
 def _CanValidateCerts():
@@ -184,9 +185,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       request: the fetch to perform, a URLFetchRequest
       response: the fetch response, a URLFetchResponse
     """
-
-
-    if len(request.url()) >= _MAX_URL_LENGTH:
+    if len(request.url()) > _MAX_URL_LENGTH:
       logging.error('URL is too long: %s...' % request.url()[:50])
       raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.INVALID_URL)
@@ -477,6 +476,11 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, str(e))
 
+      if http_response.status >= 600:
+        raise apiproxy_errors.ApplicationError(
+            urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR,
+            'Status %s unknown' % http_response.status)
+
 
 
 
@@ -484,7 +488,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
         url = http_response.getheader('Location', None)
         if url is None:
-          error_msg = 'Redirecting response was missing "Location" header'
+          error_msg = 'Missing "Location" header for redirect.'
           logging.error(error_msg)
           raise apiproxy_errors.ApplicationError(
               urlfetch_service_pb.URLFetchServiceError.MALFORMED_REPLY,

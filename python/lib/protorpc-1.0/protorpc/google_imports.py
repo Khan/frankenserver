@@ -12,7 +12,4 @@ __author__ = 'yey@google.com (Ye Yuan)'
 try:
   from google.net.proto import ProtocolBuffer
 except ImportError:
-  # MOE:begin_strip
-  from google3.net.proto import ProtocolBuffer
-  # MOE:end_strip
   pass

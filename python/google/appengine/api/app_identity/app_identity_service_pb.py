@@ -1953,14 +1953,7 @@ class SigningService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new SigningService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _SigningService_ClientStub(
@@ -1972,7 +1965,7 @@ class SigningService(_server_stub_base_class):
     """Creates a new SigningService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
@@ -1992,7 +1985,7 @@ class SigningService(_server_stub_base_class):
       request: a SignForAppRequest that contains the client request
       response: a SignForAppResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetPublicCertificatesForApp(self, rpc, request, response):
@@ -2003,7 +1996,7 @@ class SigningService(_server_stub_base_class):
       request: a GetPublicCertificateForAppRequest that contains the client request
       response: a GetPublicCertificateForAppResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetServiceAccountName(self, rpc, request, response):
@@ -2014,7 +2007,7 @@ class SigningService(_server_stub_base_class):
       request: a GetServiceAccountNameRequest that contains the client request
       response: a GetServiceAccountNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetAccessToken(self, rpc, request, response):
@@ -2025,7 +2018,7 @@ class SigningService(_server_stub_base_class):
       request: a GetAccessTokenRequest that contains the client request
       response: a GetAccessTokenResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetDefaultGcsBucketName(self, rpc, request, response):
@@ -2036,7 +2029,7 @@ class SigningService(_server_stub_base_class):
       request: a GetDefaultGcsBucketNameRequest that contains the client request
       response: a GetDefaultGcsBucketNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

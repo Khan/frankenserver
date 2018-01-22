@@ -18,6 +18,7 @@
 
 
 
+import datetime
 import errno
 import os.path
 import unittest
@@ -62,7 +63,7 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'text/html',
                          'Content-length': '12',
                          'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache',
+                         'Cache-Control': 'public',
                          'ETag': '"NDcyNDU2MzU1"'},
                         'Hello World!',
                         h._handle_path,
@@ -94,7 +95,7 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'text/html',
                          'Content-length': '12',
                          'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache',
+                         'Cache-Control': 'public',
                          'ETag': '"NDcyNDU2MzU1"'},
                         'Hello World!',
                         h._handle_path,
@@ -123,7 +124,7 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'text/html',
                          'Content-length': '12',
                          'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache',
+                         'Cache-Control': 'public',
                          'ETag': '"NDcyNDU2MzU1"'},
                         '',
                         h._handle_path,
@@ -424,7 +425,7 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'text/xml',
                          'Content-length': '12',
                          'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache',
+                         'Cache-Control': 'public',
                          'ETag': '"NDcyNDU2MzU1"'},
                         'Hello World!',
                         h._handle_path,
@@ -435,7 +436,10 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
         static_files_handler.StaticContentHandler._filename_to_mtime_and_etag,
         {'/home/appdir/index.html': (12345.6, 'NDcyNDU2MzU1')})
 
-  def test_custom_expiration_ignored(self):
+  def test_custom_expiration_set(self):
+    static_files_handler.Now = self.mox.CreateMockAnything()
+    static_files_handler.Now().AndReturn(datetime.datetime(1990, 01, 01))
+
     url_map = appinfo.URLMap(url='/',
                              expiration='1d 2h 3m 4s',
                              static_files='index.html')
@@ -454,8 +458,42 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'text/html',
                          'Content-length': '12',
                          'ETag': '"NDcyNDU2MzU1"',
-                         'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache'},
+                         'Expires': 'Tue, 02 Jan 1990 10:03:04 GMT',
+                         'Cache-Control': 'public'},
+                        'Hello World!',
+                        h._handle_path,
+                        '/home/appdir/index.html',
+                        {'REQUEST_METHOD': 'GET'})
+    self.mox.VerifyAll()
+    self.assertEqual(
+        static_files_handler.StaticContentHandler._filename_to_mtime_and_etag,
+        {'/home/appdir/index.html': (12345.6, 'NDcyNDU2MzU1')})
+
+  def test_expiration_precedence(self):
+    static_files_handler.Now = self.mox.CreateMockAnything()
+    static_files_handler.Now().AndReturn(datetime.datetime(1990, 01, 01))
+
+    url_map = appinfo.URLMap(url='/',
+                             expiration='1d 2h 3m 4s',
+                             static_files='index.html')
+
+    h = static_files_handler.StaticContentHandler(
+        root_path=None,
+        url_map=url_map,
+        url_pattern='/$',
+        app_info_default_expiration='2d 3h 4m 5s')
+
+    os.path.getmtime('/home/appdir/index.html').AndReturn(12345.6)
+    static_files_handler.StaticContentHandler._read_file(
+        '/home/appdir/index.html').AndReturn('Hello World!')
+
+    self.mox.ReplayAll()
+    self.assertResponse('200 OK',
+                        {'Content-type': 'text/html',
+                         'Content-length': '12',
+                         'ETag': '"NDcyNDU2MzU1"',
+                         'Expires': 'Tue, 02 Jan 1990 10:03:04 GMT',
+                         'Cache-Control': 'public'},
                         'Hello World!',
                         h._handle_path,
                         '/home/appdir/index.html',
@@ -483,7 +521,7 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
                         {'Content-type': 'application/dart',
                          'Content-length': '14',
                          'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
-                         'Cache-Control': 'no-cache',
+                         'Cache-Control': 'public',
                          'ETag': '"LTE2OTA2MzYyMTM="'},
                         'void main() {}',
                         h._handle_path,

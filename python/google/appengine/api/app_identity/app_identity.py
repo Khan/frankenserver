@@ -289,9 +289,6 @@ def make_get_service_account_name_call(rpc):
   request = app_identity_service_pb.GetServiceAccountNameRequest()
   response = app_identity_service_pb.GetServiceAccountNameResponse()
 
-  if rpc.deadline is not None:
-    request.set_deadline(rpc.deadline)
-
   def get_service_account_name_result(rpc):
     """Checks success, handles exceptions, and returns the converted RPC result.
 

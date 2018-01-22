@@ -64,7 +64,7 @@ def open_input_file(filename):
   Returns:
     Opened file if string provided, stdin if filename is None.
   """
-  # TODO(rafek): Detect missing or invalid files, generating user friendly
+  # TODO(user): Detect missing or invalid files, generating user friendly
   # error messages.
   if filename is None:
     return sys.stdin
@@ -94,7 +94,7 @@ def generate_file_descriptor(dest_dir, file_descriptor, force_overwrite):
   """
   package = file_descriptor.package
   if not package:
-    # TODO(rafek): Option to cause an error on this condition.
+    # TODO(user): Option to cause an error on this condition.
     logging.warn('Will not generate descriptor without package name')
     return
 
@@ -279,7 +279,7 @@ parser = make_opt_parser()
 
 
 def main():
-  # TODO(rafek): Customize verbosity.
+  # TODO(user): Customize verbosity.
   logging.basicConfig(level=logging.INFO)
   options, positional = parser.parse_args()
 

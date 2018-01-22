@@ -123,6 +123,20 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self.__scopes = scopes
     self.__client_id = client_id
 
+  def _Dynamic_SetOAuthUser(self, request, unused_response, unused_request_id):
+    """Local implementation of UserStubService.SetOAuthUser().
+
+    Args:
+      request: A user_stub_service_pb.SetOAuthUserRequest message.
+    """
+    self.SetOAuthUser(
+        email=request.email() or self.__email,
+        domain=request.auth_domain() or self.__domain,
+        user_id=request.user_id() or self.__user_id,
+        is_admin=request.is_admin() or self.__is_admin,
+        scopes=request.scopes_list() or self.__scopes,
+        client_id=request.client_id() or self.__client_id)
+
   def _Dynamic_CreateLoginURL(self, request, response, request_id):
     """Trivial implementation of UserService.CreateLoginURL().
 

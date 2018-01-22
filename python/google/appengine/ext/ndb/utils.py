@@ -41,7 +41,7 @@ def wrapping(wrapped):
   # A decorator to decorate a decorator's wrapper.  Following the lead
   # of Twisted and Monocle, this is supposed to make debugging heavily
   # decorated code easier.  We'll see...
-  # TODO(pcostello): This copies the functionality of functools.wraps
+  # TODO(user): This copies the functionality of functools.wraps
   # following the patch in http://bugs.python.org/issue3445. We can replace
   # this once upgrading to python 3.3.
   def wrapping_wrapper(wrapper):
