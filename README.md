@@ -44,7 +44,8 @@ The github repo is typically behind the release tarballs, so we update
 from upstream using the tarballs.
 
 1. Visit https://cloud.google.com/appengine/downloads and download the
-   latest zipfile.
+   latest zipfile.  (You may need to click on "Download and install
+   the original App Engine SDK for Python." to see the download link.)
 2. Create a new branch: `git checkout master && git checkout -b <gae version>`
 3. Replace the old code with the new: `rm -rf *; unzip <zipfile>`
 4. If the zipfile toplevel is named `google_appengine`, do 
