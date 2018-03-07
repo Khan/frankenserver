@@ -810,8 +810,8 @@ class Query(object):
       projection: Optional list or tuple of properties to project.
       group_by: Optional list or tuple of properties to group by.
     """
-    # TODO(arfuller): Accept projection=Model.key to mean keys_only.
-    # TODO(arfuller): Consider adding incremental function
+    # TODO(user): Accept projection=Model.key to mean keys_only.
+    # TODO(user): Consider adding incremental function
     # group_by_property(*args) and project(*args, distinct=False).
 
     # Validating input.

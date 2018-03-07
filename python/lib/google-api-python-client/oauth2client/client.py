@@ -423,7 +423,7 @@ class OAuth2Credentials(Credentials):
     resp, content = http_request(
         self.token_uri, method='POST', body=body, headers=headers)
     if resp.status == 200:
-      # TODO(jcgregorio) Raise an error if loads fails?
+      # TODO(user) Raise an error if loads fails?
       d = simplejson.loads(content)
       self.access_token = d['access_token']
       self.refresh_token = d.get('refresh_token', self.refresh_token)
@@ -863,7 +863,7 @@ class OAuth2WebServerFlow(Flow):
     resp, content = http.request(self.token_uri, method='POST', body=body,
                                  headers=headers)
     if resp.status == 200:
-      # TODO(jcgregorio) Raise an error if simplejson.loads fails?
+      # TODO(user) Raise an error if simplejson.loads fails?
       d = simplejson.loads(content)
       access_token = d['access_token']
       refresh_token = d.get('refresh_token', None)

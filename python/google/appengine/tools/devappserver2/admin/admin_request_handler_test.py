@@ -140,7 +140,8 @@ class AdminRequestHandlerMetricsLoggingTest(unittest.TestCase):
     self.mox.UnsetStubs()
 
   def test_get(self):
-    handler = admin_request_handler.AdminRequestHandler(None, None)
+    handler = admin_request_handler.AdminRequestHandler(
+        None, webapp2.Response())
     metrics._MetricsLogger().LogOnceOnStop(
         'admin-console', 'AdminRequestHandler.get')
     self.mox.ReplayAll()
@@ -148,7 +149,8 @@ class AdminRequestHandlerMetricsLoggingTest(unittest.TestCase):
     self.mox.VerifyAll()
 
   def test_post(self):
-    handler = admin_request_handler.AdminRequestHandler(None, None)
+    handler = admin_request_handler.AdminRequestHandler(
+        None, webapp2.Response())
     metrics._MetricsLogger().LogOnceOnStop(
         'admin-console', 'AdminRequestHandler.post')
     self.mox.ReplayAll()
@@ -156,7 +158,7 @@ class AdminRequestHandlerMetricsLoggingTest(unittest.TestCase):
     self.mox.VerifyAll()
 
   def test_get_with_subclassed_handler(self):
-    handler = MyAdminServerHandler(None, None)
+    handler = MyAdminServerHandler(None, webapp2.Response())
     metrics._MetricsLogger().LogOnceOnStop(
         'admin-console', 'MyAdminServerHandler.get')
     self.mox.ReplayAll()
@@ -164,12 +166,35 @@ class AdminRequestHandlerMetricsLoggingTest(unittest.TestCase):
     self.mox.VerifyAll()
 
   def test_post_with_subclassed_handler(self):
-    handler = MyAdminServerHandler(None, None)
+    handler = MyAdminServerHandler(None, webapp2.Response())
     metrics._MetricsLogger().LogOnceOnStop(
         'admin-console', 'MyAdminServerHandler.post')
     self.mox.ReplayAll()
     handler.post()
     self.mox.VerifyAll()
+
+
+class AdminRequestHandlerSecurityHeadersTest(unittest.TestCase):
+  """Tests for security-related headers in AdminRequestHandler."""
+
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(metrics._MetricsLogger, 'LogOnceOnStop')
+    self.test_app = webapp2.WSGIApplication(
+        [('/', admin_request_handler.AdminRequestHandler)])
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  def test_get_response_contains_security_headers(self):
+    """Test that a response from a GET request has security headers."""
+    request = webapp2.Request.blank('/')
+    response = request.get_response(self.test_app)
+    self.assertEqual('SAMEORIGIN', response.headers.get('X-Frame-Options'))
+    self.assertEqual('1; mode=block', response.headers.get('X-XSS-Protection'))
+    self.assertEqual(
+        {"default-src 'self'", "frame-ancestors 'none'"},
+        set(response.headers.getall('Content-Security-Policy')))
 
 
 class ByteSizeFormatTest(unittest.TestCase):

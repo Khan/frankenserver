@@ -32,7 +32,7 @@ from google.appengine.api import datastore
 from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_stub_util
-from google.appengine.tools.devappserver2 import api_server
+from google.appengine.tools.devappserver2 import stub_util
 from google.appengine.tools.devappserver2.admin import admin_request_handler
 from google.appengine.tools.devappserver2.admin import datastore_viewer
 
@@ -75,7 +75,7 @@ class GetWriteOpsTest(unittest.TestCase):
     # Use a consistent replication strategy so the puts done in the test code
     # are seen immediately by the queries under test.
     consistent_policy = datastore_stub_util.MasterSlaveConsistencyPolicy()
-    api_server.test_setup_stubs(
+    stub_util.setup_test_stubs(
         app_id=self.app_id,
         application_root=None,  # Needed to allow index updates.
         datastore_consistency=consistent_policy)
@@ -342,7 +342,7 @@ class GetEntitiesTest(unittest.TestCase):
     # Use a consistent replication strategy so the puts done in the test code
     # are seen immediately by the queries under test.
     consistent_policy = datastore_stub_util.MasterSlaveConsistencyPolicy()
-    api_server.test_setup_stubs(
+    stub_util.setup_test_stubs(
         app_id=self.app_id,
         datastore_consistency=consistent_policy)
 
@@ -403,7 +403,7 @@ class GetEntityTemplateDataTest(unittest.TestCase):
     # Use a consistent replication strategy so the puts done in the test code
     # are seen immediately by the queries under test.
     consistent_policy = datastore_stub_util.MasterSlaveConsistencyPolicy()
-    api_server.test_setup_stubs(
+    stub_util.setup_test_stubs(
         app_id=self.app_id,
         datastore_consistency=consistent_policy)
 
@@ -485,7 +485,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
   def setUp(self):
     self.app_id = 'myapp'
     os.environ['APPLICATION_ID'] = self.app_id
-    api_server.test_setup_stubs(app_id=self.app_id)
+    stub_util.setup_test_stubs(app_id=self.app_id)
 
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler,
@@ -694,7 +694,7 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
     # Use a consistent replication strategy so that the test can use queries
     # to verify that an entity was written.
     consistent_policy = datastore_stub_util.MasterSlaveConsistencyPolicy()
-    api_server.test_setup_stubs(
+    stub_util.setup_test_stubs(
         app_id=self.app_id,
         datastore_consistency=consistent_policy)
 

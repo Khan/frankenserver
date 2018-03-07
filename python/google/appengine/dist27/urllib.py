@@ -103,7 +103,7 @@ def urlcleanup():
     ftpcache.clear()
 
 # check for SSL
-# NOTE(amistry): HTTPS is available under App Engine, but the ssl module isn't.
+# NOTE(user): HTTPS is available under App Engine, but the ssl module isn't.
 _have_ssl = True
 
 # exception raised when downloaded size does not match content-length
@@ -1249,7 +1249,7 @@ always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                '0123456789' '_.-')
 _safe_map = {}
 for i, c in zip(xrange(256), str(bytearray(xrange(256)))):
-    # NOTE(guido): The original code here used Python 2.7 syntax, but
+    # NOTE(user): The original code here used Python 2.7 syntax, but
     # in App Engine we want to support Python 2.6 as well.
     _safe_map[c] = c if (i < 128 and c in always_safe) else '%%%02X' % i
 _safe_quoters = {}

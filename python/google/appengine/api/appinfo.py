@@ -242,6 +242,7 @@ MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
 VM = 'vm'
 VM_SETTINGS = 'vm_settings'
+ZONES = 'zones'
 BETA_SETTINGS = 'beta_settings'
 VM_HEALTH_CHECK = 'vm_health_check'
 HEALTH_CHECK = 'health_check'
@@ -321,6 +322,14 @@ TARGET_DISK_READ_OPS_PER_SEC = 'target_disk_read_ops_per_sec'
 TARGET_REQUEST_COUNT_PER_SEC = 'target_request_count_per_sec'
 TARGET_CONCURRENT_REQUESTS = 'target_concurrent_requests'
 
+CUSTOM_METRICS = 'custom_metrics'
+METRIC_NAME = 'metric_name'
+TARGET_TYPE = 'target_type'
+TARGET_TYPE_REGEX = r'^(GAUGE|DELTA_PER_SECOND|DELTA_PER_MINUTE)$'
+CUSTOM_METRIC_UTILIZATION = 'target_utilization'
+SINGLE_INSTANCE_ASSIGNMENT = 'single_instance_assignment'
+FILTER = 'filter'
+
 
 
 INSTANCES = 'instances'
@@ -336,6 +345,9 @@ NAME = 'name'
 
 ENDPOINTS_NAME = 'name'
 CONFIG_ID = 'config_id'
+ROLLOUT_STRATEGY = 'rollout_strategy'
+ROLLOUT_STRATEGY_FIXED = 'fixed'
+ROLLOUT_STRATEGY_MANAGED = 'managed'
 
 
 ERROR_CODE = 'error_code'
@@ -381,6 +393,12 @@ INSTANCE_TAG = 'instance_tag'
 NETWORK_NAME = 'name'
 SUBNETWORK_NAME = 'subnetwork_name'
 SESSION_AFFINITY = 'session_affinity'
+
+
+STANDARD_MIN_INSTANCES = 'min_instances'
+STANDARD_MAX_INSTANCES = 'max_instances'
+STANDARD_TARGET_CPU_UTILIZATION = 'target_cpu_utilization'
+STANDARD_TARGET_THROUGHPUT_UTILIZATION = 'target_throughput_utilization'
 
 
 class _VersionedLibrary(object):
@@ -477,7 +495,6 @@ _SUPPORTED_LIBRARIES = [
         'A full-featured web application framework for Python.',
         ['1.2', '1.3', '1.4', '1.5', '1.9', '1.11'],
         latest_version='1.4',
-        hidden_versions=['1.11'],
         ),
     _VersionedLibrary(
         'enum',
@@ -502,13 +519,19 @@ _SUPPORTED_LIBRARIES = [
         latest_version='0.12',
         ),
     _VersionedLibrary(
+        'futures',
+        'https://docs.python.org/3/library/concurrent.futures.html',
+        'Backport of Python 3.2 Futures.',
+        ['3.0.5'],
+        latest_version='3.0.5',
+        ),
+    _VersionedLibrary(
         'grpcio',
-        'http://http://www.grpc.io/',
+        'http://www.grpc.io/',
         'A high performance general RPC framework',
         ['1.0.0'],
         latest_version='1.0.0',
-        default_version='1.0.0',
-        hidden_versions=['1.0.0'],
+        experimental_versions=['1.0.0'],
         ),
     _VersionedLibrary(
         'itsdangerous',
@@ -582,9 +605,9 @@ _SUPPORTED_LIBRARIES = [
         'pytz',
         'https://pypi.python.org/pypi/pytz?',
         'A library for cross-platform timezone calculations',
-        ['2016.4'],
-        latest_version='2016.4',
-        default_version='2016.4',
+        ['2016.4', '2017.2'],
+        latest_version='2017.2',
+        default_version='2017.2',
         ),
     _VersionedLibrary(
         'crcmod',
@@ -594,8 +617,16 @@ _SUPPORTED_LIBRARIES = [
         latest_version='1.7',
         ),
     _VersionedLibrary(
+        'protobuf',
+        'https://developers.google.com/protocol-buffers/',
+        'A library for serializing structured data',
+        ['3.0.0'],
+        latest_version='3.0.0',
+        experimental_versions=['3.0.0'],
+        ),
+    _VersionedLibrary(
         'PyAMF',
-        'http://pyamf.appspot.com/index.html',
+        'https://pypi.python.org/pypi/PyAMF',
         'A library that provides (AMF) Action Message Format functionality.',
         ['0.6.1', '0.7.2'],
         latest_version='0.6.1',
@@ -612,8 +643,8 @@ _SUPPORTED_LIBRARIES = [
         'setuptools',
         'http://pypi.python.org/pypi/setuptools',
         'A library that provides package and module discovery capabilities.',
-        ['0.6c11'],
-        latest_version='0.6c11',
+        ['0.6c11', '36.6.0'],
+        latest_version='36.6.0',
         ),
     _VersionedLibrary(
         'six',
@@ -627,7 +658,8 @@ _SUPPORTED_LIBRARIES = [
         'http://docs.python.org/dev/library/ssl.html',
         'The SSL socket wrapper built-in module.',
         ['2.7', '2.7.11'],
-        latest_version='2.7',
+        latest_version='2.7.11',
+        deprecated_versions=['2.7']
         ),
     _VersionedLibrary(
         'ujson',
@@ -676,15 +708,33 @@ _NAME_TO_SUPPORTED_LIBRARY = dict((library.name, library)
 
 
 
+
+
+
+
+
+
 REQUIRED_LIBRARIES = {
-    ('django', '1.11'): [('pytz', '2016.4')],
+    ('django', '1.11'): [('pytz', '2017.2')],
     ('flask', '0.12'): [('click', '6.6'), ('itsdangerous', '0.24'),
                         ('jinja2', '2.6'), ('werkzeug', '0.11.10')],
     ('jinja2', '2.6'): [('markupsafe', '0.15'), ('setuptools', '0.6c11')],
     ('jinja2', 'latest'): [('markupsafe', 'latest'), ('setuptools', 'latest')],
     ('matplotlib', '1.2.0'): [('numpy', '1.6.1')],
     ('matplotlib', 'latest'): [('numpy', 'latest')],
+    ('protobuf', '3.0.0'): [('six', '1.9.0')],
+    ('protobuf', 'latest'): [('six', 'latest')],
+    ('grpcio', '1.0.0'): [('protobuf', '3.0.0'), ('enum', '0.9.23'),
+                          ('futures', '3.0.5'), ('six', '1.9.0'),
+                          ('setuptools', '36.6.0')],
+    ('grpcio', 'latest'): [('protobuf', 'latest'), ('enum', 'latest'),
+                           ('futures', 'latest'), ('six', 'latest'),
+                           ('setuptools', 'latest')]
 }
+
+
+
+
 
 _USE_VERSION_FORMAT = ('use one of: "%s"')
 
@@ -984,7 +1034,7 @@ class HttpHeadersDict(validation.ValidatedDict):
 
 
 class URLMap(HandlerBase):
-  """Maps from URLs to handlers.
+  r"""Maps from URLs to handlers.
 
   This class acts similar to a union type. Its purpose is to describe a mapping
   between a set of URLs and their handlers. The handler type of a given instance
@@ -1419,6 +1469,12 @@ class BuiltinHandler(validation.Validated):
       raise AttributeError
     return None
 
+  def GetUnnormalized(self, key):
+    try:
+      return super(BuiltinHandler, self).GetUnnormalized(key)
+    except AttributeError:
+      return getattr(self, key)
+
   def ToDict(self):
     """Converts a `BuiltinHander` object to a dictionary.
 
@@ -1565,49 +1621,123 @@ class CpuUtilization(validation.Validated):
   }
 
 
+class CustomMetric(validation.Validated):
+  """Class representing CustomMetrics in AppInfoExternal."""
+
+  ATTRIBUTES = {
+      METRIC_NAME: validation.Regex(_NON_WHITE_SPACE_REGEX),
+      TARGET_TYPE: validation.Regex(TARGET_TYPE_REGEX),
+      CUSTOM_METRIC_UTILIZATION: validation.Optional(validation.TYPE_FLOAT),
+      SINGLE_INSTANCE_ASSIGNMENT: validation.Optional(validation.TYPE_FLOAT),
+      FILTER: validation.Optional(validation.TYPE_STR),
+  }
+
+  def CheckInitialized(self):
+    """Determines if the CustomMetric is not valid.
+
+    Raises:
+      appinfo_errors.TooManyAutoscalingUtilizationTargetsError: If too many
+      scaling targets are set.
+      appinfo_errors.NotEnoughAutoscalingUtilizationTargetsError: If no scaling
+      targets are set.
+    """
+    super(CustomMetric, self).CheckInitialized()
+    if bool(self.target_utilization) and bool(self.single_instance_assignment):
+      raise appinfo_errors.TooManyAutoscalingUtilizationTargetsError(
+          ("There may be only one of '%s' or '%s'." % CUSTOM_METRIC_UTILIZATION,
+           SINGLE_INSTANCE_ASSIGNMENT))
+    elif not (bool(self.target_utilization) or
+              bool(self.single_instance_assignment)):
+      raise appinfo_errors.NotEnoughAutoscalingUtilizationTargetsError(
+          ("There must be one of '%s' or '%s'." % CUSTOM_METRIC_UTILIZATION,
+           SINGLE_INSTANCE_ASSIGNMENT))
+
+
 class EndpointsApiService(validation.Validated):
   """Class representing EndpointsApiService in AppInfoExternal."""
   ATTRIBUTES = {
-      ENDPOINTS_NAME: validation.Regex(_NON_WHITE_SPACE_REGEX),
-      CONFIG_ID: validation.Regex(_NON_WHITE_SPACE_REGEX),
+      ENDPOINTS_NAME:
+          validation.Regex(_NON_WHITE_SPACE_REGEX),
+      ROLLOUT_STRATEGY:
+          validation.Optional(
+              validation.Options(ROLLOUT_STRATEGY_FIXED,
+                                 ROLLOUT_STRATEGY_MANAGED)),
+      CONFIG_ID:
+          validation.Optional(_NON_WHITE_SPACE_REGEX),
   }
+
+  def CheckInitialized(self):
+    """Determines if the Endpoints API Service is not valid.
+
+    Raises:
+      appinfo_errors.MissingEndpointsConfigId: If the config id is missing when
+          the rollout strategy is unspecified or set to "fixed".
+      appinfo_errors.UnexpectedEndpointsConfigId: If the config id is set when
+          the rollout strategy is "managed".
+    """
+    super(EndpointsApiService, self).CheckInitialized()
+    if (self.rollout_strategy != ROLLOUT_STRATEGY_MANAGED and
+        self.config_id is None):
+      raise appinfo_errors.MissingEndpointsConfigId(
+          'config_id must be specified when rollout_strategy is unspecified or'
+          ' set to "fixed"')
+    elif (self.rollout_strategy == ROLLOUT_STRATEGY_MANAGED and
+          self.config_id is not None):
+      raise appinfo_errors.UnexpectedEndpointsConfigId(
+          'config_id is forbidden when rollout_strategy is set to "managed"')
 
 
 class AutomaticScaling(validation.Validated):
   """Class representing automatic scaling settings in AppInfoExternal."""
   ATTRIBUTES = {
-      MINIMUM_IDLE_INSTANCES: validation.Optional(_IDLE_INSTANCES_REGEX),
-      MAXIMUM_IDLE_INSTANCES: validation.Optional(_IDLE_INSTANCES_REGEX),
-      MINIMUM_PENDING_LATENCY: validation.Optional(_PENDING_LATENCY_REGEX),
-      MAXIMUM_PENDING_LATENCY: validation.Optional(_PENDING_LATENCY_REGEX),
-      MAXIMUM_CONCURRENT_REQUEST: validation.Optional(
-          _CONCURRENT_REQUESTS_REGEX),
+      MINIMUM_IDLE_INSTANCES:
+          validation.Optional(_IDLE_INSTANCES_REGEX),
+      MAXIMUM_IDLE_INSTANCES:
+          validation.Optional(_IDLE_INSTANCES_REGEX),
+      MINIMUM_PENDING_LATENCY:
+          validation.Optional(_PENDING_LATENCY_REGEX),
+      MAXIMUM_PENDING_LATENCY:
+          validation.Optional(_PENDING_LATENCY_REGEX),
+      MAXIMUM_CONCURRENT_REQUEST:
+          validation.Optional(_CONCURRENT_REQUESTS_REGEX),
 
-      MIN_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
-      MAX_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
-      COOL_DOWN_PERIOD_SEC: validation.Optional(
-          validation.Range(60, sys.maxint, int)),
-      CPU_UTILIZATION: validation.Optional(CpuUtilization),
+      MIN_NUM_INSTANCES:
+          validation.Optional(validation.Range(1, sys.maxint)),
+      MAX_NUM_INSTANCES:
+          validation.Optional(validation.Range(1, sys.maxint)),
+      COOL_DOWN_PERIOD_SEC:
+          validation.Optional(validation.Range(60, sys.maxint, int)),
+      CPU_UTILIZATION:
+          validation.Optional(CpuUtilization),
+      STANDARD_MAX_INSTANCES:
+          validation.Optional(validation.TYPE_INT),
+      STANDARD_MIN_INSTANCES:
+          validation.Optional(validation.TYPE_INT),
+      STANDARD_TARGET_CPU_UTILIZATION:
+          validation.Optional(validation.TYPE_FLOAT),
+      STANDARD_TARGET_THROUGHPUT_UTILIZATION:
+          validation.Optional(validation.TYPE_FLOAT),
       TARGET_NETWORK_SENT_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_NETWORK_SENT_PACKETS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_NETWORK_RECEIVED_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_NETWORK_RECEIVED_PACKETS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_DISK_WRITE_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_DISK_WRITE_OPS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_DISK_READ_BYTES_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_DISK_READ_OPS_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_REQUEST_COUNT_PER_SEC:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
       TARGET_CONCURRENT_REQUESTS:
-      validation.Optional(validation.Range(1, sys.maxint)),
+          validation.Optional(validation.Range(1, sys.maxint)),
+      CUSTOM_METRICS: validation.Optional(validation.Repeated(CustomMetric)),
   }
 
 
@@ -2098,9 +2228,10 @@ class AppInfoExternal(validation.Validated):
       APPLICATION: validation.Optional(APPLICATION_RE_STRING),
 
       PROJECT: validation.Optional(APPLICATION_RE_STRING),
-      MODULE: validation.Optional(MODULE_ID_RE_STRING),
-
-      SERVICE: validation.Optional(MODULE_ID_RE_STRING),
+      SERVICE: validation.Preferred(MODULE,
+                                    validation.Optional(MODULE_ID_RE_STRING)),
+      MODULE: validation.Deprecated(SERVICE,
+                                    validation.Optional(MODULE_ID_RE_STRING)),
       VERSION: validation.Optional(MODULE_VERSION_ID_RE_STRING),
       RUNTIME: validation.Optional(RUNTIME_RE_STRING),
 
@@ -2130,6 +2261,7 @@ class AppInfoExternal(validation.Validated):
       LIVENESS_CHECK: validation.Optional(LivenessCheck),
       READINESS_CHECK: validation.Optional(ReadinessCheck),
       NETWORK: validation.Optional(Network),
+      ZONES: validation.Optional(validation.Repeated(validation.TYPE_STR)),
       BUILTINS: validation.Optional(validation.Repeated(BuiltinHandler)),
       INCLUDES: validation.Optional(validation.Type(list)),
       HANDLERS: validation.Optional(validation.Repeated(URLMap), default=[]),
@@ -2185,8 +2317,6 @@ class AppInfoExternal(validation.Validated):
           present.
       RuntimeDoesNotSupportLibraries: If the libraries clause is used for a
           runtime that does not support it, such as `python25`.
-      ModuleAndServiceDefined: If both `module` and `service` keywords are used.
-          Services were formerly known as modules.
     """
     super(AppInfoExternal, self).CheckInitialized()
     if self.runtime is None and not self.IsVm():
@@ -2453,7 +2583,7 @@ def ValidateHandlers(handlers, is_include_file=False):
 def LoadSingleAppInfo(app_info):
   """Loads a single `AppInfo` object where one and only one is expected.
 
-  This method validates that the the values in the `AppInfo` match the
+  This method validates that the values in the `AppInfo` match the
   validators that are defined in this file, in particular,
   `AppInfoExternal.ATTRIBUTES`.
 
@@ -2502,15 +2632,6 @@ def LoadSingleAppInfo(app_info):
   elif appyaml.project:
     appyaml.application = appyaml.project
     appyaml.project = None
-
-
-
-  if appyaml.service and appyaml.module:
-    raise appinfo_errors.ModuleAndServiceDefined(
-        'Cannot define both "module" and "service" in configuration')
-  elif appyaml.service:
-    appyaml.module = appyaml.service
-    appyaml.service = None
 
   appyaml.NormalizeVmSettings()
   return appyaml
@@ -2597,9 +2718,6 @@ def ParseExpiration(expiration):
 
 
 
-_file_path_positive_re = re.compile(r'^.{1,256}$')
-
-
 _file_path_negative_1_re = re.compile(r'\.\.|^\./|\.$|/\./|^-|^_ah/|^/')
 
 
@@ -2607,7 +2725,7 @@ _file_path_negative_2_re = re.compile(r'//|/$')
 
 
 
-_file_path_negative_3_re = re.compile(r'^ | $|/ | /')
+_file_path_negative_3_re = re.compile(r'^ | $|/ | /|\n')
 
 
 
@@ -2631,8 +2749,10 @@ def ValidFilename(filename):
     An error string if the file name is invalid. `''` is returned if the file
     name is valid.
   """
-  if _file_path_positive_re.match(filename) is None:
-    return 'Invalid character in filename: %s' % filename
+  if not filename:
+    return 'Filename cannot be empty'
+  if len(filename) > 1024:
+    return 'Filename cannot exceed 1024 characters: %s' % filename
   if _file_path_negative_1_re.search(filename) is not None:
     return ('Filename cannot contain "." or ".." '
             'or start with "-" or "_ah/": %s' %

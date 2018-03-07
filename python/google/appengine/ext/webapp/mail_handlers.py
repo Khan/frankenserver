@@ -22,11 +22,11 @@
 
 Contains handlers to help with receiving mail and mail bounces.
 
-  InboundMailHandler: Has helper method for easily setting up
-    email receivers.
-  BounceNotificationHandler: Has helper method for easily setting
-    up bounce notification receiver. Will parse HTTP request to
-    extract bounce notification.
+  InboundMailHandler:
+    Provides a helper method for easily setting up email receivers.
+  BounceNotificationHandler:
+    Provides a helper method for easily setting up a bounce notification
+    receiver. Will parse HTTP request to extract the bounce notification.
 """
 
 
@@ -49,7 +49,7 @@ BOUNCE_NOTIFICATION_HANDLER_URL_PATH = '/_ah/bounce'
 class InboundMailHandler(webapp.RequestHandler):
   """Base class for inbound mail handlers.
 
-  Example:
+  Example::
 
     # Sub-class overrides receive method.
     class HelloReceiver(InboundMailHandler):
@@ -93,7 +93,7 @@ class InboundMailHandler(webapp.RequestHandler):
 class BounceNotificationHandler(webapp.RequestHandler):
   """Base class for bounce notification handlers.
 
-  Example:
+  Example::
 
     # Sub-class overrides receive method.
     class BounceLogger(BounceNotificationHandler):

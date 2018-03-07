@@ -646,7 +646,7 @@ class BatchHttpRequest(object):
 
       headers, content = self._deserialize_response(part.get_payload())
 
-      # TODO(jcgregorio) Remove this temporary hack once the server stops
+      # TODO(user) Remove this temporary hack once the server stops
       # gzipping individual response bodies.
       if content[0] != '{':
         gzipped_content = content

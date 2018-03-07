@@ -19,12 +19,15 @@
 
 
 import base64
+import datetime
 import errno
 import httplib
 import mimetypes
 import os
 import os.path
 import re
+import time
+import wsgiref.handlers
 import zlib
 
 from google.appengine.api import appinfo
@@ -38,6 +41,15 @@ _FILE_MISSING_ERRNO_CONSTANTS = frozenset([errno.ENOENT, errno.ENOTDIR])
 augment_mimetypes.init()
 
 
+def Now():
+  """Returns datetime object for current time.
+
+  Use this wrapper function rather than calling datetime.datetime.now
+  directly to make mocking easier. Based on similar function in metrics.py
+  """
+  return datetime.datetime.now()
+
+
 class StaticContentHandler(url_handler.UserConfiguredURLHandler):
   """Abstract base class for subclasses serving static content."""
 
@@ -48,7 +60,8 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
   # reading it to generate a hash of its contents.
   _filename_to_mtime_and_etag = {}
 
-  def __init__(self, root_path, url_map, url_pattern):
+  def __init__(self, root_path, url_map, url_pattern,
+               app_info_default_expiration=None):
     """Initializer for StaticContentHandler.
 
     Args:
@@ -58,9 +71,13 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
           handler.
       url_pattern: A re.RegexObject that matches URLs that should be handled by
           this handler. It may also optionally bind groups.
+      app_info_default_expiration: A string containing the value of the
+          default_expiration value from app info yaml. None if no
+          default_expiration is set.
     """
     super(StaticContentHandler, self).__init__(url_map, url_pattern)
     self._root_path = root_path
+    self._app_info_default_expiration = app_info_default_expiration
 
   def _get_mime_type(self, path):
     """Returns the mime type for the file at the given path."""
@@ -91,6 +108,13 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
   @staticmethod
   def _calculate_etag(data):
     return base64.b64encode(str(zlib.crc32(data)))
+
+  def _get_expires_header_value(self, expiration):
+    expires_delta_seconds = appinfo.ParseExpiration(expiration)
+    expiration_datetime = (Now() +
+                           datetime.timedelta(seconds=expires_delta_seconds))
+    return wsgiref.handlers.format_date_time(
+        time.mktime(expiration_datetime.timetuple()))
 
   def _handle_path(self, full_path, environ, start_response):
     """Serves the response to a request for a particular file.
@@ -177,10 +201,17 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
         headers.append(('ETag', '"%s"' % etag))
 
       if user_headers.Get('Expires') is None:
-        headers.append(('Expires', 'Fri, 01 Jan 1990 00:00:00 GMT'))
+        if self._url_map.expiration:
+          expires = self._get_expires_header_value(self._url_map.expiration)
+        elif self._app_info_default_expiration:
+          expires = self._get_expires_header_value(
+              self._app_info_default_expiration)
+        else:
+          expires = 'Fri, 01 Jan 1990 00:00:00 GMT'
+        headers.append(('Expires', expires))
 
       if user_headers.Get('Cache-Control') is None:
-        headers.append(('Cache-Control', 'no-cache'))
+        headers.append(('Cache-Control', 'public'))
 
       for name, value in user_headers.iteritems():
         # "name" will always be unicode due to the way that ValidatedDict works.
@@ -283,7 +314,7 @@ class StaticFilesHandler(StaticContentHandler):
       upload: (.*)/(.*)
   """
 
-  def __init__(self, root_path, url_map):
+  def __init__(self, root_path, url_map, app_info_default_expiration=None):
     """Initializer for StaticFilesHandler.
 
     Args:
@@ -291,6 +322,9 @@ class StaticFilesHandler(StaticContentHandler):
           the application's app.yaml file.
       url_map: An appinfo.URLMap instance containing the configuration for this
           handler.
+      app_info_default_expiration: A string containing the value of the
+          default_expiration value from app info yaml. None if no
+          default_expiration is set.
     """
     try:
       url_pattern = re.compile('%s$' % url_map.url)
@@ -300,7 +334,8 @@ class StaticFilesHandler(StaticContentHandler):
 
     super(StaticFilesHandler, self).__init__(root_path,
                                              url_map,
-                                             url_pattern)
+                                             url_pattern,
+                                             app_info_default_expiration)
 
   def handle(self, match, environ, start_response):
     """Serves the file content matching the request.
@@ -333,7 +368,7 @@ class StaticDirHandler(StaticContentHandler):
       static_dir: stylesheets
   """
 
-  def __init__(self, root_path, url_map):
+  def __init__(self, root_path, url_map, app_info_default_expiration=None):
     """Initializer for StaticDirHandler.
 
     Args:
@@ -341,6 +376,9 @@ class StaticDirHandler(StaticContentHandler):
           the application's app.yaml file.
       url_map: An appinfo.URLMap instance containing the configuration for this
           handler.
+      app_info_default_expiration: A string containing the value of the
+          default_expiration value from app info yaml. None if no
+          default_expiration is set.
     """
     url = url_map.url
     # Take a url pattern like "/css" and transform it into a match pattern like
@@ -356,7 +394,8 @@ class StaticDirHandler(StaticContentHandler):
 
     super(StaticDirHandler, self).__init__(root_path,
                                            url_map,
-                                           url_pattern)
+                                           url_pattern,
+                                           app_info_default_expiration)
 
   def handle(self, match, environ, start_response):
     """Serves the file content matching the request.

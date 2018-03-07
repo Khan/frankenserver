@@ -36,6 +36,7 @@ Class:
 
 import base64
 import os
+import StringIO
 import time
 import urlparse
 
@@ -327,6 +328,21 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     for blobkey in request.blob_key_list():
       self.DeleteBlob(blobkey, self.__storage)
 
+  def _Dynamic_StoreBlob(self, request, response, unused_request_id):
+    """Directly store a blob in the local blobstore.
+
+    This is defined on the BlobstoreStubService, and is intended for use in
+    tests only. It was introduced primarily to support Java local development.
+
+    Args:
+      request: An instance of blobstore_stub_service_pb.StoreBlobRequest.
+      response: An unused instance of api_base_pb.VoidProto.
+    """
+    del response
+    del unused_request_id
+
+    self.CreateBlob(request.blob_key(), request.content())
+
   def _Dynamic_FetchData(self, request, response, unused_request_id):
     """Fetch a blob fragment from a blob by its blob-key.
 
@@ -445,5 +461,5 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
                               name=blob_key, namespace='')
     entity['size'] = len(content)
     datastore.Put(entity)
-    self.storage.CreateBlob(blob_key, content)
+    self.storage.StoreBlob(blob_key, StringIO.StringIO(content))
     return entity

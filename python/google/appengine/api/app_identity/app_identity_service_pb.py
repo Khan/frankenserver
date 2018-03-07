@@ -18,6 +18,7 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
 import base64
 import dummy_thread as thread
@@ -27,11 +28,11 @@ except ImportError:
   _net_proto___parse__python = None
 import sys
 try:
-  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.proto_python_api_1_stub')
   __import__('google.net.rpc.python.pywraprpc_lite')
-  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  proto_python_api_1_stub = sys.modules.get('google.net.rpc.python.proto_python_api_1_stub')
   pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
-  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
+  _client_stub_base_class = proto_python_api_1_stub.Stub
 except ImportError:
   _client_stub_base_class = object
 try:
@@ -1725,7 +1726,101 @@ class GetDefaultGcsBucketNameResponse(ProtocolBuffer.ProtocolMessage):
 
 
 
-class _SigningService_ClientBaseStub(_client_stub_base_class):
+class SigningServiceStub(object):
+  """Makes Stubby RPC calls to a SigningService server."""
+
+  __metaclass__ = abc.ABCMeta
+
+  __slots__ = ()
+
+  @abc.abstractmethod
+  def SignForApp(self, request, rpc=None, callback=None, response=None):
+    """Make a SignForApp RPC call.
+
+    Args:
+      request: a SignForAppRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The SignForAppResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetPublicCertificatesForApp(self, request, rpc=None, callback=None, response=None):
+    """Make a GetPublicCertificatesForApp RPC call.
+
+    Args:
+      request: a GetPublicCertificateForAppRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetPublicCertificateForAppResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetServiceAccountName(self, request, rpc=None, callback=None, response=None):
+    """Make a GetServiceAccountName RPC call.
+
+    Args:
+      request: a GetServiceAccountNameRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetServiceAccountNameResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetAccessToken(self, request, rpc=None, callback=None, response=None):
+    """Make a GetAccessToken RPC call.
+
+    Args:
+      request: a GetAccessTokenRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetAccessTokenResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetDefaultGcsBucketName(self, request, rpc=None, callback=None, response=None):
+    """Make a GetDefaultGcsBucketName RPC call.
+
+    Args:
+      request: a GetDefaultGcsBucketNameRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetDefaultGcsBucketNameResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+
+class _SigningService_ClientBaseStub(
+    SigningServiceStub, _client_stub_base_class):
   """Makes Stubby RPC calls to a SigningService server."""
 
   __slots__ = (
@@ -1953,14 +2048,7 @@ class SigningService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new SigningService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _SigningService_ClientStub(
@@ -1972,15 +2060,18 @@ class SigningService(_server_stub_base_class):
     """Creates a new SigningService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
       rpc_factory: the rpc factory to use if no rpc argument is specified.
+
+    Returns:
+     A SigningServiceStub to be used to invoke RPCs.
     """
 
     if _client_stub_base_class is object:
-      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+      raise RuntimeError('Add //net/rpc/python:proto_python_api_2_stub (or maybe //net/rpc/python:proto_python_api_1_stub, but eww and b/67959631) as a dependency to create Stubby stubs')
     return _SigningService_RPC2ClientStub(
         server, channel, service_name, rpc_factory=rpc_factory)
 
@@ -1992,7 +2083,7 @@ class SigningService(_server_stub_base_class):
       request: a SignForAppRequest that contains the client request
       response: a SignForAppResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetPublicCertificatesForApp(self, rpc, request, response):
@@ -2003,7 +2094,7 @@ class SigningService(_server_stub_base_class):
       request: a GetPublicCertificateForAppRequest that contains the client request
       response: a GetPublicCertificateForAppResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetServiceAccountName(self, rpc, request, response):
@@ -2014,7 +2105,7 @@ class SigningService(_server_stub_base_class):
       request: a GetServiceAccountNameRequest that contains the client request
       response: a GetServiceAccountNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetAccessToken(self, rpc, request, response):
@@ -2025,7 +2116,7 @@ class SigningService(_server_stub_base_class):
       request: a GetAccessTokenRequest that contains the client request
       response: a GetAccessTokenResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetDefaultGcsBucketName(self, rpc, request, response):
@@ -2036,7 +2127,7 @@ class SigningService(_server_stub_base_class):
       request: a GetDefaultGcsBucketNameRequest that contains the client request
       response: a GetDefaultGcsBucketNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

@@ -751,12 +751,30 @@ namespace google\appengine {
     public function hasIndexDeleteTime() {
       return isset($this->index_delete_time);
     }
+    public function getNumShards() {
+      if (!isset($this->num_shards)) {
+        return 1;
+      }
+      return $this->num_shards;
+    }
+    public function setNumShards($val) {
+      $this->num_shards = $val;
+      return $this;
+    }
+    public function clearNumShards() {
+      unset($this->num_shards);
+      return $this;
+    }
+    public function hasNumShards() {
+      return isset($this->num_shards);
+    }
     public function clear() {
       $this->clearIndexSpec();
       $this->clearField();
       $this->clearStorage();
       $this->clearIndexState();
       $this->clearIndexDeleteTime();
+      $this->clearNumShards();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -780,6 +798,10 @@ namespace google\appengine {
       if (isset($this->index_delete_time)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->index_delete_time);
+      }
+      if (isset($this->num_shards)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->num_shards);
       }
       return $res;
     }
@@ -807,6 +829,10 @@ namespace google\appengine {
       if (isset($this->index_delete_time)) {
         $out->putVarInt32(40);
         $out->putVarInt64($this->index_delete_time);
+      }
+      if (isset($this->num_shards)) {
+        $out->putVarInt32(48);
+        $out->putVarInt32($this->num_shards);
       }
     }
     public function tryMerge($d) {
@@ -836,6 +862,9 @@ namespace google\appengine {
             break;
           case 40:
             $this->setIndexDeleteTime($d->getVarInt64());
+            break;
+          case 48:
+            $this->setNumShards($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -870,6 +899,9 @@ namespace google\appengine {
       if ($x->hasIndexDeleteTime()) {
         $this->setIndexDeleteTime($x->getIndexDeleteTime());
       }
+      if ($x->hasNumShards()) {
+        $this->setNumShards($x->getNumShards());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -885,6 +917,8 @@ namespace google\appengine {
       if (isset($this->index_state) && $this->index_state !== $x->index_state) return false;
       if (isset($this->index_delete_time) !== isset($x->index_delete_time)) return false;
       if (isset($this->index_delete_time) && !$this->integerEquals($this->index_delete_time, $x->index_delete_time)) return false;
+      if (isset($this->num_shards) !== isset($x->num_shards)) return false;
+      if (isset($this->num_shards) && !$this->integerEquals($this->num_shards, $x->num_shards)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -903,6 +937,9 @@ namespace google\appengine {
       }
       if (isset($this->index_delete_time)) {
         $res .= $prefix . "index_delete_time: " . $this->debugFormatInt64($this->index_delete_time) . "\n";
+      }
+      if (isset($this->num_shards)) {
+        $res .= $prefix . "num_shards: " . $this->debugFormatInt32($this->num_shards) . "\n";
       }
       return $res;
     }

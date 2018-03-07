@@ -264,13 +264,6 @@ class ProtocolMessage:
 
     return self._CToASCII(ProtocolMessage._SYMBOLIC_FULL_ASCII)
 
-  def ToCompactASCII(self):
-
-
-
-
-    return self._CToASCII(ProtocolMessage._NUMERIC_ASCII)
-
   def ToShortASCII(self):
 
 

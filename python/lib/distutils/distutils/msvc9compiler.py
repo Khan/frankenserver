@@ -200,7 +200,7 @@ def normalize_and_reduce_paths(paths):
     reduced_paths = []
     for p in paths:
         np = os.path.normpath(p)
-        # XXX(nnorwitz): O(n**2), if reduced_paths gets long perhaps use a set.
+        # XXX(user): O(n**2), if reduced_paths gets long perhaps use a set.
         if np not in reduced_paths:
             reduced_paths.append(np)
     return reduced_paths

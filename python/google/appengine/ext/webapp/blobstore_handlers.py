@@ -45,6 +45,7 @@ Public Exceptions (indentation indications class hierarchy):
 import cgi
 import collections
 import re
+import urllib
 
 from google.appengine.ext import blobstore
 from google.appengine.ext import webapp
@@ -64,6 +65,8 @@ __all__ = [
 
 
 _CONTENT_DISPOSITION_FORMAT = 'attachment; filename="%s"'
+_CONTENT_DISPOSITION_FORMAT_UTF8 = ('attachment; filename="%s"; '
+                                    'filename*=utf-8\'\'%s')
 
 _SEND_BLOB_PARAMETERS = frozenset(['use_range'])
 
@@ -263,7 +266,6 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
                         % sorted(invalid_keywords))
 
 
-
     use_range = kwargs.get('use_range', self.__use_range_unset)
     use_range_set = use_range is not self.__use_range_unset
 
@@ -301,8 +303,12 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
     def send_attachment(filename):
       if isinstance(filename, unicode):
         filename = filename.encode('utf-8')
-      self.response.headers['Content-Disposition'] = (
-          _CONTENT_DISPOSITION_FORMAT % filename)
+        self.response.headers['Content-Disposition'] = (
+            _CONTENT_DISPOSITION_FORMAT_UTF8 % (filename,
+                                                urllib.quote(filename)))
+      else:
+        self.response.headers['Content-Disposition'] = (
+            _CONTENT_DISPOSITION_FORMAT % filename)
 
     if save_as:
       if isinstance(save_as, basestring):

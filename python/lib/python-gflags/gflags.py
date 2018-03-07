@@ -30,7 +30,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # ---
-# Author: Chad Lester
 # Design and style contributions by:
 #   Amit Patel, Bogdan Cocosel, Daniel Dulitz, Eric Tiedemann,
 #   Eric Veach, Laurence Gonsalves, Matthew Springer
@@ -1914,7 +1913,7 @@ class Flag:
     # cowardly bail out until someone fixes the semantics of trying to
     # pass None to a C++ flag.  See swig_flags.Init() for details on
     # this behavior.
-    # TODO(olexiy): Users can directly call this method, bypassing all flags
+    # TODO(user): Users can directly call this method, bypassing all flags
     # validators (we don't have FlagValues here, so we can not check
     # validators).
     # The simplest solution I see is to make this method private.
@@ -2279,7 +2278,7 @@ def ADOPT_module_key_flags(module, flag_values=FLAGS):
     FlagsError: When given an argument that is a module name (a
     string), instead of a module object.
   """
-  # NOTE(salcianu): an even better test would be if not
+  # NOTE(user): an even better test would be if not
   # isinstance(module, types.ModuleType) but I didn't want to import
   # types for such a tiny use.
   if isinstance(module, str):

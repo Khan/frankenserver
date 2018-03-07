@@ -159,7 +159,7 @@ def define_message(message_descriptor, module_name):
     enum_instance = define_enum(enum, module_name)
     class_dict[enum.name] = enum_instance
 
-  # TODO(rafek): support nested messages when supported by descriptor.
+  # TODO(user): support nested messages when supported by descriptor.
 
   for field in message_descriptor.fields or []:
     field_instance = define_field(field)

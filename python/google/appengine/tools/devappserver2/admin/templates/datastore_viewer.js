@@ -28,11 +28,11 @@ $(document).ready(function() {
   $('#allkeys').click(checkAllEntities);
 
   $('#create_button').click(function() {
-    params = {'kind' : $('#kind_input').attr('value'),
-              'next': '{{ request.uri }}'};
+    params = {'kind' : $('#kind_input').find(":selected").val(),
+              'next': window.location.href};
 
     if ($('#namespace_input').length) {
-      params['namespace'] = $('#namespace_input').attr('value');
+      params['namespace'] = $('#namespace_input').find(":selected").val();
     }
 
     window.location = '/datastore/edit?' + $.param(params);

@@ -115,7 +115,7 @@ class ThreadPoolExecutor(_base.Executor):
         # the worker threads.
         def weakref_cb(_, q=self._work_queue):
             q.put(None)
-        # TODO(bquinlan): Should avoid creating new threads if there are more
+        # TODO(user): Should avoid creating new threads if there are more
         # idle threads than items in the work queue.
         if len(self._threads) < self._max_workers:
             t = threading.Thread(target=_worker,

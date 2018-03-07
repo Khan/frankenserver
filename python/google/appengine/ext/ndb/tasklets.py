@@ -1209,7 +1209,7 @@ def _make_cloud_datastore_context(app_id, external_app_ids=()):
 
   current_app_id = os.environ.get('APPLICATION_ID', None)
   if current_app_id and current_app_id != app_id:
-    # TODO(pcostello): We should support this so users can connect to different
+    # TODO(user): We should support this so users can connect to different
     # applications.
     raise ValueError('Cannot create a Cloud Datastore context that connects '
                      'to an application (%s) that differs from the application '
@@ -1233,7 +1233,7 @@ def _make_cloud_datastore_context(app_id, external_app_ids=()):
                                             stub)
   except:
     pass  # The stub is already installed.
-  # TODO(pcostello): Ensure the current stub is connected to the right project.
+  # TODO(user): Ensure the current stub is connected to the right project.
 
   # Install a memcache and taskqueue stub which throws on everything.
   try:

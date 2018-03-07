@@ -66,7 +66,7 @@ from endpoints import api_config
 from protorpc import remote
 import yaml
 
-from google.appengine.tools.devappserver2 import api_server
+from google.appengine.tools.devappserver2 import stub_util
 
 
 
@@ -543,7 +543,7 @@ def MakeParser(prog):
 
 
 def main(argv):
-  api_server.test_setup_stubs(app_id='_')
+  stub_util.setup_test_stubs(app_id='_')
 
   parser = MakeParser(argv[0])
   args = parser.parse_args(argv[1:])

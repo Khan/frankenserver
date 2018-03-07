@@ -48,7 +48,7 @@ FLAGS=gflags.FLAGS
 
 import gflags_googletest as googletest
 
-# TODO(csilvers): add a wrapper function around FLAGS(argv) that
+# TODO(user): add a wrapper function around FLAGS(argv) that
 # verifies the input is a list or tuple.  This avoids bugs where we
 # make argv a string instead of a list, by mistake.
 
@@ -1310,7 +1310,7 @@ class FlagsParsingTest(googletest.TestCase):
             '--onedash_name=Harry')
     argv = self.flag_values(argv)
     self.assertEqual(argv[1], '-')
-    # TODO(csilvers): we should still parse --onedash_name=Harry as a
+    # TODO(user): we should still parse --onedash_name=Harry as a
     # flag, but currently we don't (we stop flag processing as soon as
     # we see the first non-flag).
     # - This requires gnu_getopt from Python 2.3+ see FLAGS.UseGnuGetOpt()

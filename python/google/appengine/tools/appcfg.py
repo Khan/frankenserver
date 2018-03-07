@@ -78,8 +78,8 @@ from google.appengine.tools import appengine_rpc
 from google.appengine.tools import augment_mimetypes
 from google.appengine.tools import bulkloader
 from google.appengine.tools import context_util
-from google.appengine.tools import goroots
 from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2.go import goroots
 
 
 try:
@@ -2516,7 +2516,7 @@ class AppVersionUpload(object):
                         '(max %d bytes, file is %d bytes).%s',
                         path, max_size, file_length, extra_msg)
         else:
-          logging.debug('Processing file \'%s\'', path)
+          logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
       finally:
         file_handle.close()
@@ -2657,12 +2657,12 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
 
       if os.path.isfile(fullname):
         if skip_files.match(name):
-          logging.debug('Ignoring file \'%s\': File matches ignore regex.', name)
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
         else:
           yield name
       elif os.path.isdir(fullname):
         if skip_files.match(name):
-          logging.debug(
+          logging.info(
               'Ignoring directory \'%s\': Directory matches ignore regex.',
               name)
         else:
@@ -3428,11 +3428,6 @@ class AppCfgApp(object):
         self.parser.error('Directory %r does not contain configuration file '
                           '%s.yaml' %
                           (os.path.abspath(basepath), basename))
-
-
-
-    appyaml.module = appyaml.module or appyaml.service
-    appyaml.service = None
 
     orig_application = appyaml.application
     orig_module = appyaml.module

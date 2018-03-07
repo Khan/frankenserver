@@ -18,6 +18,7 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
 import base64
 import dummy_thread as thread
@@ -27,11 +28,11 @@ except ImportError:
   _net_proto___parse__python = None
 import sys
 try:
-  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.proto_python_api_1_stub')
   __import__('google.net.rpc.python.pywraprpc_lite')
-  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  proto_python_api_1_stub = sys.modules.get('google.net.rpc.python.proto_python_api_1_stub')
   pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
-  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
+  _client_stub_base_class = proto_python_api_1_stub.Stub
 except ImportError:
   _client_stub_base_class = object
 try:
@@ -1979,7 +1980,118 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
 
 
 
-class _BlobstoreService_ClientBaseStub(_client_stub_base_class):
+class BlobstoreServiceStub(object):
+  """Makes Stubby RPC calls to a BlobstoreService server."""
+
+  __metaclass__ = abc.ABCMeta
+
+  __slots__ = ()
+
+  @abc.abstractmethod
+  def CreateUploadURL(self, request, rpc=None, callback=None, response=None):
+    """Make a CreateUploadURL RPC call.
+
+    Args:
+      request: a CreateUploadURLRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CreateUploadURLResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def DeleteBlob(self, request, rpc=None, callback=None, response=None):
+    """Make a DeleteBlob RPC call.
+
+    Args:
+      request: a DeleteBlobRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def FetchData(self, request, rpc=None, callback=None, response=None):
+    """Make a FetchData RPC call.
+
+    Args:
+      request: a FetchDataRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The FetchDataResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def CloneBlob(self, request, rpc=None, callback=None, response=None):
+    """Make a CloneBlob RPC call.
+
+    Args:
+      request: a CloneBlobRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CloneBlobResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def DecodeBlobKey(self, request, rpc=None, callback=None, response=None):
+    """Make a DecodeBlobKey RPC call.
+
+    Args:
+      request: a DecodeBlobKeyRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The DecodeBlobKeyResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def CreateEncodedGoogleStorageKey(self, request, rpc=None, callback=None, response=None):
+    """Make a CreateEncodedGoogleStorageKey RPC call.
+
+    Args:
+      request: a CreateEncodedGoogleStorageKeyRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CreateEncodedGoogleStorageKeyResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+
+class _BlobstoreService_ClientBaseStub(
+    BlobstoreServiceStub, _client_stub_base_class):
   """Makes Stubby RPC calls to a BlobstoreService server."""
 
   __slots__ = (
@@ -2239,14 +2351,7 @@ class BlobstoreService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new BlobstoreService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _BlobstoreService_ClientStub(
@@ -2258,15 +2363,18 @@ class BlobstoreService(_server_stub_base_class):
     """Creates a new BlobstoreService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
       rpc_factory: the rpc factory to use if no rpc argument is specified.
+
+    Returns:
+     A BlobstoreServiceStub to be used to invoke RPCs.
     """
 
     if _client_stub_base_class is object:
-      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+      raise RuntimeError('Add //net/rpc/python:proto_python_api_2_stub (or maybe //net/rpc/python:proto_python_api_1_stub, but eww and b/67959631) as a dependency to create Stubby stubs')
     return _BlobstoreService_RPC2ClientStub(
         server, channel, service_name, rpc_factory=rpc_factory)
 
@@ -2278,7 +2386,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a CreateUploadURLRequest that contains the client request
       response: a CreateUploadURLResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def DeleteBlob(self, rpc, request, response):
@@ -2289,7 +2397,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a DeleteBlobRequest that contains the client request
       response: a google_dot_apphosting_dot_api_dot_api__base__pb.VoidProto that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def FetchData(self, rpc, request, response):
@@ -2300,7 +2408,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a FetchDataRequest that contains the client request
       response: a FetchDataResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def CloneBlob(self, rpc, request, response):
@@ -2311,7 +2419,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a CloneBlobRequest that contains the client request
       response: a CloneBlobResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def DecodeBlobKey(self, rpc, request, response):
@@ -2322,7 +2430,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a DecodeBlobKeyRequest that contains the client request
       response: a DecodeBlobKeyResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def CreateEncodedGoogleStorageKey(self, rpc, request, response):
@@ -2333,7 +2441,7 @@ class BlobstoreService(_server_stub_base_class):
       request: a CreateEncodedGoogleStorageKeyRequest that contains the client request
       response: a CreateEncodedGoogleStorageKeyResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

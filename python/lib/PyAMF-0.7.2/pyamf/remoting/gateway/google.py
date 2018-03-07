@@ -174,7 +174,6 @@ class WebAppGateway(webapp.RequestHandler, gateway.BaseGateway):
         response = stream.getvalue()
 
         self.response.headers['Content-Type'] = remoting.CONTENT_TYPE
-        self.response.headers['Content-Length'] = str(len(response))
         self.response.headers['Server'] = gateway.SERVER_NAME
 
         self.response.out.write(response)

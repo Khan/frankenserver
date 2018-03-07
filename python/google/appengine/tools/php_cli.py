@@ -30,7 +30,8 @@ from google.appengine.api import request_info
 from google.appengine.datastore import datastore_stub_util
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import gcs_server
-from google.appengine.tools.devappserver2.php import runtime
+from google.appengine.tools.devappserver2 import stub_util
+from google.appengine.tools.devappserver2.php.runtime import runtime
 
 
 def _get_gcs_server():
@@ -108,7 +109,7 @@ def _get_api_server(app_id):
   """Return a configured and started api_server.APIServer."""
   tmp_dir = tempfile.mkdtemp()
   os.environ['APPLICATION_ID'] = app_id
-  api_server.setup_stubs(
+  stub_util.setup_stubs(
       request_data=APIRequestInfo(),
       app_id=app_id,
       application_root=os.getcwd(),

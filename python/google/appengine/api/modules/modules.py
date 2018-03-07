@@ -14,7 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Exposes methods to control modules and versions of an app."""
+"""Exposes methods to control services (modules) and versions of an app.
+
+Services were formerly known as modules and the API methods still
+reflect that naming. For more information and code samples, see
+`Using the Modules API
+<https://cloud.google.com/appengine/docs/standard/python/using-the-modules-api>`_.
+"""
 
 __all__ = [
     'Error',
@@ -69,7 +75,7 @@ class UnexpectedStateError(Error):
 
 
 class TransientError(Error):
-  """A transient error was encountered, please retry the operation."""
+  """A transient error was encountered, retry the operation."""
 
 
 def get_current_module_name():
@@ -93,17 +99,18 @@ def get_current_version_name():
 
 
 def get_current_instance_id():
-  """Returns the id of the current instance.
+  """Returns the ID of the current instance.
 
   If this is instance 2 of version "v1" of module "module5" for app "my-app",
   this function will return "2".
 
-  This is only valid for manually-scheduled modules, None will be returned for
-  automatically-scaled modules.
+  This is only valid for automatically-scaled modules; otherwise, None is
+  returned.
+
 
   Returns:
-    String containing the id of the instance, or None if this is not a
-    manually-scaled module.
+    String containing the ID of the instance, or None if this is not an
+    automatically-scaled module.
   """
   return os.environ.get('INSTANCE_ID', None)
 
@@ -429,10 +436,10 @@ def get_hostname(module=None,
 
   Returns:
     A valid canonical hostname that can be used to communicate with the given
-    module/version/instance.  E.g. 0.v1.module5.myapp.appspot.com
+    module/version/instance.  For example: `0.v1.module5.myapp.appspot.com`
 
   Raises:
-    InvalidModuleError: if the given moduleversion is invalid.
+    InvalidModuleError: if the given module version is invalid.
     InvalidInstancesError: if the given instance value is invalid.
     TypeError: if the given instance type is invalid.
   """

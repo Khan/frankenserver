@@ -86,7 +86,7 @@ def _run_file(file_path, globals_):
 
 
 
-  if '--grpc_api' in sys.argv:
+  if '--api_server_supports_grpc' in sys.argv:
     _PATHS.add_grpc_path(script_name)
 
   sys.path = (_PATHS.script_paths(script_name) +

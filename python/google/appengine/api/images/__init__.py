@@ -203,7 +203,7 @@ class Image(object):
       image_data: String of the image data.
       blob_key: A `BlobKey`, `BlobInfo`, string, or Unicode representation of
           the blob key of the blob that contains the image data.
-      filename: String of the the file name of a Google Storage file that
+      filename: String of the file name of a Google Storage file that
           contains the image data. Must be in the format
           `/gs/bucket_name/object_name`.
 

@@ -19,7 +19,9 @@
 
 
 
+import abc
 import BaseHTTPServer
+import os
 import socket
 import wsgiref.headers
 from google.appengine.tools import sdk_update_checker
@@ -94,3 +96,29 @@ def get_sdk_version():
     return version_object['release']
   else:
     return _DEFAULT_SDK_VERSION
+
+
+def setup_environ(app_id):
+  """Sets up the os.environ dictionary for the front-end server and API server.
+
+  This function should only be called once.
+
+  Args:
+    app_id: The id of the application.
+  """
+  os.environ['APPLICATION_ID'] = app_id
+
+
+class GcdEmulatorManager(object):
+  """An abstract class defining the interfaces of Gcd Emulator Managing.
+
+  Api server is agnostic of the emulator. The implementation of this class
+  should be instantiated in a wrapper of api_server with direct access to the
+  emulator.
+  """
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractmethod
+  def launch(self):
+    """Launch the emulator."""
+    raise NotImplementedError()

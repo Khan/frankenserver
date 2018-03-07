@@ -62,6 +62,25 @@ class PortParser(object):
     return port
 
 
+class ServicePortParser(PortParser):
+  """An argparse type parser exclusively for --specified_service_port flag."""
+
+  def __init__(self):
+    super(ServicePortParser, self).__init__()
+
+  def __call__(self, value):
+    res = {}
+    for service_port_str in value.split(','):
+      service_port = service_port_str.split(':')
+      if len(service_port) is not 2:
+        raise argparse.ArgumentTypeError(
+            ' %s is not in the format of service-name:port,service-name:port'
+            % value)
+      service, port = service_port
+      res[service] = super(ServicePortParser, self).__call__(port)
+    return res
+
+
 def parse_per_module_option(
     value, value_type, value_predicate,
     single_bad_type_error, single_bad_predicate_error,
@@ -251,7 +270,7 @@ class ConfigurableArgumentParser(argparse.ArgumentParser):
       *args: Arguments passed on to the argument group.
       **kwargs: Keyword arguments passed on to the argument group, can
           optionally contain a 'restrict_configuration' kwarg that will be
-          popped. This should be the list of configurations the the argument is
+          popped. This should be the list of configurations the argument is
           applicable for. Omitting this kwarg, or providing an empty list,
           signifies that the added argument is valid for all configurations.
     """
@@ -305,7 +324,7 @@ class ConfigurableArgumentGroup(argparse._ArgumentGroup):  # pylint: disable=pro
       *args: Arguments passed on to the argument group.
       **kwargs: Keyword arguments passed on to the argument group, can
           optionally contain a 'restrict_configuration' kwarg that will be
-          popped. This should be the list of configurations the the argument is
+          popped. This should be the list of configurations the argument is
           applicable for. Omitting this kwarg, or providing an empty list,
           signifies that the added argument is valid for all configurations.
     """
@@ -369,6 +388,10 @@ def create_command_line_parser(configuration=None):
       '--port', type=PortParser(), default=8080,
       help='lowest port to which application modules should bind')
   common_group.add_argument(
+      '--specified_service_ports', type=ServicePortParser(), default=None,
+      help='A sequence of service-name:port-number to port number mapping. E.g:'
+      ' service-a:22222,service-b:33333')
+  common_group.add_argument(
       '--admin_host', default=default_server_host,
       help='host name to which the admin server should bind')
   common_group.add_argument(
@@ -422,6 +445,26 @@ def create_command_line_parser(configuration=None):
                             const=True,
                             default=False,
                             help=argparse.SUPPRESS)
+  enable_host_checking_help = ('determines whether to enforce HTTP Host '
+                               'checking for application modules, API server, '
+                               'and admin server. host checking protects '
+                               'against DNS rebinding attacks, so only disable '
+                               'after understanding the security implications.')
+
+
+
+
+
+  common_group.add_argument('--enable_host_checking',
+                            action=boolean_action.BooleanAction,
+                            const=True,
+                            default=True,
+                            help=enable_host_checking_help)
+  common_group.add_argument('--enable_console',
+                            action=boolean_action.BooleanAction,
+                            const=True,
+                            default=False,
+                            help='Enable interactive console in admin view.')
 
   # PHP
   php_group = parser.add_argument_group('PHP')
@@ -480,7 +523,7 @@ def create_command_line_parser(configuration=None):
       '--python_startup_script',
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
       help='the script to run at the startup of new Python runtime instances '
-      '(useful for tools such as debuggers.')
+      '(useful for tools such as debuggers).')
   python_group.add_argument(
       '--python_startup_args',
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
@@ -513,6 +556,13 @@ def create_command_line_parser(configuration=None):
       help='Enable watching $GOPATH for go app dependency changes. If file '
       'watcher complains about too many files to watch, you can set it to '
       'False.')
+  go_group.add_argument(
+      '--go_debugging',
+      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help='Enable debugging. Connect to the running app with delve.')
 
   # Custom
   custom_group = parser.add_argument_group('Custom VM Runtime')
@@ -708,20 +758,29 @@ def create_command_line_parser(configuration=None):
   # host name to which the server for API calls should bind.
   misc_group.add_argument(
       '--api_host', default=default_server_host,
-      help=argparse.SUPPRESS)
+      help='host name to which the api server should bind.')
   misc_group.add_argument(
       '--api_port', type=PortParser(), default=0,
       help='port to which the server for API calls should bind')
   misc_group.add_argument(
-      '--grpc_api', action='append', dest='grpc_apis',
-      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
-      help='apis that talk grpc to api_server. For example: '
-      '--grpc_api memcache --grpc_api datastore. Setting --grpc_api all '
-      'lets every api talk grpc.')
+      '--api_server_supports_grpc',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help=argparse.SUPPRESS)
+
+
+
+
+  misc_group.add_argument(
+      '--support_datastore_emulator',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help=argparse.SUPPRESS)
   misc_group.add_argument(
       '--grpc_api_port', type=PortParser(), default=0,
-      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
-      help='port to which the server for grpc API calls should bind')
+      help='port on which the gRPC API server listens.')
   misc_group.add_argument(
       '--automatic_restart',
       action=boolean_action.BooleanAction,
@@ -737,12 +796,6 @@ def create_command_line_parser(configuration=None):
       'the development server will not be displayed on the console (this '
       'flag is more useful for diagnosing problems in dev_appserver.py rather '
       'than in application code)')
-  misc_group.add_argument(
-      '--dev_appserver_log_setup_script', default=None,
-      help='path to a Python script that will be run to set up logging for '
-      'the development server. The default log set up is always run, and this '
-      'script will simply run afterwards (so clear out any log handlers if '
-      'necessary).')
   misc_group.add_argument(
       '--skip_sdk_update_check',
       action=boolean_action.BooleanAction,
@@ -762,20 +815,18 @@ def create_command_line_parser(configuration=None):
       'in the format of key=value, and you can define multiple envrionment '
       'variables. For example: --env_var KEY_1=val1 --env_var KEY_2=val2. '
       'You can also define environment variables in app.yaml.')
+  # The client id used for Google Analytics usage reporting. If this is set,
+  # usage metrics will be sent to Google Analytics. This should only be set by
+  # the Cloud SDK dev_appserver.py wrapper.
   misc_group.add_argument(
       '--google_analytics_client_id', default=None,
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
-      help='the client id user for Google Analytics usage reporting. If this '
-      'is set, usage metrics will be sent to Google Analytics.')
+      help=argparse.SUPPRESS)
+  # The user agent to use for Google Analytics usage reporting. This should only
+  # be set by the Cloud SDK dev_appserver.py wrapper.
   misc_group.add_argument(
       '--google_analytics_user_agent', default=None,
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
-      help='the user agent to use for Google Analytics usage reporting.')
-
-
-
-
-
-
+      help=argparse.SUPPRESS)
 
   return parser

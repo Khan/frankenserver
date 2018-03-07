@@ -40,10 +40,10 @@ following are acceptable:
 import errno
 import getpass
 import itertools
+import json
 import logging
 import os
 import pickle
-import shutil
 import sys
 import tempfile
 import threading
@@ -52,44 +52,27 @@ import traceback
 import urlparse
 
 import google
+import portpicker
 import yaml
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import datastore
-from google.appengine.api import datastore_file_stub
-from google.appengine.api import mail_stub
 from google.appengine.api import request_info as request_info_lib
-from google.appengine.api import urlfetch_stub
-from google.appengine.api import user_service_stub
-from google.appengine.api.app_identity import app_identity_stub
-from google.appengine.api.blobstore import blobstore_stub
-from google.appengine.api.blobstore import file_blob_storage
-from google.appengine.api.capabilities import capability_stub
-from google.appengine.api.channel import channel_service_stub
-from google.appengine.api.files import file_service_stub
-from google.appengine.api.logservice import logservice_stub
-from google.appengine.api.memcache import memcache_stub
-from google.appengine.api.modules import modules_stub
-from google.appengine.api.remote_socket import _remote_socket_stub
-from google.appengine.api.search import simple_search_stub
-from google.appengine.api.system import system_stub
-from google.appengine.api.taskqueue import taskqueue_stub
-from google.appengine.api.xmpp import xmpp_service_stub
-from google.appengine.datastore import datastore_sqlite_stub
 from google.appengine.datastore import datastore_stub_util
-from google.appengine.datastore import datastore_v4_pb
-from google.appengine.datastore import datastore_v4_stub
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.ext.remote_api import remote_api_services
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import cli_parser
 from google.appengine.tools.devappserver2 import constants
+from google.appengine.tools.devappserver2 import datastore_converter
+from google.appengine.tools.devappserver2 import datastore_grpc_stub
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import metrics
 from google.appengine.tools.devappserver2 import shutdown
+from google.appengine.tools.devappserver2 import stub_util
+from google.appengine.tools.devappserver2 import util
 from google.appengine.tools.devappserver2 import wsgi_request_info
 from google.appengine.tools.devappserver2 import wsgi_server
 
@@ -99,32 +82,8 @@ GLOBAL_API_LOCK = threading.RLock()
 
 # The default app id used when launching the api_server.py as a binary, without
 # providing the context of a specific application.
-DEFAULT_API_SERVER_APP_ID = 'dev~app_id'
+DEFAULT_API_SERVER_APP_ID = 'dev~app-id'
 
-# We don't want to support datastore_v4 everywhere, because users are supposed
-# to use the Cloud Datastore API going forward, so we don't want to put these
-# entries in remote_api_servers.SERVICE_PB_MAP. But for our own implementation
-# of the Cloud Datastore API we need those methods to work when an instance
-# issues them, specifically the DatstoreApiServlet running as a module inside
-# the app we are running. The consequence is that other app code can also
-# issue datastore_v4 API requests, but since we don't document these requests
-# or export them through any language bindings this is unlikely in practice.
-_DATASTORE_V4_METHODS = {
-    'AllocateIds': (datastore_v4_pb.AllocateIdsRequest,
-                    datastore_v4_pb.AllocateIdsResponse),
-    'BeginTransaction': (datastore_v4_pb.BeginTransactionRequest,
-                         datastore_v4_pb.BeginTransactionResponse),
-    'Commit': (datastore_v4_pb.CommitRequest,
-               datastore_v4_pb.CommitResponse),
-    'ContinueQuery': (datastore_v4_pb.ContinueQueryRequest,
-                      datastore_v4_pb.ContinueQueryResponse),
-    'Lookup': (datastore_v4_pb.LookupRequest,
-               datastore_v4_pb.LookupResponse),
-    'Rollback': (datastore_v4_pb.RollbackRequest,
-                 datastore_v4_pb.RollbackResponse),
-    'RunQuery': (datastore_v4_pb.RunQueryRequest,
-                 datastore_v4_pb.RunQueryResponse),
-}
 
 # TODO: Remove after the Files API is really gone.
 _FILESAPI_USE_TRACKER = None
@@ -172,7 +131,8 @@ def _execute_request(request, use_proto3=False):
     if request.request_id:
       request_id = request.request_id
     else:
-      logging.error('Received a request without request_id: %s', request)
+      # This logging could be time consuming. Hence set as debug level.
+      logging.debug('Received a request without request_id.')
       request_id = None
   else:
     service = request.service_name()
@@ -180,11 +140,12 @@ def _execute_request(request, use_proto3=False):
     if request.has_request_id():
       request_id = request.request_id()
     else:
-      logging.error('Received a request without request_id: %s', request)
+      logging.debug('Received a request without request_id.')
       request_id = None
 
-  service_methods = (_DATASTORE_V4_METHODS if service == 'datastore_v4'
-                     else remote_api_services.SERVICE_PB_MAP.get(service, {}))
+  service_methods = (
+      stub_util.DATASTORE_V4_METHODS if service == 'datastore_v4'
+      else remote_api_services.STUB_SERVICE_PB_MAP.get(service, {}))
   # We do this rather than making a new map that is a superset of
   # remote_api_services.SERVICE_PB_MAP because that map is not initialized
   # all in one place, so we would have to be careful about where we made
@@ -237,15 +198,26 @@ def _execute_request(request, use_proto3=False):
   return response_data
 
 
-class GRPCAPIServer(object):
-  """Serves API calls over GPC."""
+class APIServer(wsgi_server.WsgiServer):
+  """Serves API calls over HTTP and GRPC(optional)."""
 
-  def __init__(self, port):
-    self._port = port
-    self._stop = False
-    self._server = None
+  def __init__(self, host, port, app_id, use_grpc=False, grpc_api_port=0,
+               enable_host_checking=True):
+    self._app_id = app_id
+    self._host = host
 
-  def _start_server(self):
+    if enable_host_checking:
+      api_server_module = wsgi_server.WsgiHostCheck([host], self)
+    else:
+      api_server_module = self
+    super(APIServer, self).__init__((host, port), api_server_module)
+
+    self.set_balanced_address('localhost:8080')
+
+    self._use_grpc = use_grpc
+    self._grpc_api_port = grpc_api_port
+
+  def _start_grpc_server(self):
     """Starts gRPC API server."""
     grpc_service_pb2 = __import__('google.appengine.tools.devappserver2.'
                                   'grpc_service_pb2', globals(), locals(),
@@ -255,66 +227,50 @@ class GRPCAPIServer(object):
       """Handles gRPC method calls."""
 
       def HandleCall(self, request, context):
-        # TODO: b/36590656#comment3 - Add exception handling logic here.
-        api_response = _execute_request(request, use_proto3=True)
-        response = grpc_service_pb2.Response(response=api_response.Encode())
+        response = grpc_service_pb2.Response()
+        try:
+          api_response = _execute_request(request, use_proto3=True)
+          response.response = api_response.Encode()
+        except apiproxy_errors.ApplicationError, e:
+          response.application_error.code = e.application_error
+          response.application_error.detail = e.error_detail
         return response
 
-    self._server = grpc_service_pb2.beta_create_CallHandler_server(
+    self._grpc_server = grpc_service_pb2.beta_create_CallHandler_server(
         CallHandler())
 
     # add_insecure_port() returns positive port number when port allocation is
-    # successful. Otherwise it returns 0, and we handle the exception in start()
-    # from the caller thread.
+    # successful. Otherwise it returns 0.
     # 'localhost' works with both ipv4 and ipv6.
-    self._port = self._server.add_insecure_port('localhost:' + str(self._port))
+    self._grpc_api_port = self._grpc_server.add_insecure_port(
+        'localhost:' + str(self._grpc_api_port))
+    if not self._grpc_api_port:
+      raise errors.GrpcPortError('Error assigning grpc api port!')
+
+    datastore_v3_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
+    if isinstance(datastore_v3_stub, datastore_grpc_stub.DatastoreGrpcStub):
+      datastore_v3_stub.SetTxnAddTaskCallbackHostPort(
+          'localhost:%d' % self._grpc_api_port)
+
     # We set this GRPC_PORT in environment variable as it is only accessed by
     # the devappserver process.
-    os.environ['GRPC_PORT'] = str(self._port)
-    if self._port:
-      logging.info('Starting GRPC_API_server at: http://localhost:%d',
-                   self._port)
-    self._server.start()
-
-  def start(self):
-    with threading.Lock():
-      self._server_thread = threading.Thread(target=self._start_server)
-      self._server_thread.start()
-      self._server_thread.join()
-      if not self._port:
-        raise errors.GrpcPortError('Error assigning grpc api port!')
-
-  def quit(self):
-    logging.info('Keyboard interrupting grpc_api_server')
-    self._server.stop(0)
-
-
-class APIServer(wsgi_server.WsgiServer):
-  """Serves API calls over HTTP."""
-
-  def __init__(self, host, port, app_id, datastore_emulator_host=None):
-    self._app_id = app_id
-    self._host = host
-    super(APIServer, self).__init__((host, port), self)
-    self.set_balanced_address('localhost:8080')
-
-    self._datastore_emulator_stub = None
-    if datastore_emulator_host:
-      global grpc_proxy_util
-      # pylint: disable=g-import-not-at-top
-      # We lazy import here because grpc binaries are not always present.
-      from google.appengine.tools.devappserver2 import grpc_proxy_util
-      self._datastore_emulator_stub = grpc_proxy_util.create_stub(
-          datastore_emulator_host)
+    os.environ['GRPC_PORT'] = str(self._grpc_api_port)
+    logging.info('Starting GRPC_API_server at: http://localhost:%d',
+                 self._grpc_api_port)
+    self._grpc_server.start()
 
   def start(self):
     """Start the API Server."""
     super(APIServer, self).start()
     logging.info('Starting API server at: http://%s:%d', self._host, self.port)
+    if self._use_grpc:
+      self._start_grpc_server()
 
   def quit(self):
-    cleanup_stubs()
     super(APIServer, self).quit()
+    if self._use_grpc:
+      self._grpc_server.stop(0)
+    stub_util.cleanup_stubs()
 
   def set_balanced_address(self, balanced_address):
     """Sets the balanced address from the dispatcher (e.g. "localhost:8080").
@@ -356,20 +312,19 @@ class APIServer(wsgi_server.WsgiServer):
       request.ParseFromString(wsgi_input)
 
       service = request.service_name()
+      service_stub = apiproxy_stub_map.apiproxy.GetStub(service)
 
-      if service == 'datastore_v3' and self._datastore_emulator_stub:
+      if isinstance(service_stub, datastore_grpc_stub.DatastoreGrpcStub):
         # len(request.request()) is equivalent to calling ByteSize() on
         # deserialized request.request.
         if len(request.request()) > apiproxy_stub.MAX_REQUEST_SIZE:
           raise apiproxy_errors.RequestTooLargeError(
               apiproxy_stub.REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (
-                  'datastore_v3', request.method()))
-        response = grpc_proxy_util.make_grpc_call_from_remote_api(
-            self._datastore_emulator_stub, request)
+                  service, request.method()))
+        response = service_stub.MakeSyncCallForRemoteApi(request)
       else:
         if request.has_request_id():
           request_id = request.request_id()
-          service_stub = apiproxy_stub_map.apiproxy.GetStub(service)
           environ['HTTP_HOST'] = self._balanced_address
           op = getattr(service_stub.request_data, 'register_request_id', None)
           if callable(op):
@@ -398,8 +353,15 @@ class APIServer(wsgi_server.WsgiServer):
       # While not strictly necessary for ApplicationError, do this to limit
       # differences with remote_api:handler.py.
       response.set_exception(pickle.dumps(e))
-      logging.log(level, 'Exception while handling %s\n%s', request,
-                  traceback.format_exc())
+
+
+
+
+
+
+      logging.log(level, 'Exception while handling %s.%s()\n%s',
+                  request.service_name(),
+                  request.method(), traceback.format_exc())
     encoded_response = response.Encode()
     logging.debug('Handled %s.%s in %0.4f',
                   request.service_name(),
@@ -420,17 +382,46 @@ class APIServer(wsgi_server.WsgiServer):
     start_response('200 OK', [('Content-Type', 'text/plain')])
 
     # TODO: Add more services as needed.
-    stubs_to_clear = ['datastore_v3', 'memcache']
-    for stub_name in stubs_to_clear:
-      stub = apiproxy_stub_map.apiproxy.GetStub(stub_name)
-      stub.Clear()
+    clearable_stubs = [
+        'app_identity_service', 'capability_service', 'datastore_v3',
+        'logservice', 'mail', 'memcache']
+    stubs_to_clear = urlparse.parse_qs(environ.get('QUERY_STRING')).get('stub')
+
+    if stubs_to_clear:
+      for stub_name in stubs_to_clear:
+        if stub_name in clearable_stubs:
+          apiproxy_stub_map.apiproxy.GetStub(stub_name).Clear()
+    else:
+      for stub_name in clearable_stubs:
+        apiproxy_stub_map.apiproxy.GetStub(stub_name).Clear()
 
     # No response is necessary, a 200 status code is enough.
     return []
 
+  def _handle_STATUS(self, environ, start_response):
+    """Report the status of api server.
+
+    Args:
+      environ: An environ dict for the request as defined in PEP-333.
+      start_response: A start_response function with semantics defined in
+        PEP-333.
+
+    Returns:
+      A JSON string which is a dumped dict reporting statuses of api_server.
+    """
+    start_response('200 OK', [('Content-Type', 'text/plain')])
+    status = {
+        'datastore_emulator_host': os.environ.get(
+            'DATASTORE_EMULATOR_HOST', 'None')
+    }
+
+    return json.dumps(status)
+
   def __call__(self, environ, start_response):
     if environ.get('PATH_INFO') == '/clear':
       return self._handle_CLEAR(environ, start_response)
+    elif environ.get('PATH_INFO') == '/_ah/status':
+      return self._handle_STATUS(environ, start_response)
     if environ['REQUEST_METHOD'] == 'GET':
       return self._handle_GET(environ, start_response)
     elif environ['REQUEST_METHOD'] == 'POST':
@@ -440,9 +431,16 @@ class APIServer(wsgi_server.WsgiServer):
       return []
 
 
+# An object which is subclass of devappserver2.util.GcdEmulatorManager. If
+# api_server is launched as an individual binary, this should be instantiated by
+# a wrapper that calls api_server.main(). If api_server is launched as part of
+# dev_appserver process, this should be instantiated by a wrapper that calles
+# dev_appserver2.main.
+GCD_EMULATOR_MANAGER = None
+
+
 def create_api_server(
-    request_info, storage_path, options, app_id, app_root,
-    datastore_emulator_host=None):
+    request_info, storage_path, options, app_id, app_root):
   """Creates an API server.
 
   Args:
@@ -455,12 +453,23 @@ def create_api_server(
     app_root: The path to the directory containing the user's
       application e.g. "/home/joe/myapp", used for locating application yaml
       files, eg index.yaml for the datastore stub.
-    datastore_emulator_host: String, the hostname:port on which cloud datastore
-      emualtor runs.
 
   Returns:
     An instance of APIServer.
   """
+  emulator_launching_thread = None
+  if options.support_datastore_emulator and not os.environ.get(
+      'DATASTORE_EMULATOR_HOST'):
+    gcd_emulator_port = portpicker.PickUnusedPort()
+    emulator_launching_thread = threading.Thread(
+        target=GCD_EMULATOR_MANAGER.launch,
+        args=[
+            gcd_emulator_port,
+            options.dev_appserver_log_level != 'debug',
+            os.path.join(app_root, 'index.yaml'), options.require_indexes])
+    emulator_launching_thread.start()
+    os.environ['DATASTORE_EMULATOR_HOST'] = 'localhost:%d' % gcd_emulator_port
+
   datastore_path = options.datastore_path or os.path.join(
       storage_path, 'datastore.db')
   logs_path = options.logs_path or os.path.join(storage_path, 'logs.db')
@@ -483,8 +492,8 @@ def create_api_server(
 
   user_login_url = '/%s?%s=%%s' % (
       login.LOGIN_URL_RELATIVE, login.CONTINUE_PARAM)
-  user_logout_url = '%s&%s=%s' % (
-      user_login_url, login.ACTION_PARAM, login.LOGOUT_ACTION)
+  user_logout_url = '/%s?%s=%%s' % (
+      login.LOGOUT_URL_RELATIVE, login.CONTINUE_PARAM)
 
   if options.datastore_consistency_policy == 'time':
     consistency = datastore_stub_util.TimeBasedHRConsistencyPolicy()
@@ -496,8 +505,26 @@ def create_api_server(
     assert 0, ('unknown consistency policy: %r' %
                options.datastore_consistency_policy)
 
-  maybe_convert_datastore_file_stub_data_to_sqlite(app_id, datastore_path)
-  setup_stubs(
+  # Check if local datastore data should be converted.
+  # Using GCD Emulator this could convert python file stub or sqlite stub data
+  # to Emulator data format; Without GCD Emulator this converts python file stub
+  # to sqlite stub data.
+  if os.path.exists(datastore_path):
+    data_type = datastore_converter.get_data_type(datastore_path)
+    if options.support_datastore_emulator:
+      if data_type in [datastore_converter.StubTypes.PYTHON_FILE_STUB,
+                       datastore_converter.StubTypes.PYTHON_SQLITE_STUB]:
+        if emulator_launching_thread:
+          emulator_launching_thread.join()
+        gcd_emulator_host = os.environ.get('DATASTORE_EMULATOR_HOST')
+        datastore_converter.convert_python_data_to_emulator(
+            app_id, data_type, datastore_path, gcd_emulator_host)
+    else:
+      if data_type != datastore_converter.StubTypes.PYTHON_SQLITE_STUB:
+        datastore_converter.convert_datastore_file_stub_data_to_sqlite(
+            app_id, datastore_path)
+
+  stub_util.setup_stubs(
       request_data=request_info,
       app_id=app_id,
       application_root=app_root,
@@ -528,10 +555,18 @@ def create_api_server(
       user_login_url=user_login_url,
       user_logout_url=user_logout_url,
       default_gcs_bucket_name=options.default_gcs_bucket_name,
-      appidentity_oauth_url=options.appidentity_oauth_url)
+      appidentity_oauth_url=options.appidentity_oauth_url,
+      datastore_grpc_stub_class=(
+          datastore_grpc_stub.DatastoreGrpcStub
+          if options.support_datastore_emulator else None)
+  )
 
-  return APIServer(options.api_host, options.api_port, app_id,
-                   datastore_emulator_host)
+  if emulator_launching_thread:
+    emulator_launching_thread.join()
+  return APIServer(
+      options.api_host, options.api_port, app_id,
+      options.api_server_supports_grpc or options.support_datastore_emulator,
+      options.grpc_api_port, options.enable_host_checking)
 
 
 def _clear_datastore_storage(datastore_path):
@@ -609,347 +644,6 @@ def _generate_storage_paths(app_id):
     yield os.path.join(tempdir, 'appengine.%s%s.%d' % (app_id, user_format, i))
 
 
-def setup_stubs(
-    request_data,
-    app_id,
-    application_root,
-    trusted,
-    appidentity_email_address,
-    appidentity_private_key_path,
-    blobstore_path,
-    datastore_consistency,
-    datastore_path,
-    datastore_require_indexes,
-    datastore_auto_id_policy,
-    images_host_prefix,
-    logs_path,
-    mail_smtp_host,
-    mail_smtp_port,
-    mail_smtp_user,
-    mail_smtp_password,
-    mail_enable_sendmail,
-    mail_show_mail_body,
-    mail_allow_tls,
-    search_index_path,
-    taskqueue_auto_run_tasks,
-    taskqueue_default_http_server,
-    user_login_url,
-    user_logout_url,
-    default_gcs_bucket_name,
-    appidentity_oauth_url=None):
-  """Configures the APIs hosted by this server.
-
-  Args:
-    request_data: An apiproxy_stub.RequestInformation instance used by the
-        stubs to lookup information about the request associated with an API
-        call.
-    app_id: The str application id e.g. "guestbook".
-    application_root: The path to the directory containing the user's
-        application e.g. "/home/joe/myapp".
-    trusted: A bool indicating if privileged APIs should be made available.
-    appidentity_email_address: Email address associated with a service account
-        that has a downloadable key. May be None for no local application
-        identity.
-    appidentity_private_key_path: Path to private key file associated with
-        service account (.pem format). Must be set if appidentity_email_address
-        is set.
-    blobstore_path: The path to the file that should be used for blobstore
-        storage.
-    datastore_consistency: The datastore_stub_util.BaseConsistencyPolicy to
-        use as the datastore consistency policy.
-    datastore_path: The path to the file that should be used for datastore
-        storage.
-    datastore_require_indexes: A bool indicating if the same production
-        datastore indexes requirements should be enforced i.e. if True then
-        a google.appengine.ext.db.NeedIndexError will be be raised if a query
-        is executed without the required indexes.
-    datastore_auto_id_policy: The type of sequence from which the datastore
-        stub assigns auto IDs, either datastore_stub_util.SEQUENTIAL or
-        datastore_stub_util.SCATTERED.
-    images_host_prefix: The URL prefix (protocol://host:port) to prepend to
-        image urls on calls to images.GetUrlBase.
-    logs_path: Path to the file to store the logs data in.
-    mail_smtp_host: The SMTP hostname that should be used when sending e-mails.
-        If None then the mail_enable_sendmail argument is considered.
-    mail_smtp_port: The SMTP port number that should be used when sending
-        e-mails. If this value is None then mail_smtp_host must also be None.
-    mail_smtp_user: The username to use when authenticating with the
-        SMTP server. This value may be None if mail_smtp_host is also None or if
-        the SMTP server does not require authentication.
-    mail_smtp_password: The password to use when authenticating with the
-        SMTP server. This value may be None if mail_smtp_host or mail_smtp_user
-        is also None.
-    mail_enable_sendmail: A bool indicating if sendmail should be used when
-        sending e-mails. This argument is ignored if mail_smtp_host is not None.
-    mail_show_mail_body: A bool indicating whether the body of sent e-mails
-        should be written to the logs.
-    mail_allow_tls: A bool indicating whether TLS should be allowed when
-        communicating with an SMTP server. This argument is ignored if
-        mail_smtp_host is None.
-    search_index_path: The path to the file that should be used for search index
-        storage.
-    taskqueue_auto_run_tasks: A bool indicating whether taskqueue tasks should
-        be run automatically or it the must be manually triggered.
-    taskqueue_default_http_server: A str containing the address of the http
-        server that should be used to execute tasks.
-    user_login_url: A str containing the url that should be used for user login.
-    user_logout_url: A str containing the url that should be used for user
-        logout.
-    default_gcs_bucket_name: A str, overriding the default bucket behavior.
-    appidentity_oauth_url: A str containing the url to the oauth2 server to use
-        to authenticate the private key. If set to None, then the standard
-        google oauth2 server is used.
-  """
-  identity_stub = app_identity_stub.AppIdentityServiceStub.Create(
-      email_address=appidentity_email_address,
-      private_key_path=appidentity_private_key_path,
-      oauth_url=appidentity_oauth_url)
-  if default_gcs_bucket_name is not None:
-    identity_stub.SetDefaultGcsBucketName(default_gcs_bucket_name)
-  apiproxy_stub_map.apiproxy.RegisterStub('app_identity_service', identity_stub)
-
-  blob_storage = file_blob_storage.FileBlobStorage(blobstore_path, app_id)
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'blobstore',
-      blobstore_stub.BlobstoreServiceStub(blob_storage,
-                                          request_data=request_data))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'capability_service',
-      capability_stub.CapabilityServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'channel',
-      channel_service_stub.ChannelServiceStub(request_data=request_data))
-
-  apiproxy_stub_map.apiproxy.ReplaceStub(
-      'datastore_v3',
-      datastore_sqlite_stub.DatastoreSqliteStub(
-          app_id,
-          datastore_path,
-          datastore_require_indexes,
-          trusted,
-          root_path=application_root,
-          auto_id_policy=datastore_auto_id_policy,
-          consistency_policy=datastore_consistency))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'datastore_v4',
-      datastore_v4_stub.DatastoreV4Stub(app_id))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'file',
-      file_service_stub.FileServiceStub(blob_storage))
-
-  try:
-    from google.appengine.api.images import images_stub
-  except ImportError:
-
-
-
-
-    # We register a stub which throws a NotImplementedError for most RPCs.
-    from google.appengine.api.images import images_not_implemented_stub
-    apiproxy_stub_map.apiproxy.RegisterStub(
-        'images',
-        images_not_implemented_stub.ImagesNotImplementedServiceStub(
-            host_prefix=images_host_prefix))
-  else:
-    apiproxy_stub_map.apiproxy.RegisterStub(
-        'images',
-        images_stub.ImagesServiceStub(host_prefix=images_host_prefix))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'logservice',
-      logservice_stub.LogServiceStub(logs_path=logs_path))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'mail',
-      mail_stub.MailServiceStub(mail_smtp_host,
-                                mail_smtp_port,
-                                mail_smtp_user,
-                                mail_smtp_password,
-                                enable_sendmail=mail_enable_sendmail,
-                                show_mail_body=mail_show_mail_body,
-                                allow_tls=mail_allow_tls))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'memcache',
-      memcache_stub.MemcacheServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'modules',
-      modules_stub.ModulesServiceStub(request_data))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'remote_socket',
-      _remote_socket_stub.RemoteSocketServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'search',
-      simple_search_stub.SearchServiceStub(index_file=search_index_path))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'system',
-      system_stub.SystemServiceStub(request_data=request_data))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'taskqueue',
-      taskqueue_stub.TaskQueueServiceStub(
-          root_path=application_root,
-          auto_task_running=taskqueue_auto_run_tasks,
-          default_http_server=taskqueue_default_http_server,
-          request_data=request_data))
-  apiproxy_stub_map.apiproxy.GetStub('taskqueue').StartBackgroundExecution()
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'urlfetch',
-      urlfetch_stub.URLFetchServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'user',
-      user_service_stub.UserServiceStub(login_url=user_login_url,
-                                        logout_url=user_logout_url,
-                                        request_data=request_data))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'xmpp',
-      xmpp_service_stub.XmppServiceStub())
-
-
-def maybe_convert_datastore_file_stub_data_to_sqlite(app_id, filename):
-  if not os.access(filename, os.R_OK | os.W_OK):
-    return
-  try:
-    with open(filename, 'rb') as f:
-      if f.read(16) == 'SQLite format 3\x00':
-        return
-  except (IOError, OSError):
-    return
-  try:
-    _convert_datastore_file_stub_data_to_sqlite(app_id, filename)
-  except:
-    logging.exception('Failed to convert datastore file stub data to sqlite.')
-    raise
-
-
-def _convert_datastore_file_stub_data_to_sqlite(app_id, datastore_path):
-  logging.info('Converting datastore stub data to sqlite.')
-  previous_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
-  try:
-    apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-    datastore_stub = datastore_file_stub.DatastoreFileStub(
-        app_id, datastore_path, trusted=True, save_changes=False)
-    apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
-
-    entities = _fetch_all_datastore_entities()
-    sqlite_datastore_stub = datastore_sqlite_stub.DatastoreSqliteStub(
-        app_id, datastore_path + '.sqlite', trusted=True)
-    apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3',
-                                           sqlite_datastore_stub)
-    datastore.Put(entities)
-    sqlite_datastore_stub.Close()
-  finally:
-    apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', previous_stub)
-
-  shutil.copy(datastore_path, datastore_path + '.filestub')
-  os.remove(datastore_path)
-  shutil.move(datastore_path + '.sqlite', datastore_path)
-  logging.info('Datastore conversion complete. File stub data has been backed '
-               'up in %s', datastore_path + '.filestub')
-
-
-def _fetch_all_datastore_entities():
-  """Returns all datastore entities from all namespaces as a list."""
-  all_entities = []
-  for namespace in datastore.Query('__namespace__').Run():
-    namespace_name = namespace.key().name()
-    for kind in datastore.Query('__kind__', namespace=namespace_name).Run():
-      all_entities.extend(
-          datastore.Query(kind.key().name(), namespace=namespace_name).Run())
-  return all_entities
-
-
-def test_setup_stubs(
-    request_data=None,
-    app_id='myapp',
-    application_root='/tmp/root',
-    trusted=False,
-    appidentity_email_address=None,
-    appidentity_private_key_path=None,
-    # TODO: is this correct? If I'm following the flow correctly, this
-    # should not be a file but a directory.
-    blobstore_path='/dev/null',
-    datastore_consistency=None,
-    datastore_path=':memory:',
-    datastore_require_indexes=False,
-    datastore_auto_id_policy=datastore_stub_util.SCATTERED,
-    images_host_prefix='http://localhost:8080',
-    logs_path=':memory:',
-    mail_smtp_host='',
-    mail_smtp_port=25,
-    mail_smtp_user='',
-    mail_smtp_password='',
-    mail_enable_sendmail=False,
-    mail_show_mail_body=False,
-    mail_allow_tls=True,
-    search_index_path=None,
-    taskqueue_auto_run_tasks=False,
-    taskqueue_default_http_server='http://localhost:8080',
-    user_login_url='/_ah/login?continue=%s',
-    user_logout_url='/_ah/login?continue=%s',
-    default_gcs_bucket_name=None,
-    appidentity_oauth_url=None):
-  """Similar to setup_stubs with reasonable test defaults and recallable."""
-
-  # Reset the stub map between requests because a stub map only allows a
-  # stub to be added once.
-  apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-
-  if datastore_consistency is None:
-    datastore_consistency = (
-        datastore_stub_util.PseudoRandomHRConsistencyPolicy())
-
-  setup_stubs(request_data,
-              app_id,
-              application_root,
-              trusted,
-              appidentity_email_address,
-              appidentity_private_key_path,
-              blobstore_path,
-              datastore_consistency,
-              datastore_path,
-              datastore_require_indexes,
-              datastore_auto_id_policy,
-              images_host_prefix,
-              logs_path,
-              mail_smtp_host,
-              mail_smtp_port,
-              mail_smtp_user,
-              mail_smtp_password,
-              mail_enable_sendmail,
-              mail_show_mail_body,
-              mail_allow_tls,
-              search_index_path,
-              taskqueue_auto_run_tasks,
-              taskqueue_default_http_server,
-              user_login_url,
-              user_logout_url,
-              default_gcs_bucket_name,
-              appidentity_oauth_url)
-
-
-def cleanup_stubs():
-  """Do any necessary stub cleanup e.g. saving data."""
-  # Saving datastore
-  logging.info('Applying all pending transactions and saving the datastore')
-  datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
-  datastore_stub.Write()
-  logging.info('Saving search indexes')
-  apiproxy_stub_map.apiproxy.GetStub('search').Write()
-  apiproxy_stub_map.apiproxy.GetStub('taskqueue').Shutdown()
-
-
 def main():
   """Parses command line options and launches the API server."""
   shutdown.install_signal_handlers()
@@ -970,6 +664,7 @@ def main():
     app_id = (options.app_id_prefix + options.app_id if
               options.app_id else DEFAULT_API_SERVER_APP_ID)
     app_root = tempfile.mkdtemp()
+  util.setup_environ(app_id)
 
   # pylint: disable=protected-access
   # TODO: Rename LocalFakeDispatcher or re-implement for api_server.py.

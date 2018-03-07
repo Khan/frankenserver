@@ -116,7 +116,7 @@ $(document).ready(function() {
     disableRestartButton();
 
     var request = $.ajax({
-      url: '{{ request.uri }}/restart/' +
+      url: window.location.href + '/restart/' +
            encodeURIComponent($('#module_name').val()),
       type: 'POST'
     })
@@ -142,7 +142,7 @@ $(document).ready(function() {
                 'xsrf_token': '{{ xsrf_token }}'};
 
     var request = $.ajax({
-      url: '{{ request.uri }}',
+      url: window.location.href,
       type: 'POST',
       data: data
     })

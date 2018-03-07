@@ -1,0 +1,21 @@
+
+#xmpp label {
+  display: block;
+  font-weight: bold;
+}
+#xmpp legend {
+  font-weight: bold;
+}
+#xmpp .radio label {
+  display: inline;
+  font-weight: normal;
+}
+#xmpp-submit {
+  margin-top: 2em;
+}
+#presence-fields {
+  display: none;
+}
+#subscribe-fields {
+  display: none;
+}

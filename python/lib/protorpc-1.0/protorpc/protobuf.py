@@ -58,7 +58,7 @@ class _Encoder(ProtocolBuffer.Encoder):
   for handling required encoding.  This class adds them.
   """
 
-  # TODO(rafek): Implement the missing encoding types.
+  # TODO(user): Implement the missing encoding types.
   def no_encoding(self, value):
     """No encoding available for type.
 
@@ -105,7 +105,7 @@ class _Decoder(ProtocolBuffer.Decoder):
   for handling required decoding.  This class adds them.
   """
 
-  # TODO(rafek): Implement the missing encoding types.
+  # TODO(user): Implement the missing encoding types.
   def no_decoding(self):
     """No decoding available for type.
 

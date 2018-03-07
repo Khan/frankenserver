@@ -616,7 +616,7 @@ final class CloudStorageTools {
    * @param mixed[] $options Array of additional options for serving the object.
    * <ul>
    *   <li>'content_type': string Content-Type to override when known.
-   *   <li>'save_as': boolean If True then send the file as an attachment.
+   *   <li>'save_as': string Filename for Content-Disposition header.
    *   <li>'start': int Start index of content-range to send.
    *   <li>'end': int End index of content-range to send. End index is
    *   inclusive.

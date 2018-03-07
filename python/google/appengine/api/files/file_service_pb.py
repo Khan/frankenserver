@@ -18,6 +18,7 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
 import base64
 import dummy_thread as thread
@@ -27,11 +28,11 @@ except ImportError:
   _net_proto___parse__python = None
 import sys
 try:
-  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.proto_python_api_1_stub')
   __import__('google.net.rpc.python.pywraprpc_lite')
-  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  proto_python_api_1_stub = sys.modules.get('google.net.rpc.python.proto_python_api_1_stub')
   pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
-  _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
+  _client_stub_base_class = proto_python_api_1_stub.Stub
 except ImportError:
   _client_stub_base_class = object
 try:
@@ -6709,7 +6710,254 @@ class ListDirResponse(ProtocolBuffer.ProtocolMessage):
 
 
 
-class _FileService_ClientBaseStub(_client_stub_base_class):
+class FileServiceStub(object):
+  """Makes Stubby RPC calls to a FileService server."""
+
+  __metaclass__ = abc.ABCMeta
+
+  __slots__ = ()
+
+  @abc.abstractmethod
+  def Create(self, request, rpc=None, callback=None, response=None):
+    """Make a Create RPC call.
+
+    Args:
+      request: a CreateRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CreateResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Open(self, request, rpc=None, callback=None, response=None):
+    """Make a Open RPC call.
+
+    Args:
+      request: a OpenRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The OpenResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Close(self, request, rpc=None, callback=None, response=None):
+    """Make a Close RPC call.
+
+    Args:
+      request: a CloseRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The CloseResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Append(self, request, rpc=None, callback=None, response=None):
+    """Make a Append RPC call.
+
+    Args:
+      request: a AppendRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The AppendResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Stat(self, request, rpc=None, callback=None, response=None):
+    """Make a Stat RPC call.
+
+    Args:
+      request: a StatRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The StatResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Delete(self, request, rpc=None, callback=None, response=None):
+    """Make a Delete RPC call.
+
+    Args:
+      request: a DeleteRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The DeleteResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Read(self, request, rpc=None, callback=None, response=None):
+    """Make a Read RPC call.
+
+    Args:
+      request: a ReadRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The ReadResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def ReadKeyValue(self, request, rpc=None, callback=None, response=None):
+    """Make a ReadKeyValue RPC call.
+
+    Args:
+      request: a ReadKeyValueRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The ReadKeyValueResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Shuffle(self, request, rpc=None, callback=None, response=None):
+    """Make a Shuffle RPC call.
+
+    Args:
+      request: a ShuffleRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The ShuffleResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetShuffleStatus(self, request, rpc=None, callback=None, response=None):
+    """Make a GetShuffleStatus RPC call.
+
+    Args:
+      request: a GetShuffleStatusRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetShuffleStatusResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetCapabilities(self, request, rpc=None, callback=None, response=None):
+    """Make a GetCapabilities RPC call.
+
+    Args:
+      request: a GetCapabilitiesRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetCapabilitiesResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def Finalize(self, request, rpc=None, callback=None, response=None):
+    """Make a Finalize RPC call.
+
+    Args:
+      request: a FinalizeRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The FinalizeResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def ListDir(self, request, rpc=None, callback=None, response=None):
+    """Make a ListDir RPC call.
+
+    Args:
+      request: a ListDirRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The ListDirResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def GetDefaultGsBucketName(self, request, rpc=None, callback=None, response=None):
+    """Make a GetDefaultGsBucketName RPC call.
+
+    Args:
+      request: a GetDefaultGsBucketNameRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The GetDefaultGsBucketNameResponse if callback is None. Otherwise, returns None.
+    """
+    raise NotImplementedError()
+
+
+class _FileService_ClientBaseStub(
+    FileServiceStub, _client_stub_base_class):
   """Makes Stubby RPC calls to a FileService server."""
 
   __slots__ = (
@@ -7225,14 +7473,7 @@ class FileService(_server_stub_base_class):
 
   @staticmethod
   def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
-    """Creates a new FileService Stubby client stub.
-
-    Args:
-      rpc_stub_parameters: an RPC_StubParameters instance.
-      service_name: the service name used by the Stubby server.
-      rpc_factory: the rpc factory to use if no rpc argument is specified.
-    """
-
+    """USE NewRPC2Stub INSTEAD."""
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
     return _FileService_ClientStub(
@@ -7244,15 +7485,18 @@ class FileService(_server_stub_base_class):
     """Creates a new FileService Stubby2 client stub.
 
     Args:
-      server: host:port or bns address.
+      server: host:port or bns address (favor passing a channel instead).
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
       rpc_factory: the rpc factory to use if no rpc argument is specified.
+
+    Returns:
+     A FileServiceStub to be used to invoke RPCs.
     """
 
     if _client_stub_base_class is object:
-      raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
+      raise RuntimeError('Add //net/rpc/python:proto_python_api_2_stub (or maybe //net/rpc/python:proto_python_api_1_stub, but eww and b/67959631) as a dependency to create Stubby stubs')
     return _FileService_RPC2ClientStub(
         server, channel, service_name, rpc_factory=rpc_factory)
 
@@ -7264,7 +7508,7 @@ class FileService(_server_stub_base_class):
       request: a CreateRequest that contains the client request
       response: a CreateResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Open(self, rpc, request, response):
@@ -7275,7 +7519,7 @@ class FileService(_server_stub_base_class):
       request: a OpenRequest that contains the client request
       response: a OpenResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Close(self, rpc, request, response):
@@ -7286,7 +7530,7 @@ class FileService(_server_stub_base_class):
       request: a CloseRequest that contains the client request
       response: a CloseResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Append(self, rpc, request, response):
@@ -7297,7 +7541,7 @@ class FileService(_server_stub_base_class):
       request: a AppendRequest that contains the client request
       response: a AppendResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Stat(self, rpc, request, response):
@@ -7308,7 +7552,7 @@ class FileService(_server_stub_base_class):
       request: a StatRequest that contains the client request
       response: a StatResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Delete(self, rpc, request, response):
@@ -7319,7 +7563,7 @@ class FileService(_server_stub_base_class):
       request: a DeleteRequest that contains the client request
       response: a DeleteResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Read(self, rpc, request, response):
@@ -7330,7 +7574,7 @@ class FileService(_server_stub_base_class):
       request: a ReadRequest that contains the client request
       response: a ReadResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def ReadKeyValue(self, rpc, request, response):
@@ -7341,7 +7585,7 @@ class FileService(_server_stub_base_class):
       request: a ReadKeyValueRequest that contains the client request
       response: a ReadKeyValueResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Shuffle(self, rpc, request, response):
@@ -7352,7 +7596,7 @@ class FileService(_server_stub_base_class):
       request: a ShuffleRequest that contains the client request
       response: a ShuffleResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetShuffleStatus(self, rpc, request, response):
@@ -7363,7 +7607,7 @@ class FileService(_server_stub_base_class):
       request: a GetShuffleStatusRequest that contains the client request
       response: a GetShuffleStatusResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetCapabilities(self, rpc, request, response):
@@ -7374,7 +7618,7 @@ class FileService(_server_stub_base_class):
       request: a GetCapabilitiesRequest that contains the client request
       response: a GetCapabilitiesResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def Finalize(self, rpc, request, response):
@@ -7385,7 +7629,7 @@ class FileService(_server_stub_base_class):
       request: a FinalizeRequest that contains the client request
       response: a FinalizeResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def ListDir(self, rpc, request, response):
@@ -7396,7 +7640,7 @@ class FileService(_server_stub_base_class):
       request: a ListDirRequest that contains the client request
       response: a ListDirResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
 
   def GetDefaultGsBucketName(self, rpc, request, response):
@@ -7407,7 +7651,7 @@ class FileService(_server_stub_base_class):
       request: a GetDefaultGsBucketNameRequest that contains the client request
       response: a GetDefaultGsBucketNameResponse that should be modified to send the response
     """
-    raise NotImplementedError
+    raise NotImplementedError()
 
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.

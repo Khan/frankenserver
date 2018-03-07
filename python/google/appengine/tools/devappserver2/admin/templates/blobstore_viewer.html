@@ -2,8 +2,8 @@
 {% block page_title %}Blobstore Viewer{% endblock %}
 
 {% block page_head %}
-  <script>{% include "blobstore_viewer.js" %}</script>
-  <style type="text/css">{% include "blobstore_viewer.css" %}</style>
+  <script src="/templates/blobstore_viewer.js"></script>
+  <link type="text/css" rel="stylesheet" href="/assets/blobstore_viewer.css">
 {% endblock %}
 
 {% macro paginator(previous, next) %}
@@ -41,8 +41,7 @@
         {% for blob_info in blob_infos %}
           <tr>
             <td>
-              <input type="checkbox" name="blob_key"
-                     value="{{ blob_info.key() }}"/>
+              <input type="checkbox" name="blob_key" value="{{ blob_info.key() }}"/>
             </td>
             <td>
               <a href="/blobstore/blob/{{ blob_info.key() }}?return_to={{ return_to|urlencode }}">

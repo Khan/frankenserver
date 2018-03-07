@@ -2,7 +2,8 @@
 {% block page_title %}Cron Jobs{% endblock %}
 
 {% block page_head %}
-  <style type="text/css">{% include "cron.css" %}</style>
+  <script src="/templates/cron.js"></script>
+  <link type="text/css" rel="stylesheet" href="/assets/cron.css">
 {% endblock %}
 
 {% block body %}
@@ -73,26 +74,6 @@
     This application doesn't define any cron jobs. See <a href="https://developers.google.com/appengine/docs/">the documentation</a> to learn how to configure cron jobs.
   </p>
 {% endif %}
-  <script>
-$('.ae-cron-run').click(function() {
-  var url = $(this).attr('name');
-  var target = $(this).attr('target');
-  var data = {'url': url, 'target': target, 'xsrf_token': '{{ xsrf_token }}'};
-  var request = $.ajax({
-    url: '/cron',
-    type: 'POST',
-    data: data
-  })
-  .done(function() {
-    $('#cron-feedback').removeClass().addClass('messagebox').text(
-        'Request to ' + url + ' succeeded!');
-  })
-  .fail(function(xhr, textStatus) {
-    $('#cron-feedback').removeClass().addClass('errorbox').text(
-        'Request failured with status: ' + request.status);
-  });
-});
-  </script>
 </div>
 {% endblock %}
 

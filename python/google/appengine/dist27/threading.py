@@ -615,7 +615,7 @@ class _Event(_Verbose):
                 self.__cond.wait(timeout)
             return self.__flag
         finally:
-            # NOTE(google) Added the try/except. This handles the possibility of
+            # NOTE(user) Added the try/except. This handles the possibility of
             # an asynchronous exception (e.g., DeadlineExceededError) being
             # thrown inside of Condition.wait such that it does not re-acquire
             # the lock, causing a ThreadError 'release unlocked lock' to be
@@ -749,7 +749,7 @@ class Thread(_Verbose):
             _start_new_thread(self.__bootstrap, ())
         except Exception:
             with _active_limbo_lock:
-                # NOTE(google) Added 'in' check. This handles the possibility of
+                # NOTE(user) Added 'in' check. This handles the possibility of
                 # an asynchronous exception (e.g., DeadlineExceededError) being
                 # thrown inside of __bootstrap_inner after it removes self from
                 # _limbo, causing a KeyError to be raised here. It is safe to
@@ -973,7 +973,7 @@ class Thread(_Verbose):
                     if __debug__:
                         self._note("%s.join(): thread stopped", self)
         finally:
-            # NOTE(google) Added the try/except. This handles the possibility of
+            # NOTE(user) Added the try/except. This handles the possibility of
             # an asynchronous exception (e.g., DeadlineExceededError) being
             # thrown inside of Condition.wait such that it does not re-acquire
             # the lock, causing a ThreadError 'release unlocked lock' to be

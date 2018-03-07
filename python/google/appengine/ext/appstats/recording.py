@@ -164,7 +164,7 @@ class ConfigDefaults(object):
     Returns:
       True if this request should be recorded, False if not.
 
-    The default implementation returns True iff the request matches
+    The default implementation returns True if the request matches
     FILTER_LIST (see above) *and* random.random() < RECORD_FRACTION.
     """
     if config.FILTER_LIST:

@@ -54,10 +54,15 @@ class RequestEnvironment(threading.local):
     """Resets the error stream and environment for this request."""
     self.errors = _sys_stderr
     self.environ = {}
+    self.runtime_stats = {}
 
-  def Init(self, errors, environ):
+  def Init(self, errors, environ, runtime_stats=None):
     self.errors = errors
     self.environ = environ
+    if runtime_stats is None:
+      self.runtime_stats = {}
+    else:
+      self.runtime_stats = runtime_stats
 
   def CloneRequestEnvironment(self):
     """Returns a callable that will install the environment in another thread.
@@ -68,12 +73,19 @@ class RequestEnvironment(threading.local):
     """
     errors = self.errors
     environ = dict(self.environ)
-    return lambda: self.Init(errors, environ)
+    runtime_stats = self.runtime_stats
+    return lambda: self.Init(errors, environ, runtime_stats)
 
   def Clear(self):
     """Clears the thread locals."""
     self.__dict__.clear()
     self.Reset()
+
+  def IncrementStat(self, metric, code):
+    """Increments a tracked runtime statistic."""
+    m = self.runtime_stats.get(metric)
+    if m is None: return
+    m[code] = m.get(code, 0) + 1
 
 
 class RequestLocalStream(object):

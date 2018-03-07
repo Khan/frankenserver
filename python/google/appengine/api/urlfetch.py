@@ -267,7 +267,7 @@ def fetch(url, payload=None, method=GET, headers={},
         behavior will be chosen by the underlying `urlfetch` implementation.
 
   Returns:
-    tuple: A tuple containing:
+    object: An object containing following fields:
 
         - content: A string that contains the response from the server.
         - status_code: The HTTP status code that was returned by the server.

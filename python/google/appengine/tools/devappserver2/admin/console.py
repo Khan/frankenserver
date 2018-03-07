@@ -39,6 +39,14 @@ class ConsoleRequestHandler(admin_request_handler.AdminRequestHandler):
 
   def post(self):
     super(ConsoleRequestHandler, self).post()
+
+    if not self.enable_console:
+      self.response.status = 404
+      self.response.write('The interactive console is currently disabled. '
+                          'To enable the console, invoke dev_appserver.py '
+                          'with the --enable_console argument.')
+      return
+
     module_name = self.request.get('module_name')
     with self._modulename_to_shell_module_lock:
       if module_name in self._modulename_to_shell_module:

@@ -657,7 +657,7 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
         application ids. This is only necessary when running on the Cloud
         Datastore v1 API.
     """
-    # TODO(pcostello): Remove this once AbstractAdapter's constructor makes
+    # TODO(user): Remove this once AbstractAdapter's constructor makes
     # it into production.
     try:
       super(ModelAdapter, self).__init__(id_resolver)
@@ -1886,7 +1886,7 @@ class JsonProperty(BlobProperty):
       import json
     except ImportError:
       import simplejson as json
-    return json.dumps(value)
+    return json.dumps(value, separators=(',', ':'))
 
   def _from_base_type(self, value):
     try:
@@ -2418,7 +2418,7 @@ class StructuredProperty(_StructuredGetForDictMixin):
                            (self._name, cls.__name__, subentity))
       # _GenericProperty tries to keep compressed values as unindexed, but
       # won't override a set argument. We need to force it at this level.
-      # TODO(pcostello): Remove this hack by passing indexed to _deserialize.
+      # TODO(user): Remove this hack by passing indexed to _deserialize.
       # This cannot happen until we version the API.
       indexed = p.meaning_uri() != _MEANING_URI_COMPRESSED
       prop = subentity._get_property_for(p, depth=depth, indexed=indexed)
@@ -3200,7 +3200,7 @@ class Model(_NotEqualMixin):
     if key is not None and (set_key or key.id() or key.parent()):
       ent._key = key
 
-    # NOTE(darke): Keep a map from (indexed, property name) to the property.
+    # NOTE(user): Keep a map from (indexed, property name) to the property.
     # This allows us to skip the (relatively) expensive call to
     # _get_property_for for repeated fields.
     _property_map = {}

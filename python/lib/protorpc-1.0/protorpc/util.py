@@ -184,7 +184,7 @@ def positional(max_positional_args):
     return positional(len(args) - len(defaults))(max_positional_args)
 
 
-# TODO(rafek): Support 'level' from the Accept header standard.
+# TODO(user): Support 'level' from the Accept header standard.
 class AcceptItem(object):
   """Encapsulate a single entry of an Accept header.
 

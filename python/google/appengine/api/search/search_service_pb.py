@@ -18,6 +18,7 @@
 
 
 from google.net.proto import ProtocolBuffer
+import abc
 import array
 import dummy_thread as thread
 
@@ -750,6 +751,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   index_state_ = 0
   has_index_delete_time_ = 0
   index_delete_time_ = 0
+  has_num_shards_ = 0
+  num_shards_ = 1
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
@@ -826,6 +829,19 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_index_delete_time(self): return self.has_index_delete_time_
 
+  def num_shards(self): return self.num_shards_
+
+  def set_num_shards(self, x):
+    self.has_num_shards_ = 1
+    self.num_shards_ = x
+
+  def clear_num_shards(self):
+    if self.has_num_shards_:
+      self.has_num_shards_ = 0
+      self.num_shards_ = 1
+
+  def has_num_shards(self): return self.has_num_shards_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -834,6 +850,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (x.has_storage()): self.mutable_storage().MergeFrom(x.storage())
     if (x.has_index_state()): self.set_index_state(x.index_state())
     if (x.has_index_delete_time()): self.set_index_delete_time(x.index_delete_time())
+    if (x.has_num_shards()): self.set_num_shards(x.num_shards())
 
   def Equals(self, x):
     if x is self: return 1
@@ -848,6 +865,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if self.has_index_state_ and self.index_state_ != x.index_state_: return 0
     if self.has_index_delete_time_ != x.has_index_delete_time_: return 0
     if self.has_index_delete_time_ and self.index_delete_time_ != x.index_delete_time_: return 0
+    if self.has_num_shards_ != x.has_num_shards_: return 0
+    if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -870,6 +889,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSize())
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_): n += 1 + self.lengthVarInt64(self.num_shards_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -882,6 +902,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSizePartial())
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_): n += 1 + self.lengthVarInt64(self.num_shards_)
     return n
 
   def Clear(self):
@@ -890,6 +911,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     self.clear_storage()
     self.clear_index_state()
     self.clear_index_delete_time()
+    self.clear_num_shards()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -909,6 +931,9 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_delete_time_):
       out.putVarInt32(40)
       out.putVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.num_shards_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
@@ -929,6 +954,9 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_delete_time_):
       out.putVarInt32(40)
       out.putVarInt64(self.index_delete_time_)
+    if (self.has_num_shards_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.num_shards_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -957,6 +985,9 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_index_delete_time(d.getVarInt64())
         continue
+      if tt == 48:
+        self.set_num_shards(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -983,6 +1014,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_index_state_: res+=prefix+("index_state: %s\n" % self.DebugFormatInt32(self.index_state_))
     if self.has_index_delete_time_: res+=prefix+("index_delete_time: %s\n" % self.DebugFormatInt64(self.index_delete_time_))
+    if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
     return res
 
 
@@ -994,6 +1026,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   kstorage = 3
   kindex_state = 4
   kindex_delete_time = 5
+  knum_shards = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1002,7 +1035,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: "storage",
     4: "index_state",
     5: "index_delete_time",
-  }, 5)
+    6: "num_shards",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1011,7 +1045,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

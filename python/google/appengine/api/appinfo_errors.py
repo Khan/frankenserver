@@ -39,10 +39,6 @@ class EmptyConfigurationFile(Error):
   """Tried to load empty configuration file"""
 
 
-class ModuleAndServiceDefined(Error):
-  """Configuration has both 'module' and 'service' instead of just one."""
-
-
 class MultipleConfigurationFile(Error):
   """Tried to load configuration file with multiple AppInfo objects"""
 
@@ -184,5 +180,29 @@ class TooManyScalingSettingsError(Error):
   """Raised when more than one scaling settings section is present."""
 
 
+class TooManyAutoscalingUtilizationTargetsError(Error):
+  """Raised when too many custom metric autoscaling targets are present."""
+
+
+class NotEnoughAutoscalingUtilizationTargetsError(Error):
+  """Raised when not enough custom metric autoscaling targets are present."""
+
+
 class MissingRuntimeError(Error):
   """Raised when the "runtime" field is omitted for a non-vm."""
+
+
+class MissingEndpointsConfigId(Error):
+  """Raised when an Endpoints config id is expected.
+
+  An Endpoints config id is expected when the Endpoints rollout strategy is
+  unspecified or set to "fixed".
+  """
+
+
+class UnexpectedEndpointsConfigId(Error):
+  """Raised when an Endpoints config id is unexpected.
+
+  An Endpoints config id is forbidden when the Endpoints rollout strategy is
+  set to "managed".
+  """

@@ -23,6 +23,7 @@ import errno
 import httplib
 import logging
 import os
+import re
 import select
 import socket
 import sys
@@ -30,6 +31,7 @@ import threading
 import time
 
 import google
+import ipaddr
 
 
 
@@ -73,6 +75,9 @@ _SECONDS_TO_MILLISECONDS = 1000
 
 
 _PORT_0_RETRIES = 2048
+
+# Per RFC2732, IPv6 addresses in URLs are enclosed in []
+_IPV6_HOST_RE = re.compile(r'^\[(.*)\]')
 
 
 class BindError(errors.Error):
@@ -288,6 +293,67 @@ class _SingleAddressWsgiServer(wsgiserver.CherryPyWSGIServer):
     else:
       start_response('%d %s' % (error, httplib.responses[error]), [])
       return []
+
+
+class WsgiHostCheck(object):
+  """WSGI middleware for whitelisting incoming Host HTTP header values."""
+
+  def __init__(self, whitelisted_hosts, app):
+    self.whitelisted_hosts = set(whitelisted_hosts)
+    self.app = app
+
+  def __call__(self, environ, start_response):
+    http_host = environ.get('HTTP_HOST', '')
+
+    if not http_host:
+      # Only allow requests without a Host header for HTTP/1.0 requests
+      if environ.get('SERVER_PROTOCOL', '') == 'HTTP/1.0':
+        return self.app(environ, start_response)
+      else:
+        logging.info('No Host header set in request')
+        start_response('400 Bad Request', [])
+        return ['No Host header set in request.']
+
+    canonical_host = self._get_canonical_host_name(http_host)
+
+    if (self._is_local_host(canonical_host) or
+        canonical_host in self.whitelisted_hosts):
+      return self.app(environ, start_response)
+    else:
+      logging.error(
+          ('Request Host %s not whitelisted. Enabled hosts are %s'
+
+
+
+          ),
+          canonical_host, self.whitelisted_hosts)
+      start_response('400 Bad Request', [])
+      return [('Request host is not whitelist enabled for this server. '
+               'Please use the --host command-line flag to whitelist a '
+               'specific host (recommended) or use --enable_host_checking to '
+               'disable host checking. See the command-line flags help '
+               'text for more information. '
+
+
+
+              )]
+
+  def _is_local_host(self, host):
+    if host == 'localhost':
+      return True
+
+    try:
+      return ipaddr.IPAddress(host).is_loopback
+    except ValueError:
+      return False
+
+  def _get_canonical_host_name(self, host):
+    """Returns just the host name from a HTTP_HOST header value."""
+    ipv6_match = _IPV6_HOST_RE.match(host)
+    if ipv6_match:
+      return ipv6_match.group(1)
+    else:
+      return host.rsplit(':', 1)[0]
 
 
 class WsgiServer(object):

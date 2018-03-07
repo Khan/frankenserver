@@ -91,6 +91,9 @@ class SimpleFacet(object):
           manual_facet.params().value_constraint_list()):
         raise ValueError('Manual facet request should either specify range '
                          'or value constraint, not both')
+      for constraint in manual_facet.params().value_constraint_list():
+        if not constraint:
+          raise ValueError('Facet value is empty')
       facet_obj = _Facet(
           manual_facet.name(),
           (manual_facet.params().value_limit()
@@ -209,6 +212,8 @@ class SimpleFacet(object):
       results: Search Query result set.
     Returns:
       The filtered result.
+    Raises:
+      ValueError: for bad facet refinement parameters.
     """
     if not self._params.facet_refinement_list():
       return results
@@ -216,6 +221,8 @@ class SimpleFacet(object):
 
     ref_groups = {}
     for refinement in self._params.facet_refinement_list():
+      if not refinement.value() and not refinement.has_range():
+        raise ValueError('Facet value is empty')
       ref_groups.setdefault(refinement.name(), []).append(refinement)
 
     return [doc for doc in results

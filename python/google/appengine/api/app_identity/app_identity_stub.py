@@ -157,6 +157,10 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
     """Implementation of AppIdentityService::GetDefaultGcsBucketName."""
     response.set_default_gcs_bucket_name(self.__default_gcs_bucket_name)
 
+  def _Dynamic_SetDefaultGcsBucketName(self, request, unused_response):
+    """Implementation of AppIdentityStubService::SetDefaultGcsBucketName."""
+    self.SetDefaultGcsBucketName(request.default_gcs_bucket_name())
+
   def SetDefaultGcsBucketName(self, default_gcs_bucket_name):
     if default_gcs_bucket_name:
       self.__default_gcs_bucket_name = default_gcs_bucket_name
@@ -190,14 +194,6 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
           private_key_path=private_key_path,
           oauth_url=oauth_url)
     elif sys.version_info >= (2, 6):
-
-
-
-
-
-      import six
-      if six._importer not in sys.meta_path:
-        sys.meta_path.append(six._importer)
       from oauth2client import client
       from google.appengine.api.app_identity import app_identity_defaultcredentialsbased_stub as ai_stub
       try:
@@ -216,3 +212,7 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
       logging.debug('Running under Python 2.5 uses dummy '
                     'AppIdentityServiceStub.')
       return AppIdentityServiceStub()
+
+  def Clear(self):
+    """Resets the state on the App Identity stub."""
+    self.__default_gcs_bucket_name = APP_DEFAULT_GCS_BUCKET_NAME

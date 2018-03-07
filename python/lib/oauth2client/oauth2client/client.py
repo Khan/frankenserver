@@ -715,7 +715,7 @@ class OAuth2Credentials(Credentials):
       now = datetime.datetime.utcnow()
       if self.token_expiry > now:
         time_delta = self.token_expiry - now
-        # TODO(orestica): return time_delta.total_seconds()
+        # TODO(user): return time_delta.total_seconds()
         # once dropping support for Python 2.6
         return time_delta.days * 86400 + time_delta.seconds
       else:
@@ -1266,7 +1266,7 @@ def save_to_well_known_file(credentials, well_known_file=None):
       the name of the file where the credentials are to be saved;
       this parameter is supposed to be used for testing only
   """
-  # TODO(orestica): move this method to tools.py
+  # TODO(user): move this method to tools.py
   # once the argparse import gets fixed (it is not present in Python 2.6)
 
   if well_known_file is None:
@@ -1297,7 +1297,7 @@ def _get_environment_variable_file():
 
 def _get_well_known_file():
   """Get the well known file produced by command 'gcloud auth login'."""
-  # TODO(orestica): Revisit this method once gcloud provides a better way
+  # TODO(user): Revisit this method once gcloud provides a better way
   # of pinpointing the exact location of the file.
 
   WELL_KNOWN_CREDENTIALS_FILE = 'application_default_credentials.json'

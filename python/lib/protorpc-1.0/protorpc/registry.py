@@ -149,7 +149,7 @@ class RegistryService(remote.Service):
       Set of modules referred to by message_type by traversing all its
       message and enum fields.
     """
-    # TODO(rafek): Maybe this should be a method on Message and Service?
+    # TODO(user): Maybe this should be a method on Message and Service?
     def get_dependencies(message_type, seen=None):
       """Get all dependency definitions of a message type.
 

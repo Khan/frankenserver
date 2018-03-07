@@ -178,7 +178,8 @@ TIMESTAMP_FIELD_NAME = '_timestamp'
 
 
 
-_LANGUAGE_RE = re.compile('^(.{2}|.{2}_.{2})$')
+
+_LANGUAGE_RE = re.compile('^(.{2,3}|.{2}_.{2})$')
 
 _MAXIMUM_STRING_LENGTH = 500
 _MAXIMUM_CURSOR_LENGTH = 10000

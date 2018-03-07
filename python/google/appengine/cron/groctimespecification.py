@@ -37,10 +37,14 @@ Extensions to be considered:
   allowing a comma separated list of times to run
 """
 
+from __future__ import absolute_import
+
 
 
 import calendar
 import datetime
+
+from . import groc
 
 
 
@@ -51,8 +55,6 @@ try:
   import pytz
 except ImportError:
   pytz = None
-
-import groc
 
 HOURS = 'hours'
 MINUTES = 'minutes'

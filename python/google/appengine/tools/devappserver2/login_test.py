@@ -222,12 +222,45 @@ class LoginPageTest(unittest.TestCase):
     self.assertIsInstance(location, str)
     self.assertIsInstance(set_cookie, str)
 
-  def test_logout(self):
-    """Tests when logging out with and without continue URL."""
+  def test_logout_using_login_path(self):
+    """Tests logging out with and without continue URL using /_ah/login."""
     host = 'foo.com:1234'
     path_info = '/_ah/login'
     cookie_dict = {'dev_appserver_login': '%s:False:%s' % (EMAIL, USER_ID)}
     action = 'Logout'
+    set_email = ''
+    set_admin = False
+    continue_url = ''
+
+    expected_set = login._clear_user_info_cookie().strip()
+
+    # No continue URL.
+    status, location, set_cookie, _ = self._run_test(
+        host, path_info, cookie_dict, action, set_email, set_admin,
+        continue_url)
+    self.assertEqual(302, status)
+    self.assertEqual('http://%s%s' % (host, path_info), location)
+    self.assertEqual(expected_set, set_cookie)
+    self.assertIsInstance(location, str)
+    self.assertIsInstance(set_cookie, str)
+
+    # Continue URL.
+    continue_url = 'http://foo.com/blah'
+    status, location, set_cookie, _ = self._run_test(
+        host, path_info, cookie_dict, action, set_email, set_admin,
+        continue_url)
+    self.assertEqual(302, status)
+    self.assertEqual(continue_url, location)
+    self.assertEqual(expected_set, set_cookie)
+    self.assertIsInstance(location, str)
+    self.assertIsInstance(set_cookie, str)
+
+  def test_logout_using_logout_path(self):
+    """Tests logging out with and without continue URL using /_ah/logout."""
+    host = 'foo.com:1234'
+    path_info = '/_ah/logout'
+    cookie_dict = {'dev_appserver_login': '%s:False:%s' % (EMAIL, USER_ID)}
+    action = None
     set_email = ''
     set_admin = False
     continue_url = ''
