@@ -365,3 +365,43 @@ def cleanup_stubs():
   # object, which would happen during DatastoreGrpcStub instance finalization.
   # Safe object finalization was implemented with PEP 442 in python3.4
   del apiproxy_stub_map.apiproxy
+
+def reset_stub(stub_name, stub_options):
+  """Reset a stub currently in place with a new one.
+
+  You might wish to swap out a currently running stub with another. For
+  example, in cases where you are running tests that use the devappserver and
+  you want to reset the stub in between test cases.
+
+  Currently the datastore is the only stub that can be reset, but others could
+  be added here if needed.
+
+  Args:
+    stub_name: string
+    stub_options: a dictionary of options to be used when resetting the stub.
+        When stub_name == 'datastore_v3', we expect an object that looks like:
+        {
+            'app_id': 'dev~id-of-application',
+            'db_consistency_probability': 1.0,
+            'datastore_path': /path/to/sqlite.sql
+        }
+  """
+
+  if stub_name != 'datastore_v3':
+    raise NotImplementedError("Only datastore stubs can be currently reset.")
+
+  # TODO(dhruv): Figure out when it is safe to close a datastore stub (it is
+  # not currently in read-only mode) and do that here before replacing it.
+
+  # Create a new stub and replace it in the api stub map
+  policy = datastore_stub_util.PseudoRandomHRConsistencyPolicy(
+      probability=stub_options['db_consistency_probability'])
+
+  new_stub = (
+      datastore_sqlite_stub.DatastoreSqliteStub(
+          stub_options['app_id'],
+          stub_options['datastore_path'],
+          consistency_policy=policy
+      )
+  )
+  apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', new_stub)
