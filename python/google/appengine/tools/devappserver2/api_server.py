@@ -417,11 +417,58 @@ class APIServer(wsgi_server.WsgiServer):
 
     return json.dumps(status)
 
+  def _handle_RESET_STUB(self, environ, start_response):
+    """Reset a given stateful stub with a new one.
+
+    You might wish to swap out a currently running stub with another. For
+    example, in cases where you are running tests that use the devappserver and
+    you want to reset the stub in between test cases.
+
+    Currently the datastore is the only stub that can be reset, but others
+    could be added here if needed.
+
+    To reset the datastore stub, we expect this endpoint to be called with
+    a dictionary of the following shape, as a JSON string.
+    {
+        'service': 'datastore_v3',
+        'options': {
+          'app_id': 'dev~app-id',
+          'datastore_path': /path/to/new/sqlite.sql,
+          'db_consistency_probability': 1.0
+        }
+    }
+
+    Args:
+      environ: An environ dict for the request as defined in PEP-333.
+      start_response: A start_response function with semantics defined in
+        PEP-333.
+
+
+    Returns:
+        A JSON string if successful. Raises an error if not.
+    """
+    start_response('200 OK', [('Content-Type', 'text/plain')])
+    wsgi_input = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
+    params = json.loads(wsgi_input)
+
+    service = params['service']
+    stub_options = params['options']
+
+    stub_util.reset_stub(service, stub_options)
+
+    status = {
+        'success': True
+    }
+
+    return json.dumps(status)
+
   def __call__(self, environ, start_response):
     if environ.get('PATH_INFO') == '/clear':
       return self._handle_CLEAR(environ, start_response)
     elif environ.get('PATH_INFO') == '/_ah/status':
       return self._handle_STATUS(environ, start_response)
+    elif environ.get('PATH_INFO') == '/reset_stub':
+      return self._handle_RESET_STUB(environ, start_response)
     if environ['REQUEST_METHOD'] == 'GET':
       return self._handle_GET(environ, start_response)
     elif environ['REQUEST_METHOD'] == 'POST':
