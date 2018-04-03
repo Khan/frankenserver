@@ -176,10 +176,10 @@ class InotifyFileWatcher(object):
     for dirpath, directories, _ in itertools.chain(
         [(os.path.dirname(path), [os.path.basename(path)], None)],
         os.walk(path, topdown=True, followlinks=True)):
-      skip_files_re = dirpath in self._directories and self._skip_files_re
       watcher_common.skip_ignored_dirs(dirpath, directories,
                                        self._watcher_ignore_re)
-      watcher_common.skip_ignored_dirs(dirpath, directories, skip_files_re)
+      watcher_common.skip_ignored_dirs(dirpath, directories,
+                                       self._skip_files_re)
 
       # TODO: this is not an ideal solution as there are other ways for
       # symlinks to confuse our algorithm but a general solution is going to
