@@ -43,25 +43,33 @@ get kake's log output.)
 The github repo is typically behind the release tarballs, so we update
 from upstream using the tarballs.
 
-1. Visit https://cloud.google.com/appengine/downloads and download the
-   latest zipfile.  (You may need to click on "Download and install
-   the original App Engine SDK for Python." to see the download link.)
-2. Create a new branch: `git checkout master && git checkout -b <gae version>`
-3. Replace the old code with the new: `rm -rf *; unzip <zipfile>`
-4. If the zipfile toplevel is named `google_appengine`, do 
-   `mv google_appengine python`
-5. `git add -A .`
-6. `git commit -am 'Pristine copy of <gae version>, without patches applied'`
-7. (Now comes the hard part: cherry-picking the frankenserver changes
+1. [Install `gcloud`](https://cloud.google.com/sdk/) (if you've run
+   khan-dotfiles this will not be necessary), plus the relevant components:
+   `gcloud components install app-engine-python app-engine-python-extras`
+2. Find your gcloud install (normally `~/google-cloud-sdk`, or
+   `~/khan/devtools/google-cloud-sdk` if you used khan-dotfiles for step 1);
+   we're going to want to grab `platform/google_appengine` from within it.
+3. Create a new branch: `git checkout master && git checkout -b <gae version>`
+4. Replace the old code with the new:
+   `rm -rf python ; cp -R ~/path/to/platform/google_appengine python`
+5. Sadly, upstream no longer sets the right file permissions (because gcloud
+   has its own binary wrappers), so revert all the permissions changes with
+   `git diff -p -R | grep -E "^(diff|(old|new) mode)" | git apply`
+6. `git add -A .`
+7. `git commit -am 'Pristine copy of <gae version>, without patches applied'`
+   (You can find the version on the release notes page:
+   https://cloud.google.com/appengine/docs/standard/python/release-notes.)
+8. (Now comes the hard part: cherry-picking the frankenserver changes
    from a previous branch.)
-8. Run `git branch` to see what previous versions exist, then run
-   `git log <previous version>` to see all the frankenserver changes.
-   Stop when you get to the 'Pristine copy of <previous version>'
-   log message (or something similar).  Note that commit.
-9. Do `git log --format=%h --no-merges <commit>..<previous version>`.
-   Alternately, if you're curious what these commits are, just do
-   `git log --oneline --no-merges <commit>..<previous version>`.
-   e.g. `git log --oneline --no-merges 526771777..1.9.28`
-10. Starting from the bottom, and preferably one at a time, run
-    `git cherry-pick <commit>`.  Resolve any conflicts you see.
-11. Run `python/run_tests.py`.
+9. Run `git log` to see all the frankenserver changes; stop when you get to the
+   'Pristine copy of <previous version>' log message (or something similar).
+   Note that commit.
+10. Do `git log --format=%h --no-merges <commit>..HEAD^`.
+    Alternately, if you're curious what these commits are, just do
+    `git log --oneline --no-merges <commit>..HEAD^`.
+    e.g. `git log --oneline --no-merges 526771777..HEAD^`
+11. Run `git cherry-pick <commit>..HEAD^`.  (Or, especially in case of
+    conflicts, it may be easier to cherry-pick each commit one at a time.)
+12. Run `python/run_tests.py`.  Or, since it may not actually run successfully,
+    just do whatever testing seems reasonable -- run a few e2e tests against
+    your dev server; load some pages; and test anything else you think suspect.
