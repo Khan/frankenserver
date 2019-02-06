@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "python_gflags"
-description:
-    "Commandline flags module for Python."
+description: "Commandline flags module for Python."
 
 third_party {
   url {

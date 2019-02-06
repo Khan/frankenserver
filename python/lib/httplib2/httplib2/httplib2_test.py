@@ -7,8 +7,8 @@
 __author__ = 'vbarathan@google.com (Prakash Barathan)'
 
 import google3
+from absl import logging
 
-from google3.pyglib import logging
 from google3.testing.pybase import googletest
 from google3.third_party.py import httplib2
 

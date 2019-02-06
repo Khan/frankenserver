@@ -178,7 +178,7 @@ SERVICE_ACCOUNT_BASE = (
 
 APP_YAML_FILENAME = 'app.yaml'
 
-GCLOUD_ONLY_RUNTIMES = set(['custom', 'nodejs'])
+GCLOUD_ONLY_RUNTIMES = set(['custom', 'nodejs', 'nodejs8', 'php72'])
 
 
 
@@ -2129,9 +2129,8 @@ class AppVersionUpload(object):
     success, unused_contents = RetryWithBackoff(
         lambda: (self.IsReady(), None), PrintRetryMessage, 1, 2, 60, 20)
     if not success:
-
       logging.warning('Version still not ready to serve, aborting.')
-      raise RuntimeError('Version not ready.')
+      raise RuntimeError('Version is not ready to serve.')
 
     result = self.StartServing()
     if not result:
@@ -2144,9 +2143,8 @@ class AppVersionUpload(object):
             'Another operation on this version is in progress.')
       success, response = RetryNoBackoff(self.IsServing, PrintRetryMessage)
       if not success:
-
         logging.warning('Version still not serving, aborting.')
-        raise RuntimeError('Version not ready.')
+        raise RuntimeError('Version failed to start serving.')
 
 
 
@@ -2516,7 +2514,7 @@ class AppVersionUpload(object):
                         '(max %d bytes, file is %d bytes).%s',
                         path, max_size, file_length, extra_msg)
         else:
-          logging.debug('Processing file \'%s\'', path)
+          logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
       finally:
         file_handle.close()
@@ -2657,12 +2655,12 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
 
       if os.path.isfile(fullname):
         if skip_files.match(name):
-          logging.debug('Ignoring file \'%s\': File matches ignore regex.', name)
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
         else:
           yield name
       elif os.path.isdir(fullname):
         if skip_files.match(name):
-          logging.debug(
+          logging.info(
               'Ignoring directory \'%s\': Directory matches ignore regex.',
               name)
         else:
@@ -3362,10 +3360,6 @@ class AppCfgApp(object):
       best_context = context_util.BestSourceContext(source_contexts)
       context_file_map[context_util.CONTEXT_FILENAME] = json.dumps(
           best_context)
-    if not os.path.exists(
-        os.path.join(basepath, context_util.EXT_CONTEXT_FILENAME)):
-      context_file_map[context_util.EXT_CONTEXT_FILENAME] = json.dumps(
-          source_contexts)
     base_openfunc = openfunc
     def OpenWithContext(name):
       if name in context_file_map:

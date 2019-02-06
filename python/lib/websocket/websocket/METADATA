@@ -2,14 +2,28 @@
 
 name: "websocket"
 description:
-    "WebSocket client for Python. This library provides a low-level "
-    "synchronous API for WebSocket connections."
+  "WebSocket client for Python. This library provides a low-level "
+  "synchronous API for WebSocket connections."
 
 third_party {
   url {
-    type: ARCHIVE
-    value: "https://pypi.python.org/packages/source/w/websocket-client/websocket-client-0.10.0.tar.gz"
+    type: GIT
+    value: "https://github.com/websocket-client/websocket-client"
   }
-  version: "0.10.0"
-  last_upgrade_date { year: 2013 month: 5 day: 22 }
+  version: "56387981674cfd064b79e0cb9b740136a8f40d15"  # 0.47.0
+  last_upgrade_date { year: 2018 month: 2 day: 5 }
+  license_type: RESTRICTED  # LGPL
+}
+
+# Runs the TAP tests.
+presubmit: {
+  check_tests: {
+    failure_status: ERROR
+    send_email_on_success: false  # Only email on failure.
+    # Don't run tests that are likely to pass (see go/ef-presubmit).
+    skip_probably_passing_targets: true
+
+    # Make sure the tests run first.
+    test_target_pattern: "//third_party/py/websocket/..."
+  }
 }

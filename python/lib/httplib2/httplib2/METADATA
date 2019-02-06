@@ -2,8 +2,8 @@
 
 name: "httplib2"
 description:
-    "httplib2 is a comprehensive HTTP client library that supports many "
-    "features left out of other HTTP libraries."
+  "httplib2 is a comprehensive HTTP client library that supports many "
+  "features left out of other HTTP libraries."
 
 third_party {
   url {

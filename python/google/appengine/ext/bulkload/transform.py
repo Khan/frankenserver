@@ -18,7 +18,6 @@
 
 
 
-
 """Bulkloader Transform Helper functions.
 
 A collection of helper functions for bulkloading data, typically referenced
@@ -40,6 +39,7 @@ import base64
 import datetime
 import os
 import re
+import sys
 import tempfile
 
 from google.appengine.api import datastore
@@ -47,27 +47,25 @@ from google.appengine.api import datastore_types
 from google.appengine.ext.bulkload import bulkloader_errors
 
 
-
 CURRENT_PROPERTY = None
 
 KEY_TYPE_NAME = 'name'
 KEY_TYPE_ID = 'ID'
 
-
 # Decorators
 
 
 def none_if_empty(fn):
-  """A decorator which returns None if its input is empty else fn(x).
+  """A wrapper that returns None if its input is empty else fn(x).
 
   Useful on import.  Can be used in config files
-  (e.g. "transform.none_if_empty(int)" or as a decorator.
+  (e.g. "transform.none_if_empty(int)") or as a decorator.
 
   Args:
-    fn: Single argument transform function.
+    fn: Single-argument transform function.
 
   Returns:
-    Wrapped function.
+    The wrapped function.
   """
 
   def wrapper(value):
@@ -81,16 +79,16 @@ def none_if_empty(fn):
 
 
 def empty_if_none(fn):
-  """A wrapper for a value to return '' if it's None. Useful on export.
+  """A wrapper that returns '' if its input is None. Useful on export.
 
-  Can be used in config files (e.g. "transform.empty_if_none(unicode)" or
+  Can be used in config files (e.g. "transform.empty_if_none(unicode)") or
   as a decorator.
 
   Args:
-    fn: Single argument transform function.
+    fn: Single-argument transform function.
 
   Returns:
-    Wrapped function.
+    The wrapped function.
   """
 
   def wrapper(value):
@@ -106,21 +104,22 @@ def empty_if_none(fn):
 
 
 def create_foreign_key(kind, key_is_id=False):
-  """A method to make one-level Key objects.
+  """A method that makes single-level Key objects.
 
   These are typically used in ReferenceProperty in Python, where the reference
-  value is a key with kind (or model) name name.
+  value is a key with kind (or model) name.
 
   This helper method does not support keys with parents. Use create_deep_key
   instead to create keys with parents.
 
   Args:
     kind: The kind name of the reference as a string.
-    key_is_id: If true, convert the key into an integer to be used as an id.
-      If false, leave the key in the input format (typically a string).
+    key_is_id: If True, converts the key into an integer to be used as an ID.
+        If False, leaves the key in the input format (typically a string).
 
   Returns:
-    Single argument method which parses a value into a Key of kind entity_kind.
+    A single-argument function that parses a value into a Key of kind
+    entity_kind.
   """
 
   def generate_foreign_key_lambda(value):
@@ -131,32 +130,34 @@ def create_foreign_key(kind, key_is_id=False):
   return generate_foreign_key_lambda
 
 
+
 def create_deep_key(*path_info):
-  """A method to make multi-level Key objects.
+  """A method that makes multi-level Key objects.
 
-  Generates multi-level key from multiple fields in the input dictionary.
+  Generates a multi-level key from multiple fields in the input dictionary.
 
-  This is typically used for Keys for entities which have variable parent keys,
+  This is typically used for keys for entities that have variable parent keys,
   e.g. ones with owned relationships. It can used for both __key__ and
   references.
 
-  Use create_foreign_key as a simpler way to create single level keys.
+  Use create_foreign_key as a simpler way to create single-level keys.
 
   Args:
-    path_info: List of tuples, describing (kind, property, is_id=False).
-      kind: The kind name.
-      property: The external property in the current import dictionary, or
+    *path_info: A list of tuples, describing (kind, property, is_id=False).
+    kind: The kind name.
+    property: The external property in the current import dictionary, or
         transform.CURRENT_PROPERTY for the value passed to the transform.
-      is_id: Converts value to int and treats as numeric ID if True, otherwise
-        the value is a string name. Default is False.
-      Example:
+    is_id: If True, converts value to int and treats it as a numeric ID.
+        If False, the value is a string name. Default is False.
+
+        Example:
         create_deep_key(('rootkind', 'rootcolumn'),
                         ('childkind', 'childcolumn', True),
                         ('leafkind', transform.CURRENT_PROPERTY))
 
   Returns:
-    Transform method which parses the info from the current neutral dictionary
-    into a Key with parents as described by path_info.
+    A transform function that parses the info from the current neutral
+    dictionary into a Key with parents as described by path_info.
   """
 
   validated_path_info = []
@@ -168,11 +169,12 @@ def create_deep_key(*path_info):
     else:
       raise bulkloader_errors.InvalidConfiguration(
           'Each list in create_deep_key must specify exactly 2 or 3 '
-          'parameters, (kind, property, is_id=False). You specified: %s' %
+          'parameters: (kind, property, is_id=False). You specified: %s' %
           repr(path_info))
     kind_name = level_info[0]
     property_name = level_info[1]
     validated_path_info.append((kind_name, property_name, key_is_id))
+
 
   def create_deep_key_lambda(value, bulkload_state):
     path = []
@@ -192,15 +194,18 @@ def create_deep_key(*path_info):
   return create_deep_key_lambda
 
 
+
+
 def _key_id_or_name_n(key, index):
-  """Internal helper function for key id and name transforms.
+  """Internal helper function for key ID and name transforms.
 
   Args:
     key: A datastore key.
-    index: The depth in the key to return; 0 is root, -1 is leaf.
+    index: The depth in the key to return, where 0 is the root key and -1 is the
+        leaf key.
 
   Returns:
-    The id or name of the nth deep sub key in key.
+    The ID or name of the nth deep sub key in key.
   """
   if not key:
     return None
@@ -212,23 +217,23 @@ def _key_id_or_name_n(key, index):
 
 
 def key_id_or_name_as_string_n(index):
-  """Pull out the nth (0-based) key id or name from a key which has parents.
+  """Retrieves the nth (0-based) key ID or name from a key that has parents.
 
-  If a key is present, return its id or name as a string.
+  If a key is present, returns its ID or name as a string.
 
   Note that this loses the distinction between integer IDs and strings
-  which happen to look like integers. Use key_type to distinguish them.
+  that happen to look like integers. Use key_type to distinguish them.
 
   This is a useful complement to create_deep_key.
 
   Args:
-    index: The depth of the id or name to extract. Zero is the root key.
-        Negative one is the leaf key.
+    index: The depth of the ID or name to extract, where 0 is the root key and
+        -1 is the leaf key.
 
   Returns:
-    Function extracting the name or ID of the key at depth index, as a unicode
-    string. Returns '' if key is empty (unsaved), otherwise raises IndexError
-    if the key is not as deep as described.
+    A function that will extract the name or ID of the key at depth index, as a
+    unicode string. The function returns '' if key is empty (unsaved), otherwise
+    raises IndexError if the key is not as deep as described.
   """
 
   def transform_function(key):
@@ -239,24 +244,25 @@ def key_id_or_name_as_string_n(index):
 
   return transform_function
 
-# # Commonly used helper which returns the value of the leaf key.
+
+# # Commonly used helper that returns the value of the leaf key.
 key_id_or_name_as_string = key_id_or_name_as_string_n(-1)
 
 
 def key_type_n(index):
-  """Pull out the nth (0-based) key type from a key which has parents.
+  """Retrieves the nth (0-based) key type from a key that has parents.
 
   This is most useful when paired with key_id_or_name_as_string_n.
   This is a useful complement to create_deep_key.
 
   Args:
-    index: The depth of the id or name to extract. Zero is the root key.
-        Negative one is the leaf key.
+    index: The depth of the ID or name to extract, where 0 is the root key and
+        -1 is the leaf key.
 
   Returns:
-    Method returning the type ('ID' or 'name') of the key at depth index.
-    Returns '' if key is empty (unsaved), otherwise raises IndexError
-    if the key is not as deep as described.
+    A function that will return the type ('ID' or 'name') of the key at depth
+    index. The function returns '' if key is empty (unsaved), otherwise raises
+    IndexError if the key is not as deep as described.
   """
 
   def transform_function(key):
@@ -269,21 +275,22 @@ def key_type_n(index):
 
   return transform_function
 
-# # Commonly used helper which returns the type of the leaf key.
+
+# # Commonly used helper that returns the type of the leaf key.
 key_type = key_type_n(-1)
 
 
 def key_kind_n(index):
-  """Pull out the nth (0-based) key kind from a key which has parents.
+  """Retrieves the nth (0-based) key kind from a key that has parents.
 
   This is a useful complement to create_deep_key.
 
   Args:
-    index: The depth of the id or name to extract. Zero is the root key.
-      Negative one is the leaf key.
+    index: The depth of the ID or name to extract, where 0 is the root key and
+      -1 is the leaf key.
 
   Returns:
-    Function returning the kind of the key at depth index, or raising
+    A function that will return the kind of the key at depth index or raise
     IndexError if the key is not as deep as described.
   """
 
@@ -295,30 +302,29 @@ def key_kind_n(index):
 
   return transform_function
 
-# Commonly used helper which returns the kind of the leaf key.
-key_kind = key_kind_n(-1)
 
+# Commonly used helper that returns the kind of the leaf key.
+key_kind = key_kind_n(-1)
 
 # Blob and ByteString helpers.
 
 
 @none_if_empty
 def blobproperty_from_base64(value):
-  """Return a datastore blob property containing the base64 decoded value."""
+  """Returns a datastore blob property containing the base64-decoded value."""
   decoded_value = base64.b64decode(value)
   return datastore_types.Blob(decoded_value)
 
 
 @none_if_empty
 def bytestring_from_base64(value):
-  """Return a datastore bytestring property from a base64 encoded value."""
+  """Returns a datastore bytestring property from a base64-encoded value."""
   decoded_value = base64.b64decode(value)
   return datastore_types.ByteString(decoded_value)
 
 
-def blob_to_file(filename_hint_propertyname=None,
-                 directory_hint=''):
-  """Write the blob contents to a file, and replace them with the filename.
+def blob_to_file(filename_hint_propertyname=None, directory_hint=''):
+  """Writes the blob contents to a file and replaces them with the filename.
 
   Args:
     filename_hint_propertyname: If present, the filename will begin with
@@ -326,10 +332,11 @@ def blob_to_file(filename_hint_propertyname=None,
     directory_hint: If present, the files will be stored in this directory.
 
   Returns:
-    A function which writes the input blob to a file.
+    A function that writes the input blob to a file.
   """
 
   directory = []
+
 
   def transform_function(value, bulkload_state):
     if not directory:
@@ -360,14 +367,17 @@ def blob_to_file(filename_hint_propertyname=None,
 # Formatted string helpers: Extract, convert to boolean, date, or list.
 
 
+
+
 def import_date_time(format, _strptime=None):
-  """A wrapper around strptime. Also returns None if the input is empty.
+  """A wrapper around strptime that returns None if the input is empty.
 
   Args:
-    format: Format string for strptime.
+    format: A format string for strptime.
 
   Returns:
-    Single argument method which parses a string into a datetime using format.
+    A single-argument function that parses a string into a datetime using
+    format.
   """
 
 
@@ -383,14 +393,18 @@ def import_date_time(format, _strptime=None):
   return import_date_time_lambda
 
 
+
+
+
 def export_date_time(format):
-  """A wrapper around strftime. Also returns '' if the input is None.
+  """A wrapper around strftime that returns '' if the input is None.
 
   Args:
-    format: Format string for strftime.
+    format: A format string for strftime.
 
   Returns:
-    Single argument method which convers a datetime into a string using format.
+    A single-argument function that converts a datetime into a string using
+    format.
   """
 
   def export_date_time_lambda(value):
@@ -401,17 +415,20 @@ def export_date_time(format):
   return export_date_time_lambda
 
 
+
 def regexp_extract(pattern, method=re.match, group=1):
-  """Return first group in the value matching the pattern using re.match.
+  """Returns the string that matches the specified group in the regex pattern.
 
   Args:
     pattern: A regular expression to match on with at least one group.
-    method: The method to use for matching; normally re.match or re.search.
-    group: The group to use for extracting a value.
+    method: The method to use for matching; normally re.match (the default) or
+        re.search.
+    group: The group to use for extracting a value; the first group by default.
 
   Returns:
-    A single argument method which returns the group_arg group matched,
-    or None if no match was found or the input was empty.
+    A single-argument function that returns the string that matches the
+    specified group in the pattern, or None if no match was found or the input
+    was empty.
   """
 
   def regexp_extract_lambda(value):
@@ -426,23 +443,24 @@ def regexp_extract(pattern, method=re.match, group=1):
 
 
 def regexp_to_list(pattern):
-  """Return function that returns a list of objects that match the regex.
+  """Returns a list of objects that match a regex.
 
-  Useful on import.  Uses the provided regex to split a string value into a list
-  of strings.  Wrapped by none_if_input_or_result_empty, so returns none if
-  there are no matches for the regex and none if the input is empty.
+  Useful on import. Uses the provided regex to split a string value into a list
+  of strings.  Wrapped by none_if_input_or_result_empty, so returns None if
+  there are no matches for the regex, or if the input is empty.
 
   Args:
     pattern: A regular expression pattern to match against the input string.
 
   Returns:
-    None if the input was none or no matches were found, otherwise a list of
-    strings matching the input expression.
+    A function that returns None if the input was None or no matches were found,
+    otherwise a list of strings matching the input expression.
   """
+
   @none_if_empty
   def regexp_to_list_lambda(value):
     result = re.findall(pattern, value)
-    if result == []:
+    if not result:
       return None
     return result
 
@@ -450,7 +468,7 @@ def regexp_to_list(pattern):
 
 
 def regexp_bool(regexp, flags=0):
-  """Return a boolean if the expression matches with re.match.
+  """Returns a boolean indicating whether the expression matches with re.match.
 
   Note that re.match anchors at the start but not end of the string.
 
@@ -459,7 +477,7 @@ def regexp_bool(regexp, flags=0):
     flags: Optional flags to pass to re.match.
 
   Returns:
-    Method which returns a Boolean if the expression matches.
+    A function that returns True if the expression matches.
   """
 
   def transform_function(value):
@@ -468,50 +486,101 @@ def regexp_bool(regexp, flags=0):
   return transform_function
 
 
-def split_string(delimeter):
-  """Split a string using the delimeter into a list.
+
+def fix_param_typo(oops, fixed):
+  """A decorator that corrects a misspelled parameter name.
+
+  A parameter in the split_string() and join_list() functions was originally
+  misspelled 'delimeter' instead of 'delimiter'. We couldn't correct the error
+  by simply renaming it, because that would break any client code that named
+  the parameter when invoking either function:
+
+  # This is fine: split strings on semi-colons.
+  split_string(';')
+
+  # This would break unless the client code also changed delimeter to delimiter.
+  split_string(delimeter=';')
+
+  But spelling counts, even in code, so here we are.
+
+  Args:
+    oops: The misspelled parameter name.
+    fixed: The correctly spelled parameter name, which matches the name in the
+      definition of the decorated function.
+
+  Returns:
+    A function that calls the decorated function correctly when it is invoked
+    with a misspelled parameter.
+  """
+
+  def _wrapped(fn):
+    """A wrapper that will correct a misspelled parameter name."""
+
+    def _process_args(*args, **kwargs):
+      """Calls the decorated function with the correct parameter."""
+      if len(args) + len(kwargs) != 1:
+        raise ValueError('Please supply exactly 1 argument.')
+      if fixed in kwargs:
+        return fn(kwargs[fixed])
+      if oops in kwargs:
+        print >> sys.stderr, (
+            'The parameter "%s" is deprecated. Please use "%s" instead.') % (
+                oops, fixed)
+        return fn(kwargs[oops])
+      return fn(args[0])
+
+    return _process_args
+
+  return _wrapped
+
+
+@fix_param_typo('delimeter', 'delimiter')
+def split_string(delimiter):
+  """Splits a string into a list using the delimiter.
 
   This is just a wrapper for string.split.
 
   Args:
-    delimeter: The delimiter to split the string on.
+    delimiter: The delimiter to split the string on.
 
   Returns:
-    Method which splits the string into a list along the delimeter.
+    A function that splits the string into a list along the delimiter.
   """
 
   def split_string_lambda(value):
-    return value.split(delimeter)
+    return value.split(delimiter)
 
   return split_string_lambda
 
 
-def join_list(delimeter):
-  """Join a list into a string using the delimeter.
+@fix_param_typo('delimeter', 'delimiter')
+def join_list(delimiter):
+  """Joins a list into a string using the delimiter.
 
   This is just a wrapper for string.join.
 
   Args:
-    delimeter: The delimiter to use when joining the string.
+    delimiter: The delimiter to use when joining the string.
 
   Returns:
-    Method which joins the list into a string with the delimeter.
+    A function that joins the list into a string with the delimiter.
   """
 
   def join_string_lambda(value):
-    return delimeter.join(value)
+    return delimiter.join(value)
 
   return join_string_lambda
 
 
+
 def list_from_multiproperty(*external_names):
-  """Create a list from multiple properties.
+  """Creates a list from multiple properties.
 
   Args:
-    external_names: List of the properties to use.
+    *external_names: A list of properties to use.
 
   Returns:
-    Transform function which returns a list of the properties in external_names.
+    A function that returns a list of the properties in external_names.
   """
 
   def list_from_multiproperty_lambda(unused_value, bulkload_state):
@@ -526,13 +595,14 @@ def list_from_multiproperty(*external_names):
 
 
 def property_from_list(index):
-  """Return the Nth item from a list, or '' if the list is shorter.
+  """Returns the item at position 'index' from a list.
 
   Args:
-    index: Item in the list to return.
+    index: The (0-based) item in the list to return.
 
   Returns:
-    Function returning the item from a list, or '' if the list is too short.
+    A function that returns the specified item from a list, or '' if the list
+    contains too few items.
   """
 
   @empty_if_none
@@ -548,7 +618,7 @@ def property_from_list(index):
 
 
 def list_from_child_node(xpath, suppress_blank=False):
-  """Return a list property from child nodes of the current xml node.
+  """Returns a list property from child nodes of the current xml node.
 
   This applies only the simplexml helper, as it assumes __node__, the current
   ElementTree node corresponding to the import record.
@@ -568,10 +638,10 @@ def list_from_child_node(xpath, suppress_blank=False):
 
   Args:
     xpath: XPath to run on the current node.
-    suppress_blank: if True, ndoes with no text will be skipped.
+    suppress_blank: if True, nodes with no text will be skipped.
 
   Returns:
-    Transform function which works as described in the args.
+    A function that works as described in the args.
   """
 
   def list_from_child_node_lambda(unused_value, bulkload_state):
@@ -587,9 +657,9 @@ def list_from_child_node(xpath, suppress_blank=False):
 
 
 def child_node_from_list(child_node_name):
-  """Return a value suitable for generating an XML child node on export.
+  """Returns a value suitable for generating an XML child node on export.
 
-  The return value is a list of tuples which the simplexml connector will
+  The return value is a list of tuples that the simplexml connector will
   use to build a child node.
 
   See also list_from_child_node
@@ -598,7 +668,7 @@ def child_node_from_list(child_node_name):
     child_node_name: The name to use for each child node.
 
   Returns:
-    Transform function which works as described in the args.
+    A function that works as described in the args.
   """
 
   def child_node_from_list_lambda(values):

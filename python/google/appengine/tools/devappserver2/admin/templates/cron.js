@@ -17,7 +17,7 @@ $(document).ready(function() {
     })
     .fail(function(xhr, textStatus) {
       $('#cron-feedback').removeClass().addClass('errorbox').text(
-          'Request failured with status: ' + request.status);
+          'Request failed with status: ' + request.status);
     });
   });
 });

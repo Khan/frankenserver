@@ -2,8 +2,8 @@
 
 name: "ANTLR"
 description:
-    "Python runtime for antlr 3.1. Completely unchanged from the original "
-    "version."
+  "Python runtime for antlr 3.1. Completely unchanged from the original "
+  "version."
 
 third_party {
   url {

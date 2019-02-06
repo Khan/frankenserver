@@ -16,6 +16,7 @@
 #
 """Methods for converting GAE local datastore data into GCD Emulator data."""
 
+import httplib
 import logging
 import os
 import shutil
@@ -34,6 +35,10 @@ SQLITE_HEADER = 'SQLite format 3\x00'
 JAVA_STREAM_MAGIC = '\xac\xed'
 
 
+class PersistException(Exception):
+  """Raised when calls to cloud datastore emulator's /persist endpoint fail."""
+
+
 class StubTypes(object):
   """Possible types of stub/emulator local datastore data."""
   # Data of datastore_file_stub
@@ -45,7 +50,7 @@ class StubTypes(object):
   JAVA_EMULATOR = 2
 
 
-def get_data_type(filename):
+def get_stub_type(filename):
   """Determine which type of datastore fake a local data file belongs to.
 
   Args:
@@ -75,46 +80,43 @@ def get_data_type(filename):
       return StubTypes.PYTHON_FILE_STUB
 
 
-def convert_python_data_to_emulator(
-    app_id, stub_type, filename, gcd_emulator_host):
-  """Convert datastore_file_stub or datastore_sqlite_stub data to emulator data.
+def convert_sqlite_data_to_emulator(app_id, filename, gcd_emulator_host):
+  """Convert datastore sqlite stub data to cloud emulator data.
 
   Args:
     app_id: A String representing application ID.
-    stub_type: A String representing the stub type filename belongs to.
-    filename: A String representing the absolute path to local data.
+    filename: A String representing the absolute path to SQLite data.
     gcd_emulator_host: A String in the format of host:port indicate the hostname
       and port number of gcd emulator.
+
+  Raises:
+    PersistException: if the call to emulator's /persist endpoint fails.
   """
   previous_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
-  try:
-    if stub_type == StubTypes.PYTHON_FILE_STUB:
-      logging.info(
-          'Converting datastore_file_stub data to cloud datastore emulator '
-          'data.')
-      python_stub = datastore_file_stub.DatastoreFileStub(
-          app_id, filename, trusted=True, save_changes=False)
-    else:  # Sqlite stub
-      logging.info(
-          'Converting datastore_sqlite_stub data to cloud datastore emulator '
-          'data.')
-      python_stub = datastore_sqlite_stub.DatastoreSqliteStub(
-          app_id, filename, trusted=True, use_atexit=False)
-    apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', python_stub)
-    entities = _fetch_all_datastore_entities()
+  sqlite_stub = datastore_sqlite_stub.DatastoreSqliteStub(
+      app_id, filename, trusted=True, use_atexit=False)
+  apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', sqlite_stub)
+  entities = _fetch_all_datastore_entities()
+  if entities:
+    logging.info('Fetched %d entities from %s', len(entities), filename)
     grpc_stub = datastore_grpc_stub.DatastoreGrpcStub(gcd_emulator_host)
     grpc_stub.get_or_set_call_handler_stub()
     apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', grpc_stub)
     datastore.Put(entities)
-    logging.info('Conversion complete.')
-    python_stub.Close()
-  finally:
 
-
-
-    apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', previous_stub)
-
-  logging.info('Datastore conversion complete')
+    # persist entities to disk in emulator's data format.
+    conn = httplib.HTTPConnection(gcd_emulator_host)
+    conn.request('POST', '/persist')
+    response = conn.getresponse()
+    msg = response.read()
+    if httplib.OK != response.status:
+      raise PersistException(msg)
+    logging.info('Datastore conversion complete')
+  else:
+    logging.warning('Fetched 0 entity from %s, will not create cloud '
+                    'datastore emulator file', filename)
+  sqlite_stub.Close()
+  apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', previous_stub)
 
 
 def convert_datastore_file_stub_data_to_sqlite(app_id, datastore_file):
@@ -151,12 +153,11 @@ def convert_datastore_file_stub_data_to_sqlite(app_id, datastore_file):
 
     apiproxy_stub_map.apiproxy.ReplaceStub('datastore_v3', previous_stub)
 
-  back_up_file_name = datastore_file + '.filestub'
-  shutil.copy(datastore_file, back_up_file_name)
-  os.remove(datastore_file)
+  file_stub_data_renamed = datastore_file + '.filestub'
+  shutil.move(datastore_file, file_stub_data_renamed)
   shutil.move(sqlite_file_name, datastore_file)
-  logging.info('Datastore conversion complete. File stub data has been backed '
-               'up in %s', back_up_file_name)
+  logging.info('Datastore conversion complete. File stub data has been renamed '
+               'to %s', file_stub_data_renamed)
 
 
 def _fetch_all_datastore_entities():

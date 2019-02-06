@@ -92,6 +92,8 @@ class PHPRuntime(object):
         'STDERR_LOG_LEVEL': str(config.stderr_log_level),
         'TZ': 'UTC',
         }
+    if config.php_config.php_version == 'php72':
+      self.environ_template['GAE_APPLICATION'] = str(config.app_id)
     self.environ_template.update((env.key, env.value) for env in config.environ)
 
   def make_php_cgi_environ(self, environ):

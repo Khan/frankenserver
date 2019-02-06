@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "oauth2"
-description:
-    "This library provides an implementation of oauth."
+description: "This library provides an implementation of oauth."
 
 third_party {
   url {

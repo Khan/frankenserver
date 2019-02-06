@@ -3982,8 +3982,10 @@ def to_dict(model_instance, dictionary=None):
 
 
 run_in_transaction = datastore.RunInTransaction
+run_in_read_only_transaction = datastore.RunInReadOnlyTransaction
 run_in_transaction_custom_retries = datastore.RunInTransactionCustomRetries
 run_in_transaction_options = datastore.RunInTransactionOptions
+run_in_read_only_transaction_options = datastore.RunInReadOnlyTransactionOptions
 
 
 

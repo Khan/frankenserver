@@ -18,7 +18,6 @@
 
 import collections
 import logging
-import re
 import socket
 import sys
 import threading
@@ -45,7 +44,8 @@ ResponseTuple = collections.namedtuple('ResponseTuple',
 
 # This must be kept in sync with dispatch_ah_url_path_prefix_whitelist in
 # google/production/borg/apphosting/templates/frontend.borg.
-DISPATCH_AH_URL_PATH_PREFIX_WHITELIST = ('/_ah/queue/deferred',)
+DISPATCH_AH_URL_PATH_PREFIX_WHITELIST = ('/_ah/queue/deferred',
+                                         '/_ah/api',)
 
 
 class PortRegistry(object):
@@ -108,7 +108,8 @@ class Dispatcher(request_info.Dispatcher):
                module_to_threadsafe_override,
                external_port,
                specified_service_ports=None,
-               enable_host_checking=True):
+               enable_host_checking=True,
+               ssl_certificate_paths=None):
     """Initializer for Dispatcher.
 
     Args:
@@ -169,6 +170,8 @@ class Dispatcher(request_info.Dispatcher):
           This allows services of given names to run on specified ports.
       enable_host_checking: A bool indicating that HTTP Host checking should
           be enforced for incoming requests.
+      ssl_certificate_paths: A ssl_utils.SSLCertificatePaths instance. If
+          specified, modules will be launched with SSL.
     """
     self._configuration = configuration
 
@@ -208,6 +211,7 @@ class Dispatcher(request_info.Dispatcher):
     self._external_port = external_port
     self._specified_service_ports = specified_service_ports or {}
     self._enable_host_checking = enable_host_checking
+    self._ssl_certificate_paths = ssl_certificate_paths
 
   def start(self, api_host, api_port, request_data):
     """Starts the configured modules.
@@ -243,17 +247,48 @@ class Dispatcher(request_info.Dispatcher):
       if service_name in self._specified_service_ports:
         service_port = self._specified_service_ports[service_name]
       elif next_available_port:
-        while self._port_registry.has(next_available_port):
-          next_available_port += 1
-        if next_available_port >= (1 << 16):
-          raise RuntimeError('Cannot find port for service %s' % service_name)
+        next_available_port = self._find_next_available_port(
+            next_available_port, service_name)
         service_port = next_available_port
 
-      _service = self._create_module(module_configuration, service_port)
+      # If necessary, find an additional port to bind to for accepting https
+      # connections
+      ssl_port = None
+      if self._ssl_certificate_paths:
+        ssl_port = self._find_next_available_port(service_port + 1,
+                                                  service_name)
+
+      _service = self._create_module(module_configuration, service_port,
+                                     ssl_port)
       _service.start()
       self._module_name_to_module[module_configuration.module_name] = _service
-      logging.info('Starting module "%s" running at: http://%s',
-                   module_configuration.module_name, _service.balanced_address)
+
+      log_message = 'Starting module "%s" running at: http://%s' % (
+          module_configuration.module_name, _service.balanced_address)
+      if ssl_port:
+        log_message += ' and https://%s:%s' % (self._host, ssl_port)
+      logging.info(log_message)
+
+  def _find_next_available_port(self, starting_port, service_name):
+    """Finds an available port in the port registry starting at starting_port.
+
+    Args:
+      starting_port: int, the port to start searching from.
+      service_name: str, the name of the service used in exception if no port
+        could be found.
+
+    Raises:
+      RuntimeError: If no port can be found.
+
+    Returns:
+      A port that is available for binding to.
+    """
+    next_available_port = starting_port
+    while self._port_registry.has(next_available_port):
+      next_available_port += 1
+    if next_available_port >= (1 << 16):
+      raise RuntimeError('Cannot find port for service %s' % service_name)
+    return next_available_port
 
   @property
   def dispatch_port(self):
@@ -316,7 +351,7 @@ class Dispatcher(request_info.Dispatcher):
                         '.'.join(map(str,
                                      runtime_factories.PYTHON27_PROD_VERSION)))
 
-  def _create_module(self, module_configuration, port):
+  def _create_module(self, module_configuration, port, ssl_port=None):
     self.check_python_version(module_configuration.runtime)
     max_instances = self._module_to_max_instances.get(
         module_configuration.module_name)
@@ -363,7 +398,9 @@ class Dispatcher(request_info.Dispatcher):
         automatic_restarts=self._automatic_restart,
         allow_skipped_files=self._allow_skipped_files,
         threadsafe_override=threadsafe_override,
-        enable_host_checking=self._enable_host_checking)
+        enable_host_checking=self._enable_host_checking,
+        ssl_certificate_paths=self._ssl_certificate_paths,
+        ssl_port=ssl_port)
 
     return module_instance
 
@@ -788,18 +825,8 @@ class Dispatcher(request_info.Dispatcher):
       return self._get_module_with_soft_routing(module_name, None), None
 
     else:
-      def get_port(hostname):
-        # This will first check to see if hostname is an IPv6 address, then it
-        # will fall back on the old-school method of looking for a colon
-        # followed by numbers at the end.
-        PORT_RE = re.compile(
-          r"^\[[0-9a-fA-F:]+\]:(?P<port>[0-9]+)|.*:(?P<port2>[0-9]+)$")
-        matched = PORT_RE.match(hostname)
-        return matched and int(matched.group("port") or matched.group("port2"))
-
-      _port = get_port(hostname)
-      if _port is not None:
-        port = _port
+      if ':' in hostname:
+        port = int(hostname.split(':', 1)[1])
       else:
         port = 80
       try:

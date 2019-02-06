@@ -218,6 +218,10 @@ def GenerateIndexFromHistory(query_history,
   return '\n'.join(res)
 
 
+class EmptyIndexFileError(Exception):
+  """Raised when index.yaml is empty."""
+
+
 class IndexYamlUpdater(object):
   """Helper class for updating index.yaml.
 
@@ -312,6 +316,10 @@ class IndexYamlUpdater(object):
       else:
         try:
           index_yaml_data = fh.read()
+          if not index_yaml_data:
+            raise EmptyIndexFileError(
+                'The index yaml file is empty. The file should at least have '
+                'an empty "indexes:" block.')
         finally:
           fh.close()
 

@@ -72,7 +72,7 @@ class ServicePortParser(PortParser):
     res = {}
     for service_port_str in value.split(','):
       service_port = service_port_str.split(':')
-      if len(service_port) is not 2:
+      if len(service_port) != 2:
         raise argparse.ArgumentTypeError(
             ' %s is not in the format of service-name:port,service-name:port'
             % value)
@@ -465,6 +465,25 @@ def create_command_line_parser(configuration=None):
                             const=True,
                             default=False,
                             help='Enable interactive console in admin view.')
+  common_group.add_argument(
+      '--java_app_base_url',
+      default=None,
+      restrict_configuration=[API_SERVER_CONFIGURATION],
+      help='Base URL of the java app in the form '
+      'http://host[:port], e.g. http://localhost:8080. '
+      'Should only be used to specify the url of a java '
+      'app running with the classic Java SDK tooling, '
+      'and not Java apps running on devappserver2.')
+  common_group.add_argument(
+      '--ssl_certificate_path',
+      default=None,
+      help='Path to SSL certificate. Must also provide '
+      '--ssl_certificate_key_path if using this option.')
+  common_group.add_argument(
+      '--ssl_certificate_key_path',
+      default=None,
+      help='Path to corresponding SSL private key. Must also provide '
+      '--ssl_certificate_path if using this option.')
 
   # PHP
   php_group = parser.add_argument_group('PHP')
@@ -551,7 +570,7 @@ def create_command_line_parser(configuration=None):
       '--enable_watching_go_path',
       action=boolean_action.BooleanAction,
       const=True,
-      default=True,
+      default=False,
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
       help='Enable watching $GOPATH for go app dependency changes. If file '
       'watcher complains about too many files to watch, you can set it to '
@@ -668,6 +687,41 @@ def create_command_line_parser(configuration=None):
       'release. Please do not rely on sequential IDs in your '
       'tests.')
 
+
+
+
+  datastore_group.add_argument(
+      '--support_datastore_emulator',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help='Support datastore local emulation with Cloud Datastore emulator.')
+  # Port number on which dev_appserver should launch Cloud Datastore emulator.
+  datastore_group.add_argument(
+      '--running_datastore_emulator_host', default=None,
+      help='Overrides the environment variable DATASTORE_EMULATOR_HOST, which'
+      ' means the hostname:port of a running Cloud Datastore emulator that'
+      ' dev_appserver can connect to.')
+  # Port number on which dev_appserver should launch Cloud Datastore emulator.
+  datastore_group.add_argument(
+      '--datastore_emulator_port', type=PortParser(), default=0,
+      help='The port number that dev_appserver should launch Cloud Datastore '
+      'emulator on.')
+  # The path to an executable shell script that invokes Cloud Datastore
+  # emulator.
+  datastore_group.add_argument(
+      '--datastore_emulator_cmd', type=parse_path,
+      default=None,
+      help='The path to a script that invokes cloud datastore emulator. If '
+      'left empty, dev_appserver will try to find datastore emulator in the '
+      'Google Cloud SDK.')
+  datastore_group.add_argument(
+      '--datastore_emulator_is_test_mode',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help=argparse.SUPPRESS)
+
   # Logs
   logs_group = parser.add_argument_group('Logs API')
   logs_group.add_argument(
@@ -768,16 +822,6 @@ def create_command_line_parser(configuration=None):
       const=True,
       default=False,
       help=argparse.SUPPRESS)
-
-
-
-
-  misc_group.add_argument(
-      '--support_datastore_emulator',
-      action=boolean_action.BooleanAction,
-      const=True,
-      default=False,
-      help=argparse.SUPPRESS)
   misc_group.add_argument(
       '--grpc_api_port', type=PortParser(), default=0,
       help='port on which the gRPC API server listens.')
@@ -796,12 +840,6 @@ def create_command_line_parser(configuration=None):
       'the development server will not be displayed on the console (this '
       'flag is more useful for diagnosing problems in dev_appserver.py rather '
       'than in application code)')
-  misc_group.add_argument(
-      '--dev_appserver_log_setup_script', default=None,
-      help='path to a Python script that will be run to set up logging for '
-      'the development server. The default log set up is always run, and this '
-      'script will simply run afterwards (so clear out any log handlers if '
-      'necessary).')
   misc_group.add_argument(
       '--skip_sdk_update_check',
       action=boolean_action.BooleanAction,
@@ -826,13 +864,11 @@ def create_command_line_parser(configuration=None):
   # the Cloud SDK dev_appserver.py wrapper.
   misc_group.add_argument(
       '--google_analytics_client_id', default=None,
-      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
       help=argparse.SUPPRESS)
   # The user agent to use for Google Analytics usage reporting. This should only
   # be set by the Cloud SDK dev_appserver.py wrapper.
   misc_group.add_argument(
       '--google_analytics_user_agent', default=None,
-      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
       help=argparse.SUPPRESS)
 
   return parser

@@ -176,6 +176,7 @@ def _ConvertBackendToModule(backend_entry, app_yaml_config):
   _SetStart(result, backend_entry)
   _SetModule(result, backend_entry)
   _SetClass(result, backend_entry)
+  _RemoveScalingOptions(result)
   _SetScalingType(result, backend_entry)
   return result
 
@@ -193,6 +194,20 @@ def _CopyAppInfo(app_yaml_config):
   """
   as_yaml = app_yaml_config.ToYAML()
   return appinfo.LoadSingleAppInfo(as_yaml)
+
+
+def _RemoveScalingOptions(target):
+  """Removes any existing scaling options from the backend, if present.
+
+  Args:
+    target: A appinfo.AppInfoExternal object. Contains parsed app.yaml augmented
+      by current backend info.
+  """
+  for a in ('automatic_scaling', 'basic_scaling', 'manual_scaling'):
+    try:
+      delattr(target, a)
+    except AttributeError:
+      pass
 
 
 def _MaybeSetNotPublic(target, backend_entry):

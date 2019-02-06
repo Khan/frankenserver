@@ -233,11 +233,12 @@ class CharField(Field):
 
     def to_python(self, value):
         "Returns a Unicode object."
+        if value not in self.empty_values:
+            value = force_text(value)
+            if self.strip:
+                value = value.strip()
         if value in self.empty_values:
             return self.empty_value
-        value = force_text(value)
-        if self.strip:
-            value = value.strip()
         return value
 
     def widget_attrs(self, widget):
@@ -604,12 +605,15 @@ class FileField(Field):
         return data
 
     def has_changed(self, initial, data):
+        if self.disabled:
+            return False
         if data is None:
             return False
         return True
 
 
 class ImageField(FileField):
+    default_validators = [validators.validate_image_file_extension]
     default_error_messages = {
         'invalid_image': _(
             "Upload a valid image. The file you uploaded was either not an "
@@ -723,6 +727,8 @@ class BooleanField(Field):
             raise ValidationError(self.error_messages['required'], code='required')
 
     def has_changed(self, initial, data):
+        if self.disabled:
+            return False
         # Sometimes data or initial may be a string equivalent of a boolean
         # so we should run it through to_python first to get a boolean value
         return self.to_python(initial) != self.to_python(data)
@@ -890,6 +896,8 @@ class MultipleChoiceField(ChoiceField):
                 )
 
     def has_changed(self, initial, data):
+        if self.disabled:
+            return False
         if initial is None:
             initial = []
         if data is None:
@@ -1068,6 +1076,8 @@ class MultiValueField(Field):
         raise NotImplementedError('Subclasses must implement this method.')
 
     def has_changed(self, initial, data):
+        if self.disabled:
+            return False
         if initial is None:
             initial = ['' for x in range(0, len(data))]
         else:

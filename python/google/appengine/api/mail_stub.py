@@ -30,7 +30,9 @@ send real email via SMTP or sendmail."""
 
 
 
+import collections
 from email import encoders
+import functools
 import logging
 import re
 import smtplib
@@ -43,6 +45,17 @@ from google.appengine.runtime import apiproxy_errors
 
 
 MAX_REQUEST_SIZE = 32 << 20
+
+JAVA_TO_PYTHON_LOG_LEVELS = {
+    'SEVERE': logging.CRITICAL,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'CONFIG': logging.DEBUG,
+    'FINE': logging.DEBUG,
+    'FINER': logging.DEBUG,
+    'FINEST': logging.DEBUG,
+    'ALL': logging.NOTSET,
+}
 
 
 class MailServiceStub(apiproxy_stub.APIProxyStub):
@@ -90,6 +103,14 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._allow_tls = allow_tls
 
     self._cached_messages = []
+    self._log_fn = logging.info
+
+
+
+
+
+
+    self._saved_log_level = 'INFO'
 
   def _GenerateLog(self, method, message, log):
     """Generate a list of log messages representing sent mail.
@@ -133,6 +154,14 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
         log_message.append('-----\n' + message.htmlbody() + '\n-----')
 
 
+    if message.has_amphtmlbody():
+      log_message.append('  Body:')
+      log_message.append('    Content-type: text/x-amp-html')
+      log_message.append('    Data length: %d' % len(message.amphtmlbody()))
+      if self._show_mail_body:
+        log_message.append('-----\n' + message.amphtmlbody() + '\n-----')
+
+
     for attachment in message.attachment_list():
       log_message.append('  Attachment:')
       log_message.append('    File name: %s' % attachment.filename())
@@ -149,10 +178,38 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     """
     self._cached_messages.append(message)
 
+  def _email_message_from_mime_message(self, mime_message, mail_message_proto):
+    """Construct a mail.EmailMessage from the given mime message and protobuf.
+
+    Unlike the main constructor for EmailMessage, this method ensures that
+    optional headers from the request protobuf are properly set on the
+    EmailMessage.
+
+    Args:
+      mime_message: An email.MIMEMultipart instance.
+      mail_message_proto: The mail_service_pb.MailMessage instance used to
+        create the mime_message.
+
+    Returns:
+      An instance of mail.EmailMessage.
+    """
+    headers = collections.OrderedDict()
+    for header in mail_message_proto.header_list():
+      headers[header.name()] = header.value()
+    if headers:
+      return mail.EmailMessage(mime_message=mime_message, headers=headers)
+    else:
+      return mail.EmailMessage(mime_message=mime_message)
+
 
   @apiproxy_stub.Synchronized
-  def get_sent_messages(self, to=None, sender=None, subject=None, body=None,
-                        html=None):
+  def get_sent_messages(self,
+                        to=None,
+                        sender=None,
+                        subject=None,
+                        body=None,
+                        html=None,
+                        amp_html=None):
     """Get a list of mail messages sent via the Mail API.
 
     Args:
@@ -161,6 +218,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       subject: A regular expression that the message subject must match.
       body: A regular expression that the text body must match.
       html: A regular expression that the HTML body must match.
+      amp_html: A regular expression that the AMP HTML body must match.
 
     Returns:
       A list of matching mail.EmailMessage or mail.AdminEmailMessage objects.
@@ -197,6 +255,8 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       messages = regex_filter(body, 'body')
     if html:
       messages = regex_filter(html, 'html')
+    if amp_html:
+      messages = regex_filter(amp_html, 'amp_html')
 
     return messages
 
@@ -278,7 +338,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     except (IOError, OSError), e:
       logging.error('Error sending mail using sendmail: ' + str(e))
 
-  def _Send(self, request, response, log=logging.info,
+  def _Send(self, request, response, log=None,
             smtp_lib=smtplib.SMTP,
             popen=subprocess.Popen,
             sendmail_command='sendmail'):
@@ -297,9 +357,12 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       popen2: popen2 function to use for opening pipe to other process.
         Used for dependency injection.
     """
+    log = log or self._log_fn
+
     self._ValidateExtensions(request)
     mime_message = mail.mail_message_to_mime_message(request)
-    self._CacheMessage(mail.EmailMessage(mime_message=mime_message))
+    self._CacheMessage(
+        self._email_message_from_mime_message(mime_message, request))
     self._GenerateLog('Send', request, log)
 
     if self._smtp_host and self._enable_sendmail:
@@ -319,7 +382,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
 
   _Dynamic_Send = _Send
 
-  def _SendToAdmins(self, request, response, log=logging.info):
+  def _SendToAdmins(self, request, response, log=None):
     """Implementation of MailServer::SendToAdmins().
 
     Logs email message.  Contents of attachments are not shown, only
@@ -334,6 +397,8 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       log: Log function to send log information.  Used for dependency
         injection.
     """
+    log = log or self._log_fn
+
     self._ValidateExtensions(request)
     mime_message = mail.mail_message_to_mime_message(request)
     self._CacheMessage(mail.AdminEmailMessage(mime_message=mime_message))
@@ -350,8 +415,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     Used by the Java LocalMailService to retrieve all sent messages.
 
     Args:
-      request: An instance of
-        mail_local_helper_service_pb.GetSentMessagesRequest.
+      request: An unused api_base_pb.VoidProto.
       response: An instance of
         mail_local_helper_service_pb.GetSentMessagesResponse.
     """
@@ -364,14 +428,45 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     """Clear the list of sent messages and return the number cleared.
 
     Args:
-      request: An instance of
-        mail_local_helper_service_pb.ClearSentMessagesRequest.
+      request: An unused api_base_pb.VoidProto.
       response: An instance of
         mail_local_helper_service_pb.ClearSentMessagesResponse.
     """
     original_messages_count = len(self._cached_messages)
     self.Clear()
     response.set_messages_cleared(original_messages_count)
+
+  def _Dynamic_GetLogMailBody(self, request, response):
+    response.set_log_mail_body(self._show_mail_body)
+
+  def _Dynamic_SetLogMailBody(self, request, response):
+    self._show_mail_body = request.log_mail_body()
+
+  def _Dynamic_GetLogMailLevel(self, unused_request, response):
+    response.set_log_mail_level(self._saved_log_level)
+
+  def _Dynamic_SetLogMailLevel(self, request, unused_response):
+    log_level = request.log_mail_level()
+    self._saved_log_level = log_level
+
+
+
+
+    try:
+      int_log_level = int(log_level)
+      self._log_fn = functools.partial(logging.log, int_log_level)
+    except ValueError:
+
+
+
+
+      if log_level == 'OFF':
+        def logNoOp(unused_msg, *unused_args, **unused_keywords):
+          pass
+        self._log_fn = logNoOp
+      elif log_level in JAVA_TO_PYTHON_LOG_LEVELS:
+        self._log_fn = functools.partial(logging.log,
+                                         JAVA_TO_PYTHON_LOG_LEVELS[log_level])
 
   def _ValidateExtensions(self, request):
     """Implementation of MailServer::Send().

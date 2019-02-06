@@ -90,6 +90,7 @@ class TestModuleConfiguration(unittest.TestCase):
     env_variables = appinfo.EnvironmentVariables()
     info = appinfo.AppInfoExternal(
         application='app',
+        entrypoint='gunicorn main:app',
         module='module1',
         version='1',
         runtime='python27',
@@ -113,6 +114,7 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(os.path.realpath('/appdir/app.yaml'), config.config_path)
     self.assertEqual('dev~app', config.application)
     self.assertEqual('app', config.application_external_name)
+    self.assertEqual('exec gunicorn main:app', config.entrypoint)
     self.assertEqual('dev', config.partition)
     self.assertEqual('module1', config.module_name)
     self.assertEqual('1', config.major_version)
@@ -715,6 +717,7 @@ class TestModuleConfiguration(unittest.TestCase):
         version='version',
         runtime='python27',
         threadsafe=False,
+        entrypoint='exec gunicorn -b :${PORT} main:app',
         libraries=[appinfo.Library(name='jinja2', version='latest')],
         skip_files=r'.*\.py',
         handlers=[appinfo.URLMap()],
@@ -737,7 +740,8 @@ class TestModuleConfiguration(unittest.TestCase):
              application_configuration.HANDLERS_CHANGED,
              application_configuration.INBOUND_SERVICES_CHANGED,
              application_configuration.ENV_VARIABLES_CHANGED,
-             application_configuration.ERROR_HANDLERS_CHANGED]),
+             application_configuration.ERROR_HANDLERS_CHANGED,
+             application_configuration.ENTRYPOINT_ADDED]),
         config.check_for_updates())
     self.mox.VerifyAll()
 
@@ -748,6 +752,7 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(info2.handlers, config.handlers)
     self.assertEqual(info2.inbound_services, config.inbound_services)
     self.assertEqual(info2.env_variables, config.env_variables)
+    self.assertEqual(info2.entrypoint, config.entrypoint)
 
 
 class TestBackendsConfiguration(unittest.TestCase):

@@ -165,6 +165,8 @@ if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
         'storage_onestore_v3\entityproto\kind' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\entityproto' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\entitymetadata' => 'google/appengine/datastore/entity_pb.php',
+        'storage_onestore_v3\entitysummary\propertysummary' => 'google/appengine/datastore/entity_pb.php',
+        'storage_onestore_v3\entitysummary' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\compositeproperty' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\index\version' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\index\property\direction' => 'google/appengine/datastore/entity_pb.php',

@@ -151,7 +151,7 @@ class AdminRequestHandler(webapp2.RequestHandler):
   def enable_console(self):
     return self.request.app.enable_console
 
-  @metrics.LogHandlerRequest('admin-console')
+  @metrics.LogHandlerRequest(metrics.ADMIN_CONSOLE_CATEGORY)
   def get(self, *args, **kwargs):
     """Base method for all get requests."""
     self.response.headers.add('X-Frame-Options', 'SAMEORIGIN')
@@ -160,6 +160,6 @@ class AdminRequestHandler(webapp2.RequestHandler):
     self.response.headers.add(
         'Content-Security-Policy', "frame-ancestors 'none'")
 
-  @metrics.LogHandlerRequest('admin-console')
+  @metrics.LogHandlerRequest(metrics.ADMIN_CONSOLE_CATEGORY)
   def post(self, *args, **kwargs):
     """Base method for all post requests."""

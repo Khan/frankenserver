@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "docker"
-description:
-    "An API client for docker written in Python"
+description: "An API client for docker written in Python"
 
 third_party {
   url {

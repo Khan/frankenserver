@@ -21,11 +21,16 @@ from google.net.proto import ProtocolBuffer
 import abc
 import array
 import base64
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 try:
   from google3.net.proto import _net_proto___parse__python
 except ImportError:
   _net_proto___parse__python = None
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -168,7 +173,7 @@ class PartitionId(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -180,7 +185,7 @@ class PartitionId(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdataset_id = 3
   knamespace = 4
@@ -202,7 +207,7 @@ class PartitionId(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.PartitionId'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KI2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkExoKZGF0YXNldF9pZCADKAIwCTgBFBMaCW5hbWVzcGFjZSAEKAIwCTgBFHN6CUNvbnN0YW50c4sBkgERTUFYX0RJTUVOU0lPTl9UQUeYAWSMAXS6AfcICiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8SF2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0IlgKC1BhcnRpdGlvbklkEhIKCmRhdGFzZXRfaWQYAyABKAkSEQoJbmFtZXNwYWNlGAQgASgJIiIKCUNvbnN0YW50cxIVChFNQVhfRElNRU5TSU9OX1RBRxBkIrgBCgNLZXkSOgoMcGFydGl0aW9uX2lkGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSPgoMcGF0aF9lbGVtZW50GAIgAygLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5LlBhdGhFbGVtZW50GjUKC1BhdGhFbGVtZW50EgwKBGtpbmQYASACKAkSCgoCaWQYAiABKAMSDAoEbmFtZRgDIAEoCSIvCghHZW9Qb2ludBIQCghsYXRpdHVkZRgBIAIoARIRCglsb25naXR1ZGUYAiACKAEiswMKBVZhbHVlEhUKDWJvb2xlYW5fdmFsdWUYASABKAgSFQoNaW50ZWdlcl92YWx1ZRgCIAEoAxIUCgxkb3VibGVfdmFsdWUYAyABKAESJAocdGltZXN0YW1wX21pY3Jvc2Vjb25kc192YWx1ZRgEIAEoAxIvCglrZXlfdmFsdWUYBSABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFgoOYmxvYl9rZXlfdmFsdWUYECABKAkSFAoMc3RyaW5nX3ZhbHVlGBEgASgJEhIKCmJsb2JfdmFsdWUYEiABKAwSNQoMZW50aXR5X3ZhbHVlGAYgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjoKD2dlb19wb2ludF92YWx1ZRgIIAEoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50EjIKCmxpc3RfdmFsdWUYByADKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIPCgdtZWFuaW5nGA4gASgFEhUKB2luZGV4ZWQYDyABKAg6BHRydWUiqgEKCFByb3BlcnR5EgwKBG5hbWUYASACKAkSIwoQZGVwcmVjYXRlZF9tdWx0aRgCIAEoCDoFZmFsc2VCAhgBEjwKEGRlcHJlY2F0ZWRfdmFsdWUYAyADKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZUICGAESLQoFdmFsdWUYBCABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZSJoCgZFbnRpdHkSKQoDa2V5GAEgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EjMKCHByb3BlcnR5GAIgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlCIwofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZSAB"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KI2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkExoKZGF0YXNldF9pZCADKAIwCTgBFBMaCW5hbWVzcGFjZSAEKAIwCTgBFHN6CUNvbnN0YW50c4sBkgERTUFYX0RJTUVOU0lPTl9UQUeYAWSMAXS6AfUICiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8SF2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0IlgKC1BhcnRpdGlvbklkEhIKCmRhdGFzZXRfaWQYAyABKAkSEQoJbmFtZXNwYWNlGAQgASgJIiIKCUNvbnN0YW50cxIVChFNQVhfRElNRU5TSU9OX1RBRxBkIrgBCgNLZXkSOgoMcGFydGl0aW9uX2lkGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSPgoMcGF0aF9lbGVtZW50GAIgAygLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5LlBhdGhFbGVtZW50GjUKC1BhdGhFbGVtZW50EgwKBGtpbmQYASACKAkSCgoCaWQYAiABKAMSDAoEbmFtZRgDIAEoCSIvCghHZW9Qb2ludBIQCghsYXRpdHVkZRgBIAIoARIRCglsb25naXR1ZGUYAiACKAEiswMKBVZhbHVlEhUKDWJvb2xlYW5fdmFsdWUYASABKAgSFQoNaW50ZWdlcl92YWx1ZRgCIAEoAxIUCgxkb3VibGVfdmFsdWUYAyABKAESJAocdGltZXN0YW1wX21pY3Jvc2Vjb25kc192YWx1ZRgEIAEoAxIvCglrZXlfdmFsdWUYBSABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFgoOYmxvYl9rZXlfdmFsdWUYECABKAkSFAoMc3RyaW5nX3ZhbHVlGBEgASgJEhIKCmJsb2JfdmFsdWUYEiABKAwSNQoMZW50aXR5X3ZhbHVlGAYgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjoKD2dlb19wb2ludF92YWx1ZRgIIAEoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50EjIKCmxpc3RfdmFsdWUYByADKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIPCgdtZWFuaW5nGA4gASgFEhUKB2luZGV4ZWQYDyABKAg6BHRydWUiqgEKCFByb3BlcnR5EgwKBG5hbWUYASACKAkSIwoQZGVwcmVjYXRlZF9tdWx0aRgCIAEoCDoFZmFsc2VCAhgBEjwKEGRlcHJlY2F0ZWRfdmFsdWUYAyADKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZUICGAESLQoFdmFsdWUYBCABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZSJoCgZFbnRpdHkSKQoDa2V5GAEgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EjMKCHByb3BlcnR5GAIgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlCIQofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZQ=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -365,7 +370,7 @@ class Key_PathElement(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -378,7 +383,7 @@ class Key_PathElement(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkind = 1
   kid = 2
@@ -414,7 +419,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.path_element_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def partition_id(self):
@@ -456,7 +461,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_partition_id()): self.mutable_partition_id().MergeFrom(x.partition_id())
-    for i in xrange(x.path_element_size()): self.add_path_element().CopyFrom(x.path_element(i))
+    for i in range(x.path_element_size()): self.add_path_element().CopyFrom(x.path_element(i))
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -505,14 +510,14 @@ class Key(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_partition_id_): n += 1 + self.lengthString(self.partition_id_.ByteSize())
     n += 1 * len(self.path_element_)
-    for i in xrange(len(self.path_element_)): n += self.lengthString(self.path_element_[i].ByteSize())
+    for i in range(len(self.path_element_)): n += self.lengthString(self.path_element_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_partition_id_): n += 1 + self.lengthString(self.partition_id_.ByteSizePartial())
     n += 1 * len(self.path_element_)
-    for i in xrange(len(self.path_element_)): n += self.lengthString(self.path_element_[i].ByteSizePartial())
+    for i in range(len(self.path_element_)): n += self.lengthString(self.path_element_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -524,7 +529,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.partition_id_.ByteSize())
       self.partition_id_.OutputUnchecked(out)
-    for i in xrange(len(self.path_element_)):
+    for i in range(len(self.path_element_)):
       out.putVarInt32(18)
       out.putVarInt32(self.path_element_[i].ByteSize())
       self.path_element_[i].OutputUnchecked(out)
@@ -534,7 +539,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.partition_id_.ByteSizePartial())
       self.partition_id_.OutputPartial(out)
-    for i in xrange(len(self.path_element_)):
+    for i in range(len(self.path_element_)):
       out.putVarInt32(18)
       out.putVarInt32(self.path_element_[i].ByteSizePartial())
       self.path_element_[i].OutputPartial(out)
@@ -556,7 +561,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -578,7 +583,7 @@ class Key(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kpartition_id = 1
   kpath_element = 2
@@ -734,7 +739,7 @@ class GeoPoint(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -746,7 +751,7 @@ class GeoPoint(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   klatitude = 1
   klongitude = 2
@@ -801,7 +806,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.list_value_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def boolean_value(self): return self.boolean_value_
@@ -1007,7 +1012,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (x.has_blob_value()): self.set_blob_value(x.blob_value())
     if (x.has_entity_value()): self.mutable_entity_value().MergeFrom(x.entity_value())
     if (x.has_geo_point_value()): self.mutable_geo_point_value().MergeFrom(x.geo_point_value())
-    for i in xrange(x.list_value_size()): self.add_list_value().CopyFrom(x.list_value(i))
+    for i in range(x.list_value_size()): self.add_list_value().CopyFrom(x.list_value(i))
     if (x.has_meaning()): self.set_meaning(x.meaning())
     if (x.has_indexed()): self.set_indexed(x.indexed())
 
@@ -1091,7 +1096,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_value_): n += 1 + self.lengthString(self.entity_value_.ByteSize())
     if (self.has_geo_point_value_): n += 1 + self.lengthString(self.geo_point_value_.ByteSize())
     n += 1 * len(self.list_value_)
-    for i in xrange(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSize())
+    for i in range(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSize())
     if (self.has_meaning_): n += 1 + self.lengthVarInt64(self.meaning_)
     if (self.has_indexed_): n += 2
     return n
@@ -1109,7 +1114,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_value_): n += 1 + self.lengthString(self.entity_value_.ByteSizePartial())
     if (self.has_geo_point_value_): n += 1 + self.lengthString(self.geo_point_value_.ByteSizePartial())
     n += 1 * len(self.list_value_)
-    for i in xrange(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSizePartial())
+    for i in range(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSizePartial())
     if (self.has_meaning_): n += 1 + self.lengthVarInt64(self.meaning_)
     if (self.has_indexed_): n += 2
     return n
@@ -1150,7 +1155,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(50)
       out.putVarInt32(self.entity_value_.ByteSize())
       self.entity_value_.OutputUnchecked(out)
-    for i in xrange(len(self.list_value_)):
+    for i in range(len(self.list_value_)):
       out.putVarInt32(58)
       out.putVarInt32(self.list_value_[i].ByteSize())
       self.list_value_[i].OutputUnchecked(out)
@@ -1195,7 +1200,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(50)
       out.putVarInt32(self.entity_value_.ByteSizePartial())
       self.entity_value_.OutputPartial(out)
-    for i in xrange(len(self.list_value_)):
+    for i in range(len(self.list_value_)):
       out.putVarInt32(58)
       out.putVarInt32(self.list_value_[i].ByteSizePartial())
       self.list_value_[i].OutputPartial(out)
@@ -1275,7 +1280,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1314,7 +1319,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kboolean_value = 1
   kinteger_value = 2
@@ -1384,7 +1389,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.deprecated_value_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def name(self): return self.name_
@@ -1453,7 +1458,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_name()): self.set_name(x.name())
     if (x.has_deprecated_multi()): self.set_deprecated_multi(x.deprecated_multi())
-    for i in xrange(x.deprecated_value_size()): self.add_deprecated_value().CopyFrom(x.deprecated_value(i))
+    for i in range(x.deprecated_value_size()): self.add_deprecated_value().CopyFrom(x.deprecated_value(i))
     if (x.has_value()): self.mutable_value().MergeFrom(x.value())
 
   if _net_proto___parse__python is not None:
@@ -1512,7 +1517,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.name_))
     if (self.has_deprecated_multi_): n += 2
     n += 1 * len(self.deprecated_value_)
-    for i in xrange(len(self.deprecated_value_)): n += self.lengthString(self.deprecated_value_[i].ByteSize())
+    for i in range(len(self.deprecated_value_)): n += self.lengthString(self.deprecated_value_[i].ByteSize())
     if (self.has_value_): n += 1 + self.lengthString(self.value_.ByteSize())
     return n + 1
 
@@ -1523,7 +1528,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
       n += self.lengthString(len(self.name_))
     if (self.has_deprecated_multi_): n += 2
     n += 1 * len(self.deprecated_value_)
-    for i in xrange(len(self.deprecated_value_)): n += self.lengthString(self.deprecated_value_[i].ByteSizePartial())
+    for i in range(len(self.deprecated_value_)): n += self.lengthString(self.deprecated_value_[i].ByteSizePartial())
     if (self.has_value_): n += 1 + self.lengthString(self.value_.ByteSizePartial())
     return n
 
@@ -1539,7 +1544,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     if (self.has_deprecated_multi_):
       out.putVarInt32(16)
       out.putBoolean(self.deprecated_multi_)
-    for i in xrange(len(self.deprecated_value_)):
+    for i in range(len(self.deprecated_value_)):
       out.putVarInt32(26)
       out.putVarInt32(self.deprecated_value_[i].ByteSize())
       self.deprecated_value_[i].OutputUnchecked(out)
@@ -1555,7 +1560,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     if (self.has_deprecated_multi_):
       out.putVarInt32(16)
       out.putBoolean(self.deprecated_multi_)
-    for i in xrange(len(self.deprecated_value_)):
+    for i in range(len(self.deprecated_value_)):
       out.putVarInt32(26)
       out.putVarInt32(self.deprecated_value_[i].ByteSizePartial())
       self.deprecated_value_[i].OutputPartial(out)
@@ -1587,7 +1592,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1611,7 +1616,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kname = 1
   kdeprecated_multi = 2
@@ -1650,7 +1655,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.property_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def key(self):
@@ -1692,7 +1697,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_key()): self.mutable_key().MergeFrom(x.key())
-    for i in xrange(x.property_size()): self.add_property().CopyFrom(x.property(i))
+    for i in range(x.property_size()): self.add_property().CopyFrom(x.property(i))
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -1741,14 +1746,14 @@ class Entity(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSize())
     n += 1 * len(self.property_)
-    for i in xrange(len(self.property_)): n += self.lengthString(self.property_[i].ByteSize())
+    for i in range(len(self.property_)): n += self.lengthString(self.property_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSizePartial())
     n += 1 * len(self.property_)
-    for i in xrange(len(self.property_)): n += self.lengthString(self.property_[i].ByteSizePartial())
+    for i in range(len(self.property_)): n += self.lengthString(self.property_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -1760,7 +1765,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.key_.ByteSize())
       self.key_.OutputUnchecked(out)
-    for i in xrange(len(self.property_)):
+    for i in range(len(self.property_)):
       out.putVarInt32(18)
       out.putVarInt32(self.property_[i].ByteSize())
       self.property_[i].OutputUnchecked(out)
@@ -1770,7 +1775,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(10)
       out.putVarInt32(self.key_.ByteSizePartial())
       self.key_.OutputPartial(out)
-    for i in xrange(len(self.property_)):
+    for i in range(len(self.property_)):
       out.putVarInt32(18)
       out.putVarInt32(self.property_[i].ByteSizePartial())
       self.property_[i].OutputPartial(out)
@@ -1792,7 +1797,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1814,7 +1819,7 @@ class Entity(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kkey = 1
   kproperty = 2

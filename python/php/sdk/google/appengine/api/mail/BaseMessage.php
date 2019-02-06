@@ -60,6 +60,7 @@ abstract class BaseMessage {
                                         'subject' => 'setSubject',
                                         'textBody' => 'setTextBody',
                                         'htmlBody' => 'setHtmlBody',
+                                        'ampHtmlBody' => 'setAmpHtmlBody',
                                         'header' => 'addHeaderArray',
                                         'attachment' => 'addAttachmentArray',
                                         'attachments' => 'addAttachmentsArray');
@@ -358,6 +359,23 @@ abstract class BaseMessage {
       throw new \InvalidArgumentException($error);
     }
     $this->message->setHtmlbody($text);
+  }
+
+  /**
+   * Sets AMP HTML content for the email body. This field is optional. Setting
+   * AMP HTML body makes the email an AMP Email. Plain text or HTML may become
+   * fallback content depending on the email client used.
+   *
+   * @param string $text AMP HTML to add.
+   * @throws \InvalidArgumentException If text is not a string.
+   */
+  public function setAmpHtmlBody($text) {
+    if (!is_string($text)) {
+      $error = sprintf('AMP HTML text given is not a string (Actual type: %s).',
+                       gettype($text));
+      throw new \InvalidArgumentException($error);
+    }
+    $this->message->setAmpHtmlbody($text);
   }
 
   /**

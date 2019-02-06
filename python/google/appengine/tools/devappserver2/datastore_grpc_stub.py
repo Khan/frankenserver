@@ -17,6 +17,7 @@
 """Provides utility functions to create grpc stub and make grpc call."""
 
 import httplib
+import pickle
 import threading
 import urllib2
 from google.appengine.api import apiproxy_stub
@@ -42,6 +43,10 @@ _TIMEOUT = remote_api_stub.TIMEOUT_SECONDS
 
 # The maximum message size for gRPC calls.
 _MAX_MESSAGE_LENGTH_BYTES = 1024 * 1024 * 32  # 32MB.
+
+
+class ConnectionError(Exception):
+  """Raised when connection to Cloud Datastore Emulator is lost."""
 
 
 class DatastoreGrpcStub(apiproxy_stub.APIProxyStub):
@@ -146,6 +151,9 @@ class DatastoreGrpcStub(apiproxy_stub.APIProxyStub):
       response: A protocol buffer of the type corresponding to 'call'.
       request_id: A unique string identifying the request associated with the
           API call.
+
+    Raises:
+      ConnectionError: connection to the emulator is lost.
     """
     assert service == 'datastore_v3'
     self.CheckRequest(service, call, request)
@@ -159,8 +167,17 @@ class DatastoreGrpcStub(apiproxy_stub.APIProxyStub):
     if request_id:
       request_pb.request_id = request.request_id()
 
-    response_pb = self.get_or_set_call_handler_stub().HandleCall(
-        request_pb, _TIMEOUT)
+    try:
+      response_pb = self.get_or_set_call_handler_stub().HandleCall(
+          request_pb, _TIMEOUT)
+    except Exception:  # pylint: disable=broad-except
+
+
+
+
+      raise ConnectionError(
+          'Cannot connect to Cloud Datastore Emulator on {}'.format(
+              self.grpc_apiserver_host))
 
     if response_pb.HasField('application_error'):
       app_err = response_pb.application_error
@@ -186,21 +203,37 @@ class DatastoreGrpcStub(apiproxy_stub.APIProxyStub):
     if request.has_request_id():
       request_pb.request_id = request.request_id()
 
-    response_pb = self.get_or_set_call_handler_stub().HandleCall(
-        request_pb, _TIMEOUT)
-
-    # Translate grpc_service_pb2.Response back to remote_api_pb.Response
     response = remote_api_pb.Response()
+
+    try:
+      response_pb = self.get_or_set_call_handler_stub().HandleCall(
+          request_pb, _TIMEOUT)
+    except Exception:  # pylint: disable=broad-except
+
+
+
+
+      response.set_exception(pickle.dumps(
+          # Raising built-in Exception instead of ConnectionError, because the
+          # later can not be parsed by remote_api.
+          Exception('Cannot connect to Cloud Datastore Emulator on {}'.format(
+              self.grpc_apiserver_host))))
+      return response
+
 
 
 
     response.set_response(response_pb.response)
     if response_pb.HasField('rpc_error'):
-      response.mutable_rpc_error().ParseFromString(
-          response_pb.rpc_error.SerializeToString())
+      rpc_error = response_pb.rpc_error
+      response_rpc_error = response.mutable_rpc_error()
+      response_rpc_error.set_code(rpc_error.code)
+      response_rpc_error.set_detail(rpc_error.detail)
     if response_pb.HasField('application_error'):
-      response.mutable_application_error().ParseFromString(
-          response_pb.application_error.SerializeToString())
+      app_err = response_pb.application_error
+      response_app_err = response.mutable_application_error()
+      response_app_err.set_code(app_err.code)
+      response_app_err.set_detail(app_err.detail)
     return response
 
   def _StripPrefix(self, host_str):

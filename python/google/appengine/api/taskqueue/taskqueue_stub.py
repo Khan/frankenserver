@@ -66,6 +66,7 @@ from google.appengine.api import queueinfo
 from google.appengine.api import request_info
 from google.appengine.api.taskqueue import taskqueue
 from google.appengine.runtime import apiproxy_errors
+from google.appengine.tools import queue_xml_parser
 
 
 
@@ -193,13 +194,17 @@ def _EtaDelta(eta_usec, now):
     return '%s ago' % _TruncDelta(now - eta)
 
 
-def QueryTasksResponseToDict(queue_name, task_response, now):
+def QueryTasksResponseToDict(queue_name,
+                             task_response,
+                             now,
+                             task_add_request_pb=None):
   """Converts a TaskQueueQueryTasksResponse_Task protobuf group into a dict.
 
   Args:
     queue_name: The name of the queue this task came from.
     task_response: An instance of TaskQueueQueryTasksResponse_Task.
     now: A datetime.datetime object containing the current time in UTC.
+    task_add_request_pb: The add request protobuf used to create this task.
 
   Returns:
     A dict containing the fields used by the dev appserver's admin console.
@@ -255,6 +260,9 @@ def QueryTasksResponseToDict(queue_name, task_response, now):
     headers.append(('X-AppEngine-TaskPreviousResponse',
                     str(task_response.runlog().response_code())))
   task['headers'] = headers
+
+  if task_add_request_pb:
+    task['add_request_pb'] = task_add_request_pb
 
   return task
 
@@ -390,9 +398,13 @@ class _Group(object):
   This class contains all of the queues for an application.
   """
 
-  def __init__(self, queue_yaml_parser=None, app_id=None,
-               _all_queues_valid=False, _update_newest_eta=None,
-               _testing_validate_state=False):
+  def __init__(self,
+               queue_yaml_parser=None,
+               app_id=None,
+               _all_queues_valid=False,
+               _update_newest_eta=None,
+               _testing_validate_state=False,
+               gettime=lambda: time.time()):
     """Constructor.
 
     Args:
@@ -408,6 +420,8 @@ class _Group(object):
       _testing_validate_state: Should this _Group and all of its _Queues
           validate their state after each operation? This should only be used
           during testing of the taskqueue_stub.
+      gettime: A function that returns the current time. Used to allow remote
+          clients to mock out current time.
     """
 
 
@@ -421,6 +435,7 @@ class _Group(object):
     else:
       self._update_newest_eta = _update_newest_eta
     self._testing_validate_state = _testing_validate_state
+    self.gettime = gettime
 
 
 
@@ -548,6 +563,7 @@ class _Group(object):
       raise TypeError(
           '_testing_validate_state should not be passed to _ConstructQueue')
     kwargs['_testing_validate_state'] = self._testing_validate_state
+    kwargs['gettime'] = self.gettime
     self._queues[queue_name] = _Queue(queue_name, *args, **kwargs)
 
   def _ConstructAutomaticQueue(self, queue_name):
@@ -768,7 +784,7 @@ class _Group(object):
 
     error_found = False
     task_results_with_chosen_names = set()
-    now = datetime.datetime.utcfromtimestamp(time.time())
+    now = datetime.datetime.utcfromtimestamp(self.gettime())
 
 
     for add_request in request.add_request_list():
@@ -878,7 +894,8 @@ class _Group(object):
       raise apiproxy_errors.ApplicationError(response)
 
     if is_unknown_queue:
-      self._queues[queue_name] = _Queue(request.queue_name())
+      self._queues[queue_name] = _Queue(
+          request.queue_name(), gettime=self.gettime)
 
 
 
@@ -930,14 +947,13 @@ class _Group(object):
       else:
         stats.set_oldest_eta_usec(store.Oldest())
 
-
-      if random.randint(0, 9) > 0:
-        scanner_info = stats.mutable_scanner_info()
-        scanner_info.set_executed_last_minute(random.randint(0, 10))
-        scanner_info.set_executed_last_hour(scanner_info.executed_last_minute()
-                                            + random.randint(0, 100))
-        scanner_info.set_sampling_duration_seconds(random.random() * 10000.0)
-        scanner_info.set_requests_in_flight(random.randint(0, 10))
+      scanner_info = stats.mutable_scanner_info()
+      scanner_info.set_executed_last_minute(random.randint(0, 10))
+      scanner_info.set_executed_last_hour(
+          scanner_info.executed_last_minute() + random.randint(0, 100))
+      scanner_info.set_sampling_duration_seconds(random.random() * 10000.0)
+      scanner_info.set_requests_in_flight(random.randint(0, 10))
+      scanner_info.set_enforced_rate(random.randint(0, 500) + 1)
 
   def QueryTasks_Rpc(self, request, response):
     """Implementation of the QueryTasks RPC.
@@ -1117,12 +1133,19 @@ class _Queue(object):
   tasks.
   """
 
-  def __init__(self, queue_name, bucket_refill_per_second=DEFAULT_RATE_FLOAT,
+  def __init__(self,
+               queue_name,
+               bucket_refill_per_second=DEFAULT_RATE_FLOAT,
                bucket_capacity=DEFAULT_BUCKET_SIZE,
-               user_specified_rate=DEFAULT_RATE, retry_parameters=None,
-               max_concurrent_requests=None, paused=False,
-               queue_mode=QUEUE_MODE.PUSH, acl=None,
-               _testing_validate_state=None, target=None):
+               user_specified_rate=DEFAULT_RATE,
+               retry_parameters=None,
+               max_concurrent_requests=None,
+               paused=False,
+               queue_mode=QUEUE_MODE.PUSH,
+               acl=None,
+               _testing_validate_state=None,
+               target=None,
+               gettime=lambda: time.time()):
 
     self.queue_name = queue_name
     self.bucket_refill_per_second = bucket_refill_per_second
@@ -1135,6 +1158,7 @@ class _Queue(object):
     self.acl = acl
     self.target = target
     self._testing_validate_state = _testing_validate_state
+    self.gettime = gettime
 
 
     self.task_name_archive = set()
@@ -1144,6 +1168,8 @@ class _Queue(object):
     self._sorted_by_eta = []
 
     self._sorted_by_tag = []
+
+    self.task_add_request_pbs = {}
 
 
     self._lock = threading.Lock()
@@ -1402,7 +1428,7 @@ class _Queue(object):
           taskqueue_service_pb.TaskQueueServiceError.INVALID_REQUEST,
           'Tag specified, but group_by_tag was not.')
 
-    now_eta_usec = _SecToUsec(time.time())
+    now_eta_usec = _SecToUsec(self.gettime())
     tasks = self._QueryAndOwnTasksGetTaskList(
         max_tasks, request.group_by_tag(), now_eta_usec, request.tag())
 
@@ -1472,7 +1498,7 @@ class _Queue(object):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.TASK_LEASE_EXPIRED)
 
-    now_usec = _SecToUsec(time.time())
+    now_usec = _SecToUsec(self.gettime())
 
     if task.eta_usec() < now_usec:
       raise apiproxy_errors.ApplicationError(
@@ -1539,9 +1565,10 @@ class _Queue(object):
     tasks = []
     now = datetime.datetime.utcnow()
 
-    for _, _, task_response in self._sorted_by_eta:
-      tasks.append(QueryTasksResponseToDict(
-          self.queue_name, task_response, now))
+    for _, task_name, task_response in self._sorted_by_eta:
+      tasks.append(
+          QueryTasksResponseToDict(self.queue_name, task_response, now,
+                                   self.task_add_request_pbs.get(task_name)))
     return tasks
 
   @_WithLock
@@ -1579,7 +1606,8 @@ class _Queue(object):
       return
 
     now = datetime.datetime.utcnow()
-    return QueryTasksResponseToDict(self.queue_name, task_response, now)
+    return QueryTasksResponseToDict(self.queue_name, task_response, now,
+                                    self.task_add_request_pbs.get(task_name))
 
   @_WithLock
   def PurgeQueue(self):
@@ -1803,6 +1831,11 @@ class _Queue(object):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_TASK)
 
+
+    add_request_pb_copy = taskqueue_service_pb.TaskQueueAddRequest()
+    add_request_pb_copy.CopyFrom(request)
+    self.task_add_request_pbs[request.task_name()] = add_request_pb_copy
+
     now_sec = calendar.timegm(now.utctimetuple())
     task = taskqueue_service_pb.TaskQueueQueryTasksResponse_Task()
     task.set_task_name(request.task_name())
@@ -1939,7 +1972,7 @@ class _Queue(object):
           header_proto.set_value(value)
       return task
 
-    now_usec = _SecToUsec(time.time())
+    now_usec = _SecToUsec(self.gettime())
     for _ in range(num_tasks):
       self._InsertTask(RandomTask())
 
@@ -2170,7 +2203,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
                _all_queues_valid=False,
                default_http_server='localhost',
                _testing_validate_state=False,
-               request_data=None):
+               request_data=None,
+               gettime=lambda: time.time()):
     """Constructor.
 
     Args:
@@ -2188,6 +2222,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           taskqueue_stub.
       request_data: A request_info.RequestInfo instance used to look up state
           associated with the request that generated an API call.
+      gettime: A function that returns the current time, real or mocked. Used
+          to make testing easier.
     """
     super(TaskQueueServiceStub, self).__init__(
         service_name, max_request_size=MAX_REQUEST_SIZE,
@@ -2195,6 +2231,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
 
     self._queues = {}
+    self.gettime = gettime
 
 
 
@@ -2207,18 +2244,23 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
 
     self._queues[None] = _Group(
-        self._ParseQueueYaml, app_id=None,
+        self._ParseQueueYaml,
+        app_id=None,
         _all_queues_valid=_all_queues_valid,
         _update_newest_eta=self._UpdateNextEventTime,
-        _testing_validate_state=self._testing_validate_state)
+        _testing_validate_state=self._testing_validate_state,
+        gettime=self.gettime)
 
     self._auto_task_running = auto_task_running
     self._started = False
 
+    self._default_http_server = default_http_server
+    self._task_retry_seconds = task_retry_seconds
+
     self._task_scheduler = _BackgroundTaskScheduler(
-        self._queues[None], _TaskExecutor(default_http_server,
-                                          self.request_data),
-        retry_seconds=task_retry_seconds)
+        self._queues[None],
+        _TaskExecutor(self._default_http_server, self.request_data),
+        retry_seconds=self._task_retry_seconds)
     self._yaml_last_modified = None
 
   def StartBackgroundExecution(self):
@@ -2288,8 +2330,10 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
     if app_id not in self._queues:
       self._queues[app_id] = _Group(
-          app_id=app_id, _all_queues_valid=self._all_queues_valid,
-          _testing_validate_state=self._testing_validate_state)
+          app_id=app_id,
+          _all_queues_valid=self._all_queues_valid,
+          _testing_validate_state=self._testing_validate_state,
+          gettime=self.gettime)
     return self._queues[app_id]
 
   def _Dynamic_Add(self, request, response):
@@ -2723,6 +2767,92 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
     self.FlushQueue(request.queue_name())
 
+  def _Dynamic_GetQueueStateInfo(self, request, response):
+    """Local implementation of TaskQueueStubService.GetQueueStateInfo.
+
+    Args:
+      request: An api_base.VoidProto.
+      response: a taskqueue_stub_service_pb.GetQueueStateInfoResponse.
+    """
+    group = self._GetGroup()
+    queues = group.GetQueues()
+    for queue_name in queues:
+      queue_info = response.add_queues()
+      queue = group.GetQueue(queue_name)
+      queue_info.set_queue_name(queue_name)
+      if queue.user_specified_rate is not None:
+        queue_info.set_formatted_rate_string(queue.user_specified_rate)
+      if queue.bucket_capacity is not None:
+        queue_info.set_bucket_size(queue.bucket_capacity)
+      if queue.max_concurrent_requests is not None:
+        queue_info.set_max_concurrent_requests(queue.max_concurrent_requests)
+      if queue.retry_parameters is not None:
+        queue_info.mutable_retry_parameters().CopyFrom(queue.retry_parameters)
+      if queue.target:
+        queue_info.set_target(queue.target)
+      queue_info.set_mode('pull'
+                          if queue.queue_mode == QUEUE_MODE.PULL else 'push')
+      if queue.acl is not None:
+        queue_info.mutable_acl().copy_from(queue.acl)
+
+      queue_tasks = queue.GetTasksAsDicts()
+      for queue_task in queue_tasks:
+        task_info = queue_info.add_task_infos()
+        task_info.set_task_name(queue_task.get('name', ''))
+        task_info.set_eta_millis(queue_task.get('eta_usec', 0.0) / 1000)
+        task_info.mutable_add_request().CopyFrom(queue_task['add_request_pb'])
+
+  def _Dynamic_LoadQueueXml(self, request, response):
+    """Local implementation of TaskQueueStubService.LoadQueueXml.
+
+    Args:
+      request: A taskqueue_stub_service_pb.LoadQueueXmlRequest.
+      response: An api_base.VoidProto.
+    """
+
+    def ParseXmlYaml():
+      with open(request.queue_xml_path(), 'r') as f:
+        queue_yaml = queue_xml_parser.GetQueueYaml(None, f.read())
+        return queueinfo.LoadSingleQueue(queue_yaml)
+
+
+    self._queues[None] = _Group(
+        ParseXmlYaml,
+        app_id=None,
+        _all_queues_valid=self._all_queues_valid,
+        _update_newest_eta=self._UpdateNextEventTime,
+        _testing_validate_state=self._testing_validate_state,
+        gettime=self.gettime)
+
+
+    self.Shutdown()
+    self._started = False
+    self._task_scheduler = _BackgroundTaskScheduler(
+        self._queues[None],
+        _TaskExecutor(self._default_http_server, self.request_data),
+        retry_seconds=self._task_retry_seconds)
+    self.StartBackgroundExecution()
+
+  def _Dynamic_SetTaskQueueClock(self, request, response):
+    """Local implementation of TaskQueueStubService.SetTaskQueueClock.
+
+    Args:
+      request: A taskqueue_stub_service_pb.SetTaskQueueClockRequest.
+      response: An api_base.VoidProto.
+    """
+    new_gettime = lambda: int(request.clock_time_milliseconds()) / 1000.0
+
+    self.gettime = new_gettime
+
+
+    for queue_group_name in self._queues:
+      queue_group = self._queues[queue_group_name]
+      queue_group.gettime = new_gettime
+      for queue_name in queue_group.GetQueues():
+        queue = queue_group.GetQueue(queue_name)
+        if queue:
+          queue.gettime = new_gettime
+
   def _Dynamic_GetFilteredTasks(self, request, response):
     """Local implementation of TaskQueueStubService.GetFilteredTasks.
 
@@ -2748,6 +2878,11 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
     func = lambda _: pickle.loads(request.patched_return_value())
     self.queue_yaml_parser = func
+
+  @apiproxy_stub.Synchronized
+  def Clear(self):
+    self._queues = {}
+    self.gettime = lambda: time.time()
 
   def _get_filtered_task_dicts(self, url=None, name=None, queue_names=None):
     """Get the tasks in the task queue with filters.

@@ -14,31 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Provides ValueMixin.
+"""ValueMixin provides comparison and string methods based on fields."""
 
-ValueMixin provides comparison (including equality) methods and hashing
-based on the values of fields.
-"""
+from __future__ import unicode_literals
 
 
 class ValueMixin(object):
-  def __cmp__(self, other):
+  """Provides simplistic but often sufficient comparison and string methods."""
 
+  def __eq__(self, other):
+    return getattr(other, '__dict__', None) == self.__dict__
 
-
-
-
-
-    if hasattr(other, '__dict__'):
-      return self.__dict__.__cmp__(other.__dict__)
-    else:
-      return 1
+  def __ne__(self, other):
+    return not self == other
 
   def __hash__(self):
-    return hash(frozenset(self.__dict__.items()))
+    return hash(frozenset(list(self.__dict__.items())))
 
   def __repr__(self):
-
+    """Returns a string representation like `MyClass(foo=23, bar=skidoo)`."""
     d = self.__dict__
-    attrs = ['%s=%r' % (key, d[key]) for key in sorted(d)]
-    return '%s(%s)' % (self.__class__.__name__, ', '.join(attrs))
+    attrs = ['{}={}'.format(key, d[key]) for key in sorted(d)]
+    return '{}({})'.format(self.__class__.__name__, ', '.join(attrs))

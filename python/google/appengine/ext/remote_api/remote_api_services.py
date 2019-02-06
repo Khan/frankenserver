@@ -27,6 +27,7 @@ from google.appengine.api import api_base_pb
 from google.appengine.api import mail_service_pb
 from google.appengine.api import mail_stub_service_pb
 from google.appengine.api import urlfetch_service_pb
+from google.appengine.api import urlfetch_stub_service_pb
 from google.appengine.api import user_service_pb
 from google.appengine.api import user_stub_service_pb
 from google.appengine.api.app_identity import app_identity_service_pb
@@ -36,7 +37,6 @@ from google.appengine.api.blobstore import blobstore_stub_service_pb
 from google.appengine.api.capabilities import capability_service_pb
 from google.appengine.api.capabilities import capability_stub_service_pb
 from google.appengine.api.channel import channel_service_pb
-from google.appengine.api.files import file_service_pb
 from google.appengine.api.images import images_service_pb
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.logservice import log_stub_service_pb
@@ -113,32 +113,6 @@ def get_service_pb_map():
       'datastore_v4': {
           'AllocateIds': (datastore_v4_pb.AllocateIdsRequest,
                           datastore_v4_pb.AllocateIdsResponse),
-      },
-      'file': {
-          'Create': (file_service_pb.CreateRequest,
-                     file_service_pb.CreateResponse),
-          'Open': (file_service_pb.OpenRequest, file_service_pb.OpenResponse),
-          'Close': (file_service_pb.CloseRequest,
-                    file_service_pb.CloseResponse),
-          'Append': (file_service_pb.AppendRequest,
-                     file_service_pb.AppendResponse),
-          'Stat': (file_service_pb.StatRequest, file_service_pb.StatResponse),
-          'Delete': (file_service_pb.DeleteRequest,
-                     file_service_pb.DeleteResponse),
-          'Read': (file_service_pb.ReadRequest, file_service_pb.ReadResponse),
-          'ReadKeyValue': (file_service_pb.ReadKeyValueRequest,
-                           file_service_pb.ReadKeyValueResponse),
-          'Shuffle': (file_service_pb.ShuffleRequest,
-                      file_service_pb.ShuffleResponse),
-          'GetShuffleStatus': (file_service_pb.GetShuffleStatusRequest,
-                               file_service_pb.GetShuffleStatusResponse),
-          'GetCapabilities': (file_service_pb.GetCapabilitiesRequest,
-                              file_service_pb.GetCapabilitiesResponse),
-          'GetDefaultGsBucketName': (
-              file_service_pb.GetDefaultGsBucketNameRequest,
-              file_service_pb.GetDefaultGsBucketNameResponse),
-          'ListDir': (file_service_pb.ListDirRequest,
-                      file_service_pb.ListDirResponse),
       },
       'images': {
           'Transform': (images_service_pb.ImagesTransformRequest,
@@ -339,6 +313,9 @@ def get_stub_exclusive_service_pb_map():
       'blobstore': {
           'StoreBlob': (blobstore_stub_service_pb.StoreBlobRequest,
                         api_base_pb.VoidProto),
+          'SetBlobStorageType': (
+              blobstore_stub_service_pb.SetBlobStorageTypeRequest,
+              api_base_pb.VoidProto),
       },
       'capability_service': {
           'SetCapabilityStatus': (
@@ -356,10 +333,18 @@ def get_stub_exclusive_service_pb_map():
                               api_base_pb.VoidProto)
       },
       'mail': {
-          'GetSentMessages': (mail_stub_service_pb.GetSentMessagesRequest,
+          'GetSentMessages': (api_base_pb.VoidProto,
                               mail_stub_service_pb.GetSentMessagesResponse),
-          'ClearSentMessages': (mail_stub_service_pb.ClearSentMessagesRequest,
-                                mail_stub_service_pb.ClearSentMessagesResponse)
+          'ClearSentMessages': (api_base_pb.VoidProto,
+                                mail_stub_service_pb.ClearSentMessagesResponse),
+          'GetLogMailBody': (api_base_pb.VoidProto,
+                             mail_stub_service_pb.GetLogMailBodyResponse),
+          'SetLogMailBody': (mail_stub_service_pb.SetLogMailBodyRequest,
+                             api_base_pb.VoidProto),
+          'GetLogMailLevel': (api_base_pb.VoidProto,
+                              mail_stub_service_pb.GetLogMailLevelResponse),
+          'SetLogMailLevel': (mail_stub_service_pb.SetLogMailLevelRequest,
+                              api_base_pb.VoidProto),
       },
       'memcache': {
           'AdvanceClock': (memcache_stub_service_pb.AdvanceClockRequest,
@@ -384,9 +369,21 @@ def get_stub_exclusive_service_pb_map():
           'GetFilteredTasks': (
               taskqueue_stub_service_pb.GetFilteredTasksRequest,
               taskqueue_stub_service_pb.GetFilteredTasksResponse),
+          'GetQueueStateInfo': (
+              api_base_pb.VoidProto,
+              taskqueue_stub_service_pb.GetQueueStateInfoResponse),
+          'LoadQueueXml': (taskqueue_stub_service_pb.LoadQueueXmlRequest,
+                           api_base_pb.VoidProto),
+          'SetTaskQueueClock': (
+              taskqueue_stub_service_pb.SetTaskQueueClockRequest,
+              api_base_pb.VoidProto),
           'PatchQueueYamlParser': (
               taskqueue_stub_service_pb.PatchQueueYamlParserRequest,
-              api_base_pb.VoidProto)
+              api_base_pb.VoidProto),
+      },
+      'urlfetch': {
+          'SetHttpProxy': (urlfetch_stub_service_pb.SetHttpProxyRequest,
+                           api_base_pb.VoidProto),
       },
       'user': {
           'SetOAuthUser': (user_stub_service_pb.SetOAuthUserRequest,

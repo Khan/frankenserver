@@ -22,7 +22,7 @@ $(document).ready(function() {
     })
     .fail(function(xhr, textStatus) {
       $('#mail-feedback').removeClass().addClass('errorbox').text(
-          'Request failured with status: ' + request.status);
+          'Request failed with status: ' + request.status);
     });
     return false;
   });

@@ -29,6 +29,147 @@ are:
 
 
 
+import collections
+import sys
+
+if sys.version_info[0] < 3:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  class Mapping(object):
+    __slots__ = ()
+
+    def get(self, key, default=None):
+      try:
+        return self[key]
+      except KeyError:
+        return default
+
+    def __contains__(self, key):
+      try:
+        self[key]
+      except KeyError:
+        return False
+      else:
+        return True
+
+    def iterkeys(self):
+      return iter(self)
+
+    def itervalues(self):
+      for key in self:
+        yield self[key]
+
+    def iteritems(self):
+      for key in self:
+        yield (key, self[key])
+
+    def keys(self):
+      return list(self)
+
+    def items(self):
+      return [(key, self[key]) for key in self]
+
+    def values(self):
+      return [self[key] for key in self]
+
+
+    __hash__ = None
+
+    def __eq__(self, other):
+      if not isinstance(other, collections.Mapping):
+        return NotImplemented
+      return dict(self.items()) == dict(other.items())
+
+    def __ne__(self, other):
+      return not (self == other)
+
+  class MutableMapping(Mapping):
+    __slots__ = ()
+
+    __marker = object()
+
+    def pop(self, key, default=__marker):
+      try:
+        value = self[key]
+      except KeyError:
+        if default is self.__marker:
+          raise
+        return default
+      else:
+        del self[key]
+        return value
+
+    def popitem(self):
+      try:
+        key = next(iter(self))
+      except StopIteration:
+        raise KeyError
+      value = self[key]
+      del self[key]
+      return key, value
+
+    def clear(self):
+      try:
+        while True:
+          self.popitem()
+      except KeyError:
+        pass
+
+    def update(*args, **kwds):
+      if len(args) > 2:
+        raise TypeError("update() takes at most 2 positional "
+                        "arguments ({} given)".format(len(args)))
+      elif not args:
+        raise TypeError("update() takes at least 1 argument (0 given)")
+      self = args[0]
+      other = args[1] if len(args) >= 2 else ()
+
+      if isinstance(other, Mapping):
+        for key in other:
+          self[key] = other[key]
+      elif hasattr(other, "keys"):
+        for key in other.keys():
+          self[key] = other[key]
+      else:
+        for key, value in other:
+          self[key] = value
+      for key, value in kwds.items():
+        self[key] = value
+
+    def setdefault(self, key, default=None):
+      try:
+        return self[key]
+      except KeyError:
+        self[key] = default
+      return default
+
+  collections.Mapping.register(Mapping)
+  collections.MutableMapping.register(MutableMapping)
+
+else:
+
+
+  MutableMapping = collections.MutableMapping
+
+
 class BaseContainer(object):
 
   """Base container class."""
@@ -122,7 +263,7 @@ class RepeatedScalarFieldContainer(BaseContainer):
     new_values = [self._type_checker.CheckValue(elem) for elem in elem_seq_iter]
     if new_values:
       self._values.extend(new_values)
-      self._message_listener.Modified()
+    self._message_listener.Modified()
 
   def MergeFrom(self, other):
     """Appends the contents of another repeated field of the same type to this
@@ -183,6 +324,8 @@ class RepeatedScalarFieldContainer(BaseContainer):
       return other._values == self._values
 
     return other == self._values
+
+collections.MutableSequence.register(BaseContainer)
 
 
 class RepeatedCompositeFieldContainer(BaseContainer):
@@ -274,3 +417,202 @@ class RepeatedCompositeFieldContainer(BaseContainer):
       raise TypeError('Can only compare repeated composite fields against '
                       'other repeated composite fields.')
     return self._values == other._values
+
+
+class ScalarMap(MutableMapping):
+
+  """Simple, type-checked, dict-like container for holding repeated scalars."""
+
+
+  __slots__ = ['_key_checker', '_value_checker', '_values', '_message_listener',
+               '_entry_descriptor']
+
+  def __init__(self, message_listener, key_checker, value_checker,
+               entry_descriptor):
+    """
+    Args:
+      message_listener: A MessageListener implementation.
+        The ScalarMap will call this object's Modified() method when it
+        is modified.
+      key_checker: A type_checkers.ValueChecker instance to run on keys
+        inserted into this container.
+      value_checker: A type_checkers.ValueChecker instance to run on values
+        inserted into this container.
+      entry_descriptor: The MessageDescriptor of a map entry: key and value.
+    """
+    self._message_listener = message_listener
+    self._key_checker = key_checker
+    self._value_checker = value_checker
+    self._entry_descriptor = entry_descriptor
+    self._values = {}
+
+  def __getitem__(self, key):
+    try:
+      return self._values[key]
+    except KeyError:
+      key = self._key_checker.CheckValue(key)
+      val = self._value_checker.DefaultValue()
+      self._values[key] = val
+      return val
+
+  def __contains__(self, item):
+
+
+    self._key_checker.CheckValue(item)
+    return item in self._values
+
+
+
+
+  def get(self, key, default=None):
+    if key in self:
+      return self[key]
+    else:
+      return default
+
+  def __setitem__(self, key, value):
+    checked_key = self._key_checker.CheckValue(key)
+    checked_value = self._value_checker.CheckValue(value)
+    self._values[checked_key] = checked_value
+    self._message_listener.Modified()
+
+  def __delitem__(self, key):
+    del self._values[key]
+    self._message_listener.Modified()
+
+  def __len__(self):
+    return len(self._values)
+
+  def __iter__(self):
+    return iter(self._values)
+
+  def __repr__(self):
+    return repr(self._values)
+
+  def MergeFrom(self, other):
+    self._values.update(other._values)
+    self._message_listener.Modified()
+
+  def InvalidateIterators(self):
+
+
+    original = self._values
+    self._values = original.copy()
+    original[None] = None
+
+
+  def clear(self):
+    self._values.clear()
+    self._message_listener.Modified()
+
+  def GetEntryClass(self):
+    return self._entry_descriptor._concrete_class
+
+
+class MessageMap(MutableMapping):
+
+  """Simple, type-checked, dict-like container for with submessage values."""
+
+
+  __slots__ = ['_key_checker', '_values', '_message_listener',
+               '_message_descriptor', '_entry_descriptor']
+
+  def __init__(self, message_listener, message_descriptor, key_checker,
+               entry_descriptor):
+    """
+    Args:
+      message_listener: A MessageListener implementation.
+        The ScalarMap will call this object's Modified() method when it
+        is modified.
+      key_checker: A type_checkers.ValueChecker instance to run on keys
+        inserted into this container.
+      value_checker: A type_checkers.ValueChecker instance to run on values
+        inserted into this container.
+      entry_descriptor: The MessageDescriptor of a map entry: key and value.
+    """
+    self._message_listener = message_listener
+    self._message_descriptor = message_descriptor
+    self._key_checker = key_checker
+    self._entry_descriptor = entry_descriptor
+    self._values = {}
+
+  def __getitem__(self, key):
+    key = self._key_checker.CheckValue(key)
+    try:
+      return self._values[key]
+    except KeyError:
+      new_element = self._message_descriptor._concrete_class()
+      new_element._SetListener(self._message_listener)
+      self._values[key] = new_element
+      self._message_listener.Modified()
+
+      return new_element
+
+  def get_or_create(self, key):
+    """get_or_create() is an alias for getitem (ie. map[key]).
+
+    Args:
+      key: The key to get or create in the map.
+
+    This is useful in cases where you want to be explicit that the call is
+    mutating the map.  This can avoid lint errors for statements like this
+    that otherwise would appear to be pointless statements:
+
+      msg.my_map[key]
+    """
+    return self[key]
+
+
+
+
+  def get(self, key, default=None):
+    if key in self:
+      return self[key]
+    else:
+      return default
+
+  def __contains__(self, item):
+    item = self._key_checker.CheckValue(item)
+    return item in self._values
+
+  def __setitem__(self, key, value):
+    raise ValueError('May not set values directly, call my_map[key].foo = 5')
+
+  def __delitem__(self, key):
+    key = self._key_checker.CheckValue(key)
+    del self._values[key]
+    self._message_listener.Modified()
+
+  def __len__(self):
+    return len(self._values)
+
+  def __iter__(self):
+    return iter(self._values)
+
+  def __repr__(self):
+    return repr(self._values)
+
+  def MergeFrom(self, other):
+    for key in other:
+
+
+      if key in self:
+        del self[key]
+      self[key].CopyFrom(other[key])
+
+
+
+  def InvalidateIterators(self):
+
+
+    original = self._values
+    self._values = original.copy()
+    original[None] = None
+
+
+  def clear(self):
+    self._values.clear()
+    self._message_listener.Modified()
+
+  def GetEntryClass(self):
+    return self._entry_descriptor._concrete_class

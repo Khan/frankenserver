@@ -288,7 +288,10 @@ class ForwardOneToOneDescriptor(ForwardManyToOneDescriptor):
             # on the related model for every deferred field.
             if not any(field in fields for field in deferred):
                 kwargs = {field: getattr(instance, field) for field in fields}
-                return rel_model(**kwargs)
+                obj = rel_model(**kwargs)
+                obj._state.adding = instance._state.adding
+                obj._state.db = instance._state.db
+                return obj
         return super(ForwardOneToOneDescriptor, self).get_object(instance)
 
 

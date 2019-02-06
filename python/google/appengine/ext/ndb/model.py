@@ -3776,6 +3776,8 @@ def transaction(callback, **ctx_options):
       TransactionOptions.INDEPENDENT: Always start a new parallel transaction.
     xg=True: On the High Replication Datastore, enable cross-group
       transactions, i.e. allow writing to up to 5 entity groups.
+    read_only=True: Indicates a transaction will not do any writes, which
+      potentially allows for more throughput.
 
   WARNING: Using anything other than NESTED for the propagation flag
   can have strange consequences.  When using ALLOWED or MANDATORY, if

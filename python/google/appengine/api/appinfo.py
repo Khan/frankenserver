@@ -171,7 +171,10 @@ ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
 BUILTIN_NAME_PREFIX = 'ah-builtin'
 
-RUNTIME_RE_STRING = r'[a-z][a-z0-9\-]{0,29}'
+
+
+
+RUNTIME_RE_STRING = r'((gs://[a-z0-9\-\._/]+)|([a-z][a-z0-9\-\.]{0,29}))'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
 ENV_RE_STRING = r'(1|2|standard|flex|flexible)'
@@ -254,6 +257,7 @@ VERSION = 'version'
 MAJOR_VERSION = 'major_version'
 MINOR_VERSION = 'minor_version'
 RUNTIME = 'runtime'
+RUNTIME_CHANNEL = 'runtime_channel'
 API_VERSION = 'api_version'
 ENDPOINTS_API_SERVICE = 'endpoints_api_service'
 ENV = 'env'
@@ -348,6 +352,7 @@ CONFIG_ID = 'config_id'
 ROLLOUT_STRATEGY = 'rollout_strategy'
 ROLLOUT_STRATEGY_FIXED = 'fixed'
 ROLLOUT_STRATEGY_MANAGED = 'managed'
+TRACE_SAMPLING = 'trace_sampling'
 
 
 ERROR_CODE = 'error_code'
@@ -495,6 +500,8 @@ _SUPPORTED_LIBRARIES = [
         'A full-featured web application framework for Python.',
         ['1.2', '1.3', '1.4', '1.5', '1.9', '1.11'],
         latest_version='1.4',
+        deprecated_versions=['1.2', '1.3', '1.5', '1.9'],
+
         ),
     _VersionedLibrary(
         'enum',
@@ -554,7 +561,7 @@ _SUPPORTED_LIBRARIES = [
         'A Pythonic binding for the C libraries libxml2 and libxslt.',
         ['2.3', '2.3.5', '3.7.3'],
         latest_version='3.7.3',
-        experimental_versions=['2.3.5'],
+        deprecated_versions=['2.3', '2.3.5'],
         ),
     _VersionedLibrary(
         'markupsafe',
@@ -576,7 +583,7 @@ _SUPPORTED_LIBRARIES = [
         'A Python DB API v2.0 compatible interface to MySQL.',
         ['1.2.4b4', '1.2.4', '1.2.5'],
         latest_version='1.2.5',
-        experimental_versions=['1.2.4b4', '1.2.4', '1.2.5']
+        deprecated_versions=['1.2.4b4', '1.2.4'],
         ),
     _VersionedLibrary(
         'numpy',
@@ -605,9 +612,10 @@ _SUPPORTED_LIBRARIES = [
         'pytz',
         'https://pypi.python.org/pypi/pytz?',
         'A library for cross-platform timezone calculations',
-        ['2016.4', '2017.2'],
-        latest_version='2017.2',
-        default_version='2017.2',
+        ['2016.4', '2017.2', '2017.3'],
+        latest_version='2017.3',
+        default_version='2017.3',
+        deprecated_versions=['2016.4', '2017.2'],
         ),
     _VersionedLibrary(
         'crcmod',
@@ -638,6 +646,8 @@ _SUPPORTED_LIBRARIES = [
         'A library of cryptogoogle.appengine._internal.graphy functions such as random number generation.',
         ['2.3', '2.6', '2.6.1'],
         latest_version='2.6',
+        deprecated_versions=['2.3'],
+
         ),
     _VersionedLibrary(
         'setuptools',
@@ -645,6 +655,7 @@ _SUPPORTED_LIBRARIES = [
         'A library that provides package and module discovery capabilities.',
         ['0.6c11', '36.6.0'],
         latest_version='36.6.0',
+        deprecated_versions=['0.6c11'],
         ),
     _VersionedLibrary(
         'six',
@@ -674,8 +685,9 @@ _SUPPORTED_LIBRARIES = [
         'A lightweight Python web framework.',
         ['2.3', '2.5.1', '2.5.2'],
         latest_version='2.5.2',
+
         default_version='2.3',
-        deprecated_versions=['2.3']
+        deprecated_versions=['2.5.1']
         ),
     _VersionedLibrary(
         'webob',
@@ -683,6 +695,7 @@ _SUPPORTED_LIBRARIES = [
         'A library that provides wrappers around the WSGI request environment.',
         ['1.1.1', '1.2.3'],
         latest_version='1.2.3',
+
         default_version='1.1.1',
         ),
     _VersionedLibrary(
@@ -779,9 +792,9 @@ _MAX_URL_LENGTH = 2047
 
 _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS = 10240
 
-_CANNED_RUNTIMES = ('contrib-dart', 'dart', 'go', 'php', 'php55', 'php7',
+_CANNED_RUNTIMES = ('contrib-dart', 'dart', 'go', 'php', 'php55', 'php72',
                     'python', 'python27', 'python-compat', 'java', 'java7',
-                    'vm', 'custom', 'nodejs', 'ruby')
+                    'java8', 'vm', 'custom', 'nodejs', 'ruby')
 _all_runtimes = _CANNED_RUNTIMES
 
 
@@ -1664,6 +1677,8 @@ class EndpointsApiService(validation.Validated):
                                  ROLLOUT_STRATEGY_MANAGED)),
       CONFIG_ID:
           validation.Optional(_NON_WHITE_SPACE_REGEX),
+      TRACE_SAMPLING:
+          validation.Optional(validation.TYPE_BOOL),
   }
 
   def CheckInitialized(self):
@@ -2234,6 +2249,7 @@ class AppInfoExternal(validation.Validated):
                                     validation.Optional(MODULE_ID_RE_STRING)),
       VERSION: validation.Optional(MODULE_VERSION_ID_RE_STRING),
       RUNTIME: validation.Optional(RUNTIME_RE_STRING),
+      RUNTIME_CHANNEL: validation.Optional(validation.Type(str)),
 
 
       API_VERSION: validation.Optional(API_VERSION_RE_STRING),
@@ -2326,10 +2342,6 @@ class AppInfoExternal(validation.Validated):
 
 
       self.runtime = 'custom'
-    if (not self.handlers and not self.builtins and not self.includes
-        and not self.IsVm()):
-      raise appinfo_errors.MissingURLMapping(
-          'No URLMap entries found in application configuration')
     if self.handlers and len(self.handlers) > MAX_URL_MAPS:
       raise appinfo_errors.TooManyURLMappings(
           'Found more than %d URLMap entries in application configuration' %
@@ -2725,7 +2737,7 @@ _file_path_negative_2_re = re.compile(r'//|/$')
 
 
 
-_file_path_negative_3_re = re.compile(r'^ | $|/ | /|\n')
+_file_path_negative_3_re = re.compile(r'^ | $|/ | /|\r|\n')
 
 
 
@@ -2762,3 +2774,5 @@ def ValidFilename(filename):
   if _file_path_negative_3_re.search(filename) is not None:
     return 'Any spaces must be in the middle of a filename: %s' % filename
   return ''
+
+

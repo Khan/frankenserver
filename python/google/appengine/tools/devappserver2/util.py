@@ -19,16 +19,21 @@
 
 
 
-import abc
 import BaseHTTPServer
 import os
+import platform
 import socket
+import urllib
 import wsgiref.headers
 from google.appengine.tools import sdk_update_checker
 
 
 # The SDK version returned when there is no available VERSION file.
 _DEFAULT_SDK_VERSION = '(Internal)'
+
+# This environment variable is intended for making ndb to work with the
+# Cloud Datastore instead of the App Engine Datastore.
+_DATASTORE_PROJECT_ID_ENV = 'DATASTORE_PROJECT_ID'
 
 
 def get_headers_from_environ(environ):
@@ -54,6 +59,36 @@ def get_headers_from_environ(environ):
   if 'CONTENT_TYPE' in environ:
     headers['CONTENT-TYPE'] = environ['CONTENT_TYPE']
   return headers
+
+
+def construct_url_from_environ(environ, secure, include_query_params, port):
+  """Construct a URL from the environ and other parameters.
+
+  Implementation adapted from
+  https://www.python.org/dev/peps/pep-0333/#url-reconstruction.
+
+  Args:
+    environ: An environ dict as defined in PEP-333.
+    secure: boolean, if True the url will be https, otherwise http
+    include_query_params: boolean, if True will include query params from
+      environ
+    port: int, the port for the new url
+
+  Returns:
+    str, the constructed URL.
+  """
+  url_result = 'https' if secure else 'http'
+  url_result += '://'
+  if environ.get('HTTP_HOST'):
+    url_result += environ['HTTP_HOST'].split(':')[0]
+  else:
+    url_result += environ['SERVER_NAME']
+  url_result += ':' + str(port)
+  url_result += urllib.quote(environ.get('SCRIPT_NAME', ''))
+  url_result += urllib.quote(environ.get('PATH_INFO', ''))
+  if include_query_params and environ.get('QUERY_STRING'):
+    url_result += '?' + environ['QUERY_STRING']
+  return url_result
 
 
 def put_headers_in_environ(headers, environ):
@@ -107,18 +142,14 @@ def setup_environ(app_id):
     app_id: The id of the application.
   """
   os.environ['APPLICATION_ID'] = app_id
+  # Purge _DATASTORE_PROJECT_ID_ENV from dev_appserver process. Otherwise the
+  # logics for datastore rpc would be tricked to use Cloud Datastore mode.
+  # If necessary, users can still pass this environment variable to local
+  # runtime processes via app.yaml or the --env_var flag.
+  if _DATASTORE_PROJECT_ID_ENV in os.environ:
+    del os.environ[_DATASTORE_PROJECT_ID_ENV]
 
 
-class GcdEmulatorManager(object):
-  """An abstract class defining the interfaces of Gcd Emulator Managing.
-
-  Api server is agnostic of the emulator. The implementation of this class
-  should be instantiated in a wrapper of api_server with direct access to the
-  emulator.
-  """
-  __metaclass__ = abc.ABCMeta
-
-  @abc.abstractmethod
-  def launch(self):
-    """Launch the emulator."""
-    raise NotImplementedError()
+def is_windows():
+  """Returns a boolean indicating whether dev_appserver is on windows."""
+  return platform.system().lower() == 'windows'

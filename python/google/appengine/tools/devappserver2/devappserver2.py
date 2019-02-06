@@ -28,10 +28,12 @@ from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import cli_parser
 from google.appengine.tools.devappserver2 import constants
+from google.appengine.tools.devappserver2 import datastore_converter
 from google.appengine.tools.devappserver2 import dispatcher
 from google.appengine.tools.devappserver2 import metrics
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import shutdown
+from google.appengine.tools.devappserver2 import ssl_utils
 from google.appengine.tools.devappserver2 import update_checker
 from google.appengine.tools.devappserver2 import util
 from google.appengine.tools.devappserver2 import wsgi_request_info
@@ -47,6 +49,21 @@ logging.basicConfig(
 
 PARSER = cli_parser.create_command_line_parser(
     cli_parser.DEV_APPSERVER_CONFIGURATION)
+
+
+class PhpVersionError(Exception):
+  """Raised when multiple versions of php are in app yaml."""
+
+
+class PhpPathError(Exception):
+  """Raised when --php_executable_path is not specified for php72.
+
+  This flag is optional for php55.
+  """
+
+
+class MissingDatastoreEmulatorError(Exception):
+  """Raised when Datastore Emulator cannot be found."""
 
 
 class DevelopmentServer(object):
@@ -75,39 +92,87 @@ class DevelopmentServer(object):
         self._dispatcher.get_default_version(module_name),
         instance)
 
+  @property
+  def _can_find_datastore_emulator(self):
+    return (self._options.datastore_emulator_cmd is not None
+            and os.path.exists(self._options.datastore_emulator_cmd))
+
+  def _correct_datastore_emulator_cmd(self, value):
+    """Returns the path to cloud datastore emulator invocation script."""
+    if value:
+      return value
+    # __file__ returns <cloud-sdk>/platform/google_appengine/dev_appserver.py
+    res = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    emulator_script = (
+        'cloud_datastore_emulator.cmd' if sys.platform.startswith('win')
+        else 'cloud_datastore_emulator')
+
+    return os.path.join(res, 'cloud-datastore-emulator', emulator_script)
+
+  def _check_datastore_emulator_support(self):
+    """Flag checks for migrating to the Cloud Datastore Emulator."""
+    if (self._options.support_datastore_emulator
+        and not self._can_find_datastore_emulator):
+      raise MissingDatastoreEmulatorError(
+          'Cannot find Cloud Datastore Emulator. Please make sure that you are '
+          'using the Google Cloud SDK and have installed the Cloud Datastore '
+          'Emulator.')
+    # TODO: Once switched to opt-out, remove following message.
+    if (not self._options.support_datastore_emulator
+        and self._can_find_datastore_emulator):
+      logging.warning(
+          '*** Notice ***\nIn a few weeks dev_appserver will default to using '
+          'the Cloud Datastore Emulator. We strongly recommend you to enable '
+          'this change earlier.\n'
+          'To opt-in, run dev_appserver with the flag '
+          '--support_datastore_emulator=True\n'
+          'Read the documentation: '
+          'https://cloud.google.com/appengine/docs/standard/python/tools/migrate-cloud-datastore-emulator\n'  # pylint: disable=line-too-long
+          'Help us validate that the feature is ready by taking this survey: https://goo.gl/forms/UArIcs8K9CUSCm733\n'  # pylint: disable=line-too-long
+          'Report issues at: '
+          'https://issuetracker.google.com/issues/new?component=187272\n')
+
+  @classmethod
+  def _check_platform_support(cls, all_module_runtimes):
+    if (any(runtime.startswith('python3') for runtime in all_module_runtimes)
+        and util.is_windows()):
+      raise OSError('Dev_appserver does not support python3 apps on Windows.')
+
   def start(self, options):
     """Start devappserver2 servers based on the provided command line arguments.
 
     Args:
       options: An argparse.Namespace containing the command line arguments.
+
+    Raises:
+      PhpPathError: php executable path is not specified for php72.
+      MissingDatastoreEmulatorError: dev_appserver.py is not invoked from the right
+        directory.
     """
     self._options = options
+
+    self._options.datastore_emulator_cmd = self._correct_datastore_emulator_cmd(
+        self._options.datastore_emulator_cmd)
+    self._check_datastore_emulator_support()
 
     logging.getLogger().setLevel(
         constants.LOG_LEVEL_TO_PYTHON_CONSTANT[options.dev_appserver_log_level])
 
     parsed_env_variables = dict(options.env_variables or [])
-
-    if options.dev_appserver_log_setup_script:
-      try:
-        execfile(options.dev_appserver_log_setup_script, {}, {})
-      except Exception as e:
-        logging.exception("Error executing log setup script at %r.",
-                          options.dev_appserver_log_setup_script)
-
     configuration = application_configuration.ApplicationConfiguration(
         config_paths=options.config_paths,
         app_id=options.app_id,
         runtime=options.runtime,
         env_variables=parsed_env_variables)
+    all_module_runtimes = {module.runtime for module in configuration.modules}
+    self._check_platform_support(all_module_runtimes)
 
-    if options.google_analytics_client_id:
-      metrics_logger = metrics.GetMetricsLogger()
-      metrics_logger.Start(
-          options.google_analytics_client_id,
-          options.google_analytics_user_agent,
-          {module.runtime for module in configuration.modules},
-          {module.env or 'standard' for module in configuration.modules})
+    storage_path = api_server.get_storage_path(
+        options.storage_path, configuration.app_id)
+    datastore_path = api_server.get_datastore_path(
+        storage_path, options.datastore_path)
+    datastore_data_type = (datastore_converter.get_stub_type(datastore_path)
+                           if os.path.isfile(datastore_path) else None)
 
     if options.skip_sdk_update_check:
       logging.info('Skipping SDK update check.')
@@ -131,6 +196,33 @@ class DevelopmentServer(object):
 
     util.setup_environ(configuration.app_id)
 
+    php_version = self._get_php_runtime(configuration)
+    if not options.php_executable_path and php_version == 'php72':
+      raise PhpPathError('For php72, --php_executable_path must be specified.')
+
+    if options.ssl_certificate_path and options.ssl_certificate_key_path:
+      ssl_certificate_paths = self._create_ssl_certificate_paths_if_valid(
+          options.ssl_certificate_path, options.ssl_certificate_key_path)
+    else:
+      if options.ssl_certificate_path or options.ssl_certificate_key_path:
+        logging.warn('Must provide both --ssl_certificate_path and '
+                     '--ssl_certificate_key_path to enable SSL. Since '
+                     'only one flag was provided, not using SSL.')
+      ssl_certificate_paths = None
+
+    if options.google_analytics_client_id:
+      metrics_logger = metrics.GetMetricsLogger()
+      metrics_logger.Start(
+          options.google_analytics_client_id,
+          options.google_analytics_user_agent,
+          all_module_runtimes,
+          {module.env or 'standard' for module in configuration.modules},
+          options.support_datastore_emulator, datastore_data_type,
+          bool(ssl_certificate_paths), options,
+          multi_module=len(configuration.modules) > 1,
+          dispatch_config=configuration.dispatch is not None,
+      )
+
     self._dispatcher = dispatcher.Dispatcher(
         configuration, options.host, options.port, options.auth_domain,
         constants.LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
@@ -139,7 +231,7 @@ class DevelopmentServer(object):
 
 
 
-        self._create_php_config(options),
+        self._create_php_config(options, php_version),
         self._create_python_config(options),
         self._create_java_config(options),
         self._create_go_config(options),
@@ -156,11 +248,10 @@ class DevelopmentServer(object):
             '--threadsafe_override'),
         options.external_port,
         options.specified_service_ports,
-        options.enable_host_checking)
+        options.enable_host_checking,
+        ssl_certificate_paths)
 
     wsgi_request_info_ = wsgi_request_info.WSGIRequestInfo(self._dispatcher)
-    storage_path = api_server.get_storage_path(
-        options.storage_path, configuration.app_id)
 
     apiserver = api_server.create_api_server(
         wsgi_request_info_, storage_path, options, configuration.app_id,
@@ -219,7 +310,44 @@ class DevelopmentServer(object):
       metrics.GetMetricsLogger().Stop(**kwargs)
 
   @staticmethod
-  def _create_php_config(options):
+  def _get_php_runtime(config):
+    """Get the php runtime specified in user application.
+
+    Currently we only allow one version of php although devappserver supports
+    running multiple services.
+
+    Args:
+      config: An instance of application_configuration.ApplicationConfiguration.
+
+    Returns:
+      A string representing name of the runtime.
+
+    Raises:
+      PhpVersionError: More than one version of php is found in app yaml.
+    """
+    runtime = None
+    for module_configuration in config.modules:
+      r = module_configuration.runtime
+      if r.startswith('php'):
+        if not runtime:
+          runtime = r
+        elif runtime != r:
+          raise PhpVersionError(
+              'Found both %s and %s in yaml files, you can run only choose one '
+              'version of php on dev_appserver.' % (runtime, r))
+    return runtime
+
+  @staticmethod
+  def _create_php_config(options, php_version=None):
+    """Create a runtime_config.PhpConfig based on flag and php_version.
+
+    Args:
+      options: An argparse.Namespace object.
+      php_version: A string representing php version.
+
+    Returns:
+      A runtime_config.PhpConfig object.
+    """
     php_config = runtime_config_pb2.PhpConfig()
     if options.php_executable_path:
       php_config.php_executable_path = os.path.abspath(
@@ -231,6 +359,8 @@ class DevelopmentServer(object):
     if options.php_xdebug_extension_path:
       php_config.xdebug_extension_path = os.path.abspath(
           options.php_xdebug_extension_path)
+    if php_version:
+      php_config.php_version = php_version
 
     return php_config
 
@@ -330,6 +460,32 @@ class DevelopmentServer(object):
 
     # Create a dict with an entry for every module.
     return {module_name: setting for module_name in module_names}
+
+  @staticmethod
+  def _create_ssl_certificate_paths_if_valid(certificate_path,
+                                             certificate_key_path):
+    """Returns an ssl_utils.SSLCertificatePaths instance iff valid cert/key.
+
+    Args:
+      certificate_path: str, path to the SSL certificate.
+      certificate_key_path: str, path to the SSL certificate's private key.
+
+    Returns:
+      An ssl_utils.SSLCertificatePaths with the provided paths, or None if the
+        cert/key pair is invalid.
+    """
+    ssl_certificate_paths = ssl_utils.SSLCertificatePaths(
+        ssl_certificate_path=certificate_path,
+        ssl_certificate_key_path=certificate_key_path)
+    try:
+      ssl_utils.validate_ssl_certificate_paths_or_raise(ssl_certificate_paths)
+    except ssl_utils.SSLCertificatePathsValidationError as e:
+      ssl_failure_reason = (
+          e.error_message if e.error_message else e.original_exception)
+      logging.warn('Tried to enable SSL, but failed: %s', ssl_failure_reason)
+      return None
+    else:
+      return ssl_certificate_paths
 
 
 def main():

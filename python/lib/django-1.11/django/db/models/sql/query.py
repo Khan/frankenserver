@@ -133,7 +133,7 @@ class Query(object):
         # types they are. The key is the alias of the joined table (possibly
         # the table name) and the value is a Join-like object (see
         # sql.datastructures.Join for more information).
-        self.alias_map = {}
+        self.alias_map = OrderedDict()
         # Sometimes the query contains references to aliases in outer queries (as
         # a result of split_exclude). Correct alias quoting needs to know these
         # aliases too.
@@ -339,6 +339,7 @@ class Query(object):
         if hasattr(obj, '_setup_query'):
             obj._setup_query()
         obj.context = self.context.copy()
+        obj._forced_pk = getattr(self, '_forced_pk', False)
         return obj
 
     def add_context(self, key, value):
@@ -415,12 +416,12 @@ class Query(object):
         # aren't smart enough to remove the existing annotations from the
         # query, so those would force us to use GROUP BY.
         #
-        # If the query has limit or distinct, then those operations must be
-        # done in a subquery so that we are aggregating on the limit and/or
-        # distinct results instead of applying the distinct and limit after the
-        # aggregation.
+        # If the query has limit or distinct, or uses set operations, then
+        # those operations must be done in a subquery so that the query
+        # aggregates on the limit and/or distinct results instead of applying
+        # the distinct and limit after the aggregation.
         if (isinstance(self.group_by, list) or has_limit or has_existing_annotations or
-                self.distinct):
+                self.distinct or self.combinator):
             from django.db.models.sql.subqueries import AggregateQuery
             outer_query = AggregateQuery(self.model)
             inner_query = self.clone()
@@ -901,27 +902,16 @@ class Query(object):
 
     def join(self, join, reuse=None):
         """
-        Returns an alias for the join in 'connection', either reusing an
-        existing alias for that join or creating a new one. 'connection' is a
-        tuple (lhs, table, join_cols) where 'lhs' is either an existing
-        table alias or a table name. 'join_cols' is a tuple of tuples containing
-        columns to join on ((l_id1, r_id1), (l_id2, r_id2)). The join corresponds
-        to the SQL equivalent of::
+        Return an alias for the 'join', either reusing an existing alias for
+        that join or creating a new one. 'join' is either a
+        sql.datastructures.BaseTable or Join.
 
-            lhs.l_id1 = table.r_id1 AND lhs.l_id2 = table.r_id2
-
-        The 'reuse' parameter can be either None which means all joins
-        (matching the connection) are reusable, or it can be a set containing
-        the aliases that can be reused.
+        The 'reuse' parameter can be either None which means all joins are
+        reusable, or it can be a set containing the aliases that can be reused.
 
         A join is always created as LOUTER if the lhs alias is LOUTER to make
-        sure we do not generate chains like t1 LOUTER t2 INNER t3. All new
-        joins are created as LOUTER if nullable is True.
-
-        If 'nullable' is True, the join can potentially involve NULL values and
-        is a candidate for promotion (to "left outer") when combining querysets.
-
-        The 'join_field' is the field we are joining along (if any).
+        sure chains like t1 LOUTER t2 INNER t3 aren't generated. All new
+        joins are created as LOUTER if the join is nullable.
         """
         reuse = [a for a, j in self.alias_map.items()
                  if (reuse is None or a in reuse) and j == join]

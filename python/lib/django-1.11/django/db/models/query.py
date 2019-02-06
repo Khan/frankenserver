@@ -103,7 +103,7 @@ class ValuesIterable(BaseIterable):
         # extra(select=...) cols are always at the start of the row.
         names = extra_names + field_names + annotation_names
 
-        for row in compiler.results_iter():
+        for row in compiler.results_iter(chunked_fetch=self.chunked_fetch):
             yield dict(zip(names, row))
 
 
@@ -119,7 +119,7 @@ class ValuesListIterable(BaseIterable):
         compiler = query.get_compiler(queryset.db)
 
         if not query.extra_select and not query.annotation_select:
-            for row in compiler.results_iter():
+            for row in compiler.results_iter(chunked_fetch=self.chunked_fetch):
                 yield tuple(row)
         else:
             field_names = list(query.values_select)
@@ -135,7 +135,7 @@ class ValuesListIterable(BaseIterable):
             else:
                 fields = names
 
-            for row in compiler.results_iter():
+            for row in compiler.results_iter(chunked_fetch=self.chunked_fetch):
                 data = dict(zip(names, row))
                 yield tuple(data[f] for f in fields)
 
@@ -149,7 +149,7 @@ class FlatValuesListIterable(BaseIterable):
     def __iter__(self):
         queryset = self.queryset
         compiler = queryset.query.get_compiler(queryset.db)
-        for row in compiler.results_iter():
+        for row in compiler.results_iter(chunked_fetch=self.chunked_fetch):
             yield row[0]
 
 
@@ -319,7 +319,8 @@ class QuerySet(object):
         An iterator over the results from applying this QuerySet to the
         database.
         """
-        return iter(self._iterable_class(self, chunked_fetch=True))
+        use_chunked_fetch = not connections[self.db].settings_dict.get('DISABLE_SERVER_SIDE_CURSORS')
+        return iter(self._iterable_class(self, chunked_fetch=use_chunked_fetch))
 
     def aggregate(self, *args, **kwargs):
         """
@@ -517,12 +518,14 @@ class QuerySet(object):
                 lookup[f.name] = lookup.pop(f.attname)
         params = {k: v for k, v in kwargs.items() if LOOKUP_SEP not in k}
         params.update(defaults)
+        property_names = self.model._meta._property_names
         invalid_params = []
         for param in params:
             try:
                 self.model._meta.get_field(param)
             except exceptions.FieldDoesNotExist:
-                if param != 'pk':  # It's okay to use a model's pk property.
+                # It's okay to use a model's property if it has a setter.
+                if not (param in property_names and getattr(self.model, param).fset):
                     invalid_params.append(param)
         if invalid_params:
             raise exceptions.FieldError(
@@ -835,12 +838,25 @@ class QuerySet(object):
                     "union() received an unexpected keyword argument '%s'" %
                     (unexpected_kwarg,)
                 )
+        # If the query is an EmptyQuerySet, combine all nonempty querysets.
+        if isinstance(self, EmptyQuerySet):
+            qs = [q for q in other_qs if not isinstance(q, EmptyQuerySet)]
+            return qs[0]._combinator_query('union', *qs[1:], **kwargs) if qs else self
         return self._combinator_query('union', *other_qs, **kwargs)
 
     def intersection(self, *other_qs):
+        # If any query is an EmptyQuerySet, return it.
+        if isinstance(self, EmptyQuerySet):
+            return self
+        for other in other_qs:
+            if isinstance(other, EmptyQuerySet):
+                return other
         return self._combinator_query('intersection', *other_qs)
 
     def difference(self, *other_qs):
+        # If the query is an EmptyQuerySet, return it.
+        if isinstance(self, EmptyQuerySet):
+            return self
         return self._combinator_query('difference', *other_qs)
 
     def select_for_update(self, nowait=False, skip_locked=False):
@@ -1305,7 +1321,7 @@ class Prefetch(object):
         self.prefetch_through = lookup
         # `prefetch_to` is the path to the attribute that stores the result.
         self.prefetch_to = lookup
-        if queryset is not None and queryset._iterable_class is not ModelIterable:
+        if queryset is not None and not issubclass(queryset._iterable_class, ModelIterable):
             raise ValueError('Prefetch querysets cannot use values().')
         if to_attr:
             self.prefetch_to = LOOKUP_SEP.join(lookup.split(LOOKUP_SEP)[:-1] + [to_attr])
@@ -1471,10 +1487,15 @@ def prefetch_related_objects(model_instances, *related_lookups):
                 # that we can continue with nullable or reverse relations.
                 new_obj_list = []
                 for obj in obj_list:
-                    try:
-                        new_obj = getattr(obj, through_attr)
-                    except exceptions.ObjectDoesNotExist:
-                        continue
+                    if through_attr in getattr(obj, '_prefetched_objects_cache', ()):
+                        # If related objects have been prefetched, use the
+                        # cache rather than the object's through_attr.
+                        new_obj = list(obj._prefetched_objects_cache.get(through_attr))
+                    else:
+                        try:
+                            new_obj = getattr(obj, through_attr)
+                        except exceptions.ObjectDoesNotExist:
+                            continue
                     if new_obj is None:
                         continue
                     # We special-case `list` rather than something more generic

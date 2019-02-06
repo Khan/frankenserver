@@ -20,7 +20,12 @@
 from google.net.proto import ProtocolBuffer
 import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -29,6 +34,9 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
+from google.appengine.api.api_base_pb import *
+import google.appengine.api.api_base_pb
+google_dot_apphosting_dot_api_dot_api__base__pb = __import__('google.appengine.api.api_base_pb', {}, {}, [''])
 class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   has_email_ = 0
   email_ = ""
@@ -132,7 +140,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
     if (x.has_user_id()): self.set_user_id(x.user_id())
     if (x.has_is_admin()): self.set_is_admin(x.is_admin())
-    for i in xrange(x.scopes_size()): self.add_scopes(x.scopes(i))
+    for i in range(x.scopes_size()): self.add_scopes(x.scopes(i))
     if (x.has_client_id()): self.set_client_id(x.client_id())
 
   def Equals(self, x):
@@ -163,7 +171,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_user_id_): n += 1 + self.lengthString(len(self.user_id_))
     if (self.has_is_admin_): n += 2
     n += 1 * len(self.scopes_)
-    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    for i in range(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
     return n
 
@@ -174,7 +182,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_user_id_): n += 1 + self.lengthString(len(self.user_id_))
     if (self.has_is_admin_): n += 2
     n += 1 * len(self.scopes_)
-    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    for i in range(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
     return n
 
@@ -199,7 +207,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_is_admin_):
       out.putVarInt32(32)
       out.putBoolean(self.is_admin_)
-    for i in xrange(len(self.scopes_)):
+    for i in range(len(self.scopes_)):
       out.putVarInt32(42)
       out.putPrefixedString(self.scopes_[i])
     if (self.has_client_id_):
@@ -219,7 +227,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_is_admin_):
       out.putVarInt32(32)
       out.putBoolean(self.is_admin_)
-    for i in xrange(len(self.scopes_)):
+    for i in range(len(self.scopes_)):
       out.putVarInt32(42)
       out.putPrefixedString(self.scopes_[i])
     if (self.has_client_id_):
@@ -249,7 +257,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -270,7 +278,7 @@ class SetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kemail = 1
   kauth_domain = 2

@@ -20,7 +20,7 @@
 
 """In-memory implementation of Blobstore stub storage.
 
-This module contains an implementation of `blobstore_stub.BlobStorage`.
+This module contains an implementation of `blob_storage.BlobStorage`.
 """
 
 
@@ -36,10 +36,10 @@ This module contains an implementation of `blobstore_stub.BlobStorage`.
 import StringIO
 
 from google.appengine.api import blobstore
-from google.appengine.api.blobstore import blobstore_stub
+from google.appengine.api.blobstore import blob_storage
 
 
-class DictBlobStorage(blobstore_stub.BlobStorage):
+class DictBlobStorage(blob_storage.BlobStorage):
   """Stores blobs in a dictionary."""
 
   def __init__(self):

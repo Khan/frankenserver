@@ -101,6 +101,7 @@ from google.appengine.api import apiproxy_stub
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.taskqueue import taskqueue_stub_service_pb
+from google.appengine.datastore import datastore_stub_util
 from google.appengine.tools import appengine_rpc
 
 _REQUEST_ID_HEADER = 'HTTP_X_APPENGINE_REQUEST_ID'
@@ -570,8 +571,10 @@ class DatastoreStubTestbedDelegate(RemoteStub):
   """A stub for testbed calling datastore_v3 service in api_server."""
 
   def __init__(self, server, path,
-               max_request_size=apiproxy_stub.MAX_REQUEST_SIZE):
+               max_request_size=apiproxy_stub.MAX_REQUEST_SIZE,
+               emulator_port=None):
     super(DatastoreStubTestbedDelegate, self).__init__(server, path)
+    self._emulator_port = emulator_port
     self._error_dict = {}
     self._error = None
     self._error_rate = None
@@ -584,21 +587,31 @@ class DatastoreStubTestbedDelegate(RemoteStub):
           apiproxy_stub.REQ_SIZE_EXCEEDS_LIMIT_MSG_TEMPLATE % (
               service, call))
 
-  def SetConsistencyPolicy(self, policy):
-    """A dummy method for backward compatibility with unittests.
-
-    The scenario for this test is: running ndb unittest aginst apiserver + cloud
-    datastore emulator. The tests triggers stub.SetConsistencyPolicy, which is
-    implemented by datastore v3 stubs. See
-    //apphosting/datastore/datastore_stub_util.py for the original method
-    definition. We don't want to change the tests, just add this fake method to
-    pass them. For more details please refer to b/62039789.
+  def SetConsistencyPolicy(self, consistency_policy):
+    """Set the job consistency policy of cloud datastore emulator.
 
     Args:
-      policy: A obj inheriting from BaseConsistencyPolicy.
+      consistency_policy: An instance of
+        datastore_stub_util.PseudoRandomHRConsistencyPolicy or
+        datastore_stub_util.MasterSlaveConsistencyPolicy.
     """
+    datastore_stub_util.UpdateEmulatorConfig(
+        port=self._emulator_port, consistency_policy=consistency_policy)
+    if isinstance(consistency_policy,
+                  datastore_stub_util.PseudoRandomHRConsistencyPolicy):
+      consistency_policy.is_using_cloud_datastore_emulator = True
+      consistency_policy.emulator_port = self._emulator_port
 
-    pass
+  def SetAutoIdPolicy(self, auto_id_policy):
+    """Set the auto id policy of cloud datastore emulator.
+
+    Args:
+      auto_id_policy: A string indicating how the emulator assigns auto IDs,
+        should be either datastore_stub_util.SCATTERED or
+        datastore_stub_util.SEQUENTIAL.
+    """
+    datastore_stub_util.UpdateEmulatorConfig(
+        port=self._emulator_port, auto_id_policy=auto_id_policy)
 
   def SetTrusted(self, trusted):
     """A dummy method for backward compatibility unittests.
@@ -735,7 +748,7 @@ class TaskqueueStubTestbedDelegate(RemoteStub):
     """Delegating TaskQueueServiceStub.get_filtered_tasks.
 
     Args:
-      url: A String URL that represents the URL all returned tasks point at.
+      url: A string URL that represents the URL all returned tasks point at.
       name: The string name of all returned tasks.
       queue_names: A string queue_name, or a list of string queue names to
         retrieve tasks from. If left blank this will get default to all

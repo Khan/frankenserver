@@ -21,7 +21,10 @@ from google.net.proto import ProtocolBuffer
 import abc
 import array
 import base64
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 try:
   from google3.net.proto import _net_proto___parse__python
 except ImportError:
@@ -42,6 +45,8 @@ try:
 except ImportError:
   _server_stub_base_class = object
 
+if hasattr(__builtins__, 'xrange'): range = xrange
+
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -60,7 +65,7 @@ class AddRequestInfoRequest(ProtocolBuffer.ProtocolMessage):
   request_log_ = None
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def request_log(self):
@@ -161,7 +166,7 @@ class AddRequestInfoRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -175,7 +180,7 @@ class AddRequestInfoRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_log = 1
 
@@ -194,7 +199,7 @@ class AddRequestInfoRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.AddRequestInfoRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zdHViX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuQWRkUmVxdWVzdEluZm9SZXF1ZXN0ExoLcmVxdWVzdF9sb2cgASgCMAs4AUoVYXBwaG9zdGluZy5SZXF1ZXN0TG9nowGqAQVjdHlwZbIBBnByb3RvMqQBFLoBmwgKMGFwcGhvc3RpbmcvYXBpL2xvZ3NlcnZpY2UvbG9nX3N0dWJfc2VydmljZS5wcm90bxIKYXBwaG9zdGluZxodYXBwaG9zdGluZy9hcGkvYXBpX2Jhc2UucHJvdG8aK2FwcGhvc3RpbmcvYXBpL2xvZ3NlcnZpY2UvbG9nX3NlcnZpY2UucHJvdG8iRAoVQWRkUmVxdWVzdEluZm9SZXF1ZXN0EisKC3JlcXVlc3RfbG9nGAEgASgLMhYuYXBwaG9zdGluZy5SZXF1ZXN0TG9nIlEKFEFkZEFwcExvZ0xpbmVSZXF1ZXN0EiUKCGxvZ19saW5lGAEgASgLMhMuYXBwaG9zdGluZy5Mb2dMaW5lEhIKCnJlcXVlc3RfaWQYAiABKAkihQIKFlN0YXJ0UmVxdWVzdExvZ1JlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAIoCRIXCg91c2VyX3JlcXVlc3RfaWQYAiABKAkSCgoCaXAYAyABKAkSDgoGYXBwX2lkGAQgASgJEhIKCnZlcnNpb25faWQYBSABKAkSEAoIbmlja25hbWUYBiABKAkSEgoKdXNlcl9hZ2VudBgHIAEoCRIMCgRob3N0GAggASgJEg4KBm1ldGhvZBgJIAEoCRIQCghyZXNvdXJjZRgKIAEoCRIUCgxodHRwX3ZlcnNpb24YCyABKAkSEgoKc3RhcnRfdGltZRgMIAEoAxIOCgZtb2R1bGUYDSABKAkiUQoURW5kUmVxdWVzdExvZ1JlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAIoCRIOCgZzdGF0dXMYAiACKAUSFQoNcmVzcG9uc2Vfc2l6ZRgDIAEoBTLaAgoOTG9nU3R1YlNlcnZpY2USUQoOQWRkUmVxdWVzdEluZm8SIS5hcHBob3N0aW5nLkFkZFJlcXVlc3RJbmZvUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJPCg1BZGRBcHBMb2dMaW5lEiAuYXBwaG9zdGluZy5BZGRBcHBMb2dMaW5lUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJPCg1FbmRSZXF1ZXN0TG9nEiAuYXBwaG9zdGluZy5FbmRSZXF1ZXN0TG9nUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJTCg9TdGFydFJlcXVlc3RMb2cSIi5hcHBob3N0aW5nLlN0YXJ0UmVxdWVzdExvZ1JlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgBCPgokY29tLmdvb2dsZS5hcHBob3N0aW5nLmFwaS5sb2dzZXJ2aWNlEAIgAigBQhBMb2dTdHViU2VydmljZVBi"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zdHViX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuQWRkUmVxdWVzdEluZm9SZXF1ZXN0ExoLcmVxdWVzdF9sb2cgASgCMAs4AUoVYXBwaG9zdGluZy5SZXF1ZXN0TG9nowGqAQVjdHlwZbIBBnByb3RvMqQBFLoBlwgKMGFwcGhvc3RpbmcvYXBpL2xvZ3NlcnZpY2UvbG9nX3N0dWJfc2VydmljZS5wcm90bxIKYXBwaG9zdGluZxodYXBwaG9zdGluZy9hcGkvYXBpX2Jhc2UucHJvdG8aK2FwcGhvc3RpbmcvYXBpL2xvZ3NlcnZpY2UvbG9nX3NlcnZpY2UucHJvdG8iRAoVQWRkUmVxdWVzdEluZm9SZXF1ZXN0EisKC3JlcXVlc3RfbG9nGAEgASgLMhYuYXBwaG9zdGluZy5SZXF1ZXN0TG9nIlEKFEFkZEFwcExvZ0xpbmVSZXF1ZXN0EiUKCGxvZ19saW5lGAEgASgLMhMuYXBwaG9zdGluZy5Mb2dMaW5lEhIKCnJlcXVlc3RfaWQYAiABKAkihQIKFlN0YXJ0UmVxdWVzdExvZ1JlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAIoCRIXCg91c2VyX3JlcXVlc3RfaWQYAiABKAkSCgoCaXAYAyABKAkSDgoGYXBwX2lkGAQgASgJEhIKCnZlcnNpb25faWQYBSABKAkSEAoIbmlja25hbWUYBiABKAkSEgoKdXNlcl9hZ2VudBgHIAEoCRIMCgRob3N0GAggASgJEg4KBm1ldGhvZBgJIAEoCRIQCghyZXNvdXJjZRgKIAEoCRIUCgxodHRwX3ZlcnNpb24YCyABKAkSEgoKc3RhcnRfdGltZRgMIAEoAxIOCgZtb2R1bGUYDSABKAkiUQoURW5kUmVxdWVzdExvZ1JlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAIoCRIOCgZzdGF0dXMYAiACKAUSFQoNcmVzcG9uc2Vfc2l6ZRgDIAEoBTLaAgoOTG9nU3R1YlNlcnZpY2USUQoOQWRkUmVxdWVzdEluZm8SIS5hcHBob3N0aW5nLkFkZFJlcXVlc3RJbmZvUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJPCg1BZGRBcHBMb2dMaW5lEiAuYXBwaG9zdGluZy5BZGRBcHBMb2dMaW5lUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJPCg1FbmRSZXF1ZXN0TG9nEiAuYXBwaG9zdGluZy5FbmRSZXF1ZXN0TG9nUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJTCg9TdGFydFJlcXVlc3RMb2cSIi5hcHBob3N0aW5nLlN0YXJ0UmVxdWVzdExvZ1JlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgBCOgokY29tLmdvb2dsZS5hcHBob3N0aW5nLmFwaS5sb2dzZXJ2aWNlKAFCEExvZ1N0dWJTZXJ2aWNlUGI="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -206,7 +211,7 @@ class AddAppLogLineRequest(ProtocolBuffer.ProtocolMessage):
   request_id_ = ""
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def log_line(self):
@@ -335,7 +340,7 @@ class AddAppLogLineRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -350,7 +355,7 @@ class AddAppLogLineRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   klog_line = 1
   krequest_id = 2
@@ -835,7 +840,7 @@ class StartRequestLogRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -858,7 +863,7 @@ class StartRequestLogRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_id = 1
   kuser_request_id = 2
@@ -1081,7 +1086,7 @@ class EndRequestLogRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1094,7 +1099,7 @@ class EndRequestLogRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_id = 1
   kstatus = 2

@@ -379,7 +379,7 @@ class SQLCompiler(object):
         features = self.connection.features
         compilers = [
             query.get_compiler(self.using, self.connection)
-            for query in self.query.combined_queries
+            for query in self.query.combined_queries if not query.is_empty()
         ]
         if not features.supports_slicing_ordering_in_compound:
             for query, compiler in zip(self.query.combined_queries, compilers):
@@ -387,7 +387,23 @@ class SQLCompiler(object):
                     raise DatabaseError('LIMIT/OFFSET not allowed in subqueries of compound statements.')
                 if compiler.get_order_by():
                     raise DatabaseError('ORDER BY not allowed in subqueries of compound statements.')
-        parts = (compiler.as_sql() for compiler in compilers)
+        parts = ()
+        for compiler in compilers:
+            try:
+                # If the columns list is limited, then all combined queries
+                # must have the same columns list. Set the selects defined on
+                # the query on all combined queries, if not already set.
+                if not compiler.query.values_select and self.query.values_select:
+                    compiler.query.set_values(self.query.values_select)
+                parts += (compiler.as_sql(),)
+            except EmptyResultSet:
+                # Omit the empty queryset with UNION and with DIFFERENCE if the
+                # first queryset is nonempty.
+                if combinator == 'union' or (combinator == 'difference' and parts):
+                    continue
+                raise
+        if not parts:
+            raise EmptyResultSet
         combinator_sql = self.connection.ops.set_operators[combinator]
         if all and combinator == 'union':
             combinator_sql += ' ALL'
@@ -410,16 +426,7 @@ class SQLCompiler(object):
         refcounts_before = self.query.alias_refcount.copy()
         try:
             extra_select, order_by, group_by = self.pre_sql_setup()
-            distinct_fields = self.get_distinct()
-
-            # This must come after 'select', 'ordering', and 'distinct' -- see
-            # docstring of get_from_clause() for details.
-            from_, f_params = self.get_from_clause()
-
             for_update_part = None
-            where, w_params = self.compile(self.where) if self.where is not None else ("", [])
-            having, h_params = self.compile(self.having) if self.having is not None else ("", [])
-
             combinator = self.query.combinator
             features = self.connection.features
             if combinator:
@@ -427,6 +434,12 @@ class SQLCompiler(object):
                     raise DatabaseError('{} not supported on this database backend.'.format(combinator))
                 result, params = self.get_combinator_sql(combinator, self.query.combinator_all)
             else:
+                distinct_fields = self.get_distinct()
+                # This must come after 'select', 'ordering', and 'distinct'
+                # (see docstring of get_from_clause() for details).
+                from_, f_params = self.get_from_clause()
+                where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+                having, h_params = self.compile(self.having) if self.having is not None else ("", [])
                 result = ['SELECT']
                 params = []
 
@@ -820,12 +833,12 @@ class SQLCompiler(object):
             row[pos] = value
         return tuple(row)
 
-    def results_iter(self, results=None):
+    def results_iter(self, results=None, chunked_fetch=False):
         """
         Returns an iterator over the results from executing this query.
         """
         if results is None:
-            results = self.execute_sql(MULTI)
+            results = self.execute_sql(MULTI, chunked_fetch=chunked_fetch)
         fields = [s[0] for s in self.select[0:self.col_count]]
         converters = self.get_converters(fields)
         for rows in results:
@@ -874,7 +887,7 @@ class SQLCompiler(object):
             cursor = self.connection.cursor()
         try:
             cursor.execute(sql, params)
-        except Exception:
+        except Exception as original_exception:
             try:
                 # Might fail for server-side cursors (e.g. connection closed)
                 cursor.close()
@@ -883,7 +896,7 @@ class SQLCompiler(object):
                 # Python 2 doesn't chain exceptions. Remove this error
                 # silencing when dropping Python 2 compatibility.
                 pass
-            raise
+            raise original_exception
 
         if result_type == CURSOR:
             # Caller didn't specify a result_type, so just give them back the

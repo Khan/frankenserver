@@ -18,8 +18,13 @@
 
 
 
+import argparse
+import os
+import platform
 import unittest
 
+import google
+import mock
 from google.appengine.tools.devappserver2 import devappserver2
 
 
@@ -69,6 +74,45 @@ class CreateModuleToSettingTest(unittest.TestCase):
         {'m1': 3.5},
         devappserver2.DevelopmentServer._create_module_to_setting(
             {'m1': 3.5, 'm4': 2.7}, self.application_configuration, '--option'))
+
+
+class DatastoreEmulatorSupportcheckTest(unittest.TestCase):
+
+  @mock.patch.object(os.path, 'exists', return_value=False)
+  @mock.patch.object(devappserver2.DevelopmentServer,
+                     '_correct_datastore_emulator_cmd', return_value=None)
+  def test_fail_missing_emulator(self, mock_correction, unused_mock):
+    options = argparse.Namespace()
+    # Following flags simulate the scenario of invoking dev_appserver.py from
+    # google-cloud-sdk/platform/google_appengine
+    options.support_datastore_emulator = True
+    options.datastore_emulator_cmd = None
+    with self.assertRaises(devappserver2.MissingDatastoreEmulatorError) as ctx:
+      dev_server = devappserver2.DevelopmentServer()
+      dev_server._options = options
+      dev_server._check_datastore_emulator_support()
+      mock_correction.assert_called_once_with()
+    self.assertIn('Cannot find Cloud Datastore Emulator', ctx.exception.message)
+
+
+class PlatformSupportCheckTest(unittest.TestCase):
+
+  def test_succeed_non_python3_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Windows'):
+      devappserver2.DevelopmentServer._check_platform_support({'python2'})
+      platform.system.assert_not_called()
+
+  def test_succeed_python3_non_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Linux'):
+      devappserver2.DevelopmentServer._check_platform_support({'python3'})
+      platform.system.assert_called_once_with()
+
+  def test_fail_python3_windows(self):
+    with mock.patch.object(platform, 'system', return_value='Windows'):
+      with self.assertRaises(OSError):
+        devappserver2.DevelopmentServer._check_platform_support(
+            {'python3', 'python2'})
+      platform.system.assert_called_once_with()
 
 
 if __name__ == '__main__':

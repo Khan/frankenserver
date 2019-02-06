@@ -732,7 +732,7 @@ class Context(object):
           pb.MergePartialFromString(mvalue)
         except ProtocolBuffer.ProtocolBufferDecodeError:
           logging.warning('Corrupt memcache entry found '
-                          'with key %s and namespace %s' % (mkey, ns))
+                          'with key %s and namespace %s', mkey, ns)
           mvalue = None
         else:
           entity = cls._from_pb(pb)
@@ -952,6 +952,10 @@ class Context(object):
     if propagation is None:
       propagation = TransactionOptions.NESTED
 
+    mode = datastore_rpc.TransactionMode.READ_WRITE
+    if ctx_options.get('read_only', False):
+      mode = datastore_rpc.TransactionMode.READ_ONLY
+
     parent = self
     if propagation == TransactionOptions.NESTED:
       if self.in_transaction():
@@ -987,8 +991,17 @@ class Context(object):
     if retries is None:
       retries = 3
     yield parent.flush()
+
+    transaction = None
+    tconn = None
     for _ in xrange(1 + max(0, retries)):
-      transaction = yield parent._conn.async_begin_transaction(options, app)
+      previous_transaction = (
+          transaction
+          if mode == datastore_rpc.TransactionMode.READ_WRITE else None)
+      transaction = yield (parent._conn.async_begin_transaction(
+          options, app,
+          previous_transaction,
+          mode))
       tconn = datastore_rpc.TransactionalConnection(
           adapter=parent._conn.adapter,
           config=parent._conn.config,
@@ -1046,6 +1059,7 @@ class Context(object):
             on_commit_callback()  # This better not raise.
 
     # Out of retries
+    tconn.async_rollback(options)  # Attempt rollback, can fire and forget.
     raise datastore_errors.TransactionFailedError(
         'The transaction could not be committed. Please try again.')
 

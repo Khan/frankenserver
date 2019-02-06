@@ -21,7 +21,10 @@ from google.net.proto import ProtocolBuffer
 import abc
 import array
 import base64
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 try:
   from google3.net.proto import _net_proto___parse__python
 except ImportError:
@@ -41,6 +44,8 @@ try:
   _server_stub_base_class = rpcserver.BaseRpcServer
 except ImportError:
   _server_stub_base_class = object
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -133,7 +138,7 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -143,7 +148,7 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -159,7 +164,7 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SystemServiceError'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSARBCQUNLRU5EX1JFUVVJUkVEmAECjAGLAZIBDUxJTUlUX1JFQUNIRUSYAQOMAXS6AYcGCiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8SCmFwcGhvc3RpbmciZgoSU3lzdGVtU2VydmljZUVycm9yIlAKCUVycm9yQ29kZRIGCgJPSxAAEhIKDklOVEVSTkFMX0VSUk9SEAESFAoQQkFDS0VORF9SRVFVSVJFRBACEhEKDUxJTUlUX1JFQUNIRUQQAyJ0CgpTeXN0ZW1TdGF0Eg8KB2N1cnJlbnQYASABKAESEQoJYXZlcmFnZTFtGAMgASgBEhIKCmF2ZXJhZ2UxMG0YBCABKAESDQoFdG90YWwYAiABKAESDgoGcmF0ZTFtGAUgASgBEg8KB3JhdGUxMG0YBiABKAEiFwoVR2V0U3lzdGVtU3RhdHNSZXF1ZXN0ImUKFkdldFN5c3RlbVN0YXRzUmVzcG9uc2USIwoDY3B1GAEgASgLMhYuYXBwaG9zdGluZy5TeXN0ZW1TdGF0EiYKBm1lbW9yeRgCIAEoCzIWLmFwcGhvc3RpbmcuU3lzdGVtU3RhdCIfCh1TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVxdWVzdCI0Ch5TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCTLdAQoNU3lzdGVtU2VydmljZRJZCg5HZXRTeXN0ZW1TdGF0cxIhLmFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXF1ZXN0GiIuYXBwaG9zdGluZy5HZXRTeXN0ZW1TdGF0c1Jlc3BvbnNlIgAScQoWU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdBIpLmFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlcXVlc3QaKi5hcHBob3N0aW5nLlN0YXJ0QmFja2dyb3VuZFJlcXVlc3RSZXNwb25zZSIAQjgKH2NvbS5nb29nbGUuYXBwZW5naW5lLmFwaS5zeXN0ZW0QAiABKAJCD1N5c3RlbVNlcnZpY2VQYg=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuU3lzdGVtU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSARBCQUNLRU5EX1JFUVVJUkVEmAECjAGLAZIBDUxJTUlUX1JFQUNIRUSYAQOMAXS6AYUGCiphcHBob3N0aW5nL2FwaS9zeXN0ZW0vc3lzdGVtX3NlcnZpY2UucHJvdG8SCmFwcGhvc3RpbmciZgoSU3lzdGVtU2VydmljZUVycm9yIlAKCUVycm9yQ29kZRIGCgJPSxAAEhIKDklOVEVSTkFMX0VSUk9SEAESFAoQQkFDS0VORF9SRVFVSVJFRBACEhEKDUxJTUlUX1JFQUNIRUQQAyJ0CgpTeXN0ZW1TdGF0Eg8KB2N1cnJlbnQYASABKAESEQoJYXZlcmFnZTFtGAMgASgBEhIKCmF2ZXJhZ2UxMG0YBCABKAESDQoFdG90YWwYAiABKAESDgoGcmF0ZTFtGAUgASgBEg8KB3JhdGUxMG0YBiABKAEiFwoVR2V0U3lzdGVtU3RhdHNSZXF1ZXN0ImUKFkdldFN5c3RlbVN0YXRzUmVzcG9uc2USIwoDY3B1GAEgASgLMhYuYXBwaG9zdGluZy5TeXN0ZW1TdGF0EiYKBm1lbW9yeRgCIAEoCzIWLmFwcGhvc3RpbmcuU3lzdGVtU3RhdCIfCh1TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVxdWVzdCI0Ch5TdGFydEJhY2tncm91bmRSZXF1ZXN0UmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCTLdAQoNU3lzdGVtU2VydmljZRJZCg5HZXRTeXN0ZW1TdGF0cxIhLmFwcGhvc3RpbmcuR2V0U3lzdGVtU3RhdHNSZXF1ZXN0GiIuYXBwaG9zdGluZy5HZXRTeXN0ZW1TdGF0c1Jlc3BvbnNlIgAScQoWU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdBIpLmFwcGhvc3RpbmcuU3RhcnRCYWNrZ3JvdW5kUmVxdWVzdFJlcXVlc3QaKi5hcHBob3N0aW5nLlN0YXJ0QmFja2dyb3VuZFJlcXVlc3RSZXNwb25zZSIAQjYKH2NvbS5nb29nbGUuYXBwZW5naW5lLmFwaS5zeXN0ZW0QAigCQg9TeXN0ZW1TZXJ2aWNlUGI="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -407,7 +412,7 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -423,7 +428,7 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcurrent = 1
   kaverage1m = 3
@@ -529,7 +534,7 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -539,7 +544,7 @@ class GetSystemStatsRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -567,7 +572,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
   memory_ = None
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def cpu(self):
@@ -708,7 +713,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -726,7 +731,7 @@ class GetSystemStatsResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcpu = 1
   kmemory = 2
@@ -820,7 +825,7 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -830,7 +835,7 @@ class StartBackgroundRequestRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -944,7 +949,7 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -955,7 +960,7 @@ class StartBackgroundRequestResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_id = 1
 

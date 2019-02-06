@@ -2,8 +2,8 @@
 
 name: "django"
 description:
-    "Django is a python-based web framework. As of 2016-May-02 this was listed "
-    "as the latest 1.9 version."
+  "Django is a python-based web framework. As of 2016-May-02 this was listed "
+  "as the latest 1.9 version."
 
 third_party {
   url {

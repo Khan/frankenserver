@@ -597,6 +597,23 @@ namespace google\appengine {
     public function clearHeader() {
       $this->Header = array();
     }
+    public function getAmphtmlbody() {
+      if (!isset($this->AmpHtmlBody)) {
+        return '';
+      }
+      return $this->AmpHtmlBody;
+    }
+    public function setAmphtmlbody($val) {
+      $this->AmpHtmlBody = $val;
+      return $this;
+    }
+    public function clearAmphtmlbody() {
+      unset($this->AmpHtmlBody);
+      return $this;
+    }
+    public function hasAmphtmlbody() {
+      return isset($this->AmpHtmlBody);
+    }
     public function clear() {
       $this->clearSender();
       $this->clearReplyto();
@@ -608,6 +625,7 @@ namespace google\appengine {
       $this->clearHtmlbody();
       $this->clearAttachment();
       $this->clearHeader();
+      $this->clearAmphtmlbody();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -655,6 +673,10 @@ namespace google\appengine {
       $res += 1 * sizeof($this->Header);
       foreach ($this->Header as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->AmpHtmlBody)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->AmpHtmlBody));
       }
       return $res;
     }
@@ -705,6 +727,10 @@ namespace google\appengine {
         $out->putVarInt32(82);
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
+      }
+      if (isset($this->AmpHtmlBody)) {
+        $out->putVarInt32(90);
+        $out->putPrefixedString($this->AmpHtmlBody);
       }
     }
     public function tryMerge($d) {
@@ -763,6 +789,11 @@ namespace google\appengine {
             $d->skip($length);
             $this->addHeader()->tryMerge($tmp);
             break;
+          case 90:
+            $length = $d->getVarInt32();
+            $this->setAmphtmlbody(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -814,6 +845,9 @@ namespace google\appengine {
       foreach ($x->getHeaderList() as $v) {
         $this->addHeader()->copyFrom($v);
       }
+      if ($x->hasAmphtmlbody()) {
+        $this->setAmphtmlbody($x->getAmphtmlbody());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -847,6 +881,8 @@ namespace google\appengine {
       foreach (array_map(null, $this->Header, $x->Header) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->AmpHtmlBody) !== isset($x->AmpHtmlBody)) return false;
+      if (isset($this->AmpHtmlBody) && $this->AmpHtmlBody !== $x->AmpHtmlBody) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -880,6 +916,9 @@ namespace google\appengine {
       }
       foreach ($this->Header as $value) {
         $res .= $prefix . "Header <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->AmpHtmlBody)) {
+        $res .= $prefix . "AmpHtmlBody: " . $this->debugFormatString($this->AmpHtmlBody) . "\n";
       }
       return $res;
     }

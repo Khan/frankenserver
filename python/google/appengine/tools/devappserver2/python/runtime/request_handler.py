@@ -178,13 +178,18 @@ class RequestHandler(object):
       return []
 
   def handle_normal_request(self, environ):
+    """Handles a user request using the given WSGI environ."""
     user_environ = self.get_user_environ(environ)
     script = environ.pop(http_runtime_constants.SCRIPT_HEADER)
     body = environ['wsgi.input'].read(int(environ.get('CONTENT_LENGTH', 0)))
-    url = 'http://%s:%s%s?%s' % (self._get_request_host(user_environ),
-                                 user_environ['SERVER_PORT'],
-                                 urllib.quote(environ['PATH_INFO']),
-                                 environ['QUERY_STRING'])
+    url_scheme = 'http'
+    if 'HTTP_X_APPENGINE_DEV_LOCALSSL' in environ:
+      url_scheme = 'https'
+    url = '%s://%s:%s%s?%s' % (url_scheme,
+                               self._get_request_host(user_environ),
+                               user_environ['SERVER_PORT'],
+                               urllib.quote(environ['PATH_INFO']),
+                               environ['QUERY_STRING'])
     return runtime.HandleRequest(user_environ, script, url, body,
                                  self.config.application_root,
                                  self._PYTHON_LIB_DIR)

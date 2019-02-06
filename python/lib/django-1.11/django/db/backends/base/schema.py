@@ -2,7 +2,8 @@ import hashlib
 import logging
 from datetime import datetime
 
-from django.db.backends.utils import strip_quotes
+from django.db.backends.utils import split_identifier
+from django.db.models import Index
 from django.db.transaction import TransactionManagementError, atomic
 from django.utils import six, timezone
 from django.utils.encoding import force_bytes
@@ -433,6 +434,7 @@ class BaseDatabaseSchemaEditor(object):
                 "table": self.quote_name(model._meta.db_table),
                 "changes": self.sql_alter_column_no_default % {
                     "column": self.quote_name(field.column),
+                    "type": db_params['type'],
                 }
             }
             self.execute(sql)
@@ -541,9 +543,15 @@ class BaseDatabaseSchemaEditor(object):
                 ))
             for constraint_name in constraint_names:
                 self.execute(self._delete_constraint_sql(self.sql_delete_unique, model, constraint_name))
-        # Drop incoming FK constraints if we're a primary key and things are going
-        # to change.
-        if old_field.primary_key and new_field.primary_key and old_type != new_type:
+        # Drop incoming FK constraints if the field is a primary key or unique,
+        # which might be a to_field target, and things are going to change.
+        drop_foreign_keys = (
+            (
+                (old_field.primary_key and new_field.primary_key) or
+                (old_field.unique and new_field.unique)
+            ) and old_type != new_type
+        )
+        if drop_foreign_keys:
             # '_meta.related_field' also contains M2M reverse fields, these
             # will be filtered out
             for _old_rel, new_rel in _related_non_m2m_objects(old_field, new_field):
@@ -564,8 +572,16 @@ class BaseDatabaseSchemaEditor(object):
         # True               | False            | True               | True
         if old_field.db_index and not old_field.unique and (not new_field.db_index or new_field.unique):
             # Find the index for this field
-            index_names = self._constraint_names(model, [old_field.column], index=True)
+            meta_index_names = {index.name for index in model._meta.indexes}
+            # Retrieve only BTREE indexes since this is what's created with
+            # db_index=True.
+            index_names = self._constraint_names(model, [old_field.column], index=True, type_=Index.suffix)
             for index_name in index_names:
+                if index_name in meta_index_names:
+                    # The only way to check if an index was created with
+                    # db_index=True or with Index(['field'], name='foo')
+                    # is to look at its name (refs #28053).
+                    continue
                 self.execute(self._delete_constraint_sql(self.sql_delete_index, model, index_name))
         # Change check constraints?
         if old_db_params['check'] != new_db_params['check'] and old_db_params['check']:
@@ -762,9 +778,9 @@ class BaseDatabaseSchemaEditor(object):
                 new_field.db_constraint):
             self.execute(self._create_fk_sql(model, new_field, "_fk_%(to_table)s_%(to_column)s"))
         # Rebuild FKs that pointed to us if we previously had to drop them
-        if old_field.primary_key and new_field.primary_key and old_type != new_type:
+        if drop_foreign_keys:
             for rel in new_field.model._meta.related_objects:
-                if not rel.many_to_many:
+                if not rel.many_to_many and rel.field.db_constraint:
                     self.execute(self._create_fk_sql(rel.related_model, rel.field, "_fk"))
         # Does it have check constraints we need to add?
         if old_db_params['check'] != new_db_params['check'] and new_db_params['check']:
@@ -842,7 +858,7 @@ class BaseDatabaseSchemaEditor(object):
         The name is divided into 3 parts: the table name, the column names,
         and a unique digest and suffix.
         """
-        table_name = strip_quotes(model._meta.db_table)
+        _, table_name = split_identifier(model._meta.db_table)
         hash_data = [table_name] + list(column_names)
         hash_suffix_part = '%s%s' % (self._digest(*hash_data), suffix)
         max_length = self.connection.ops.max_name_length() or 200
@@ -935,7 +951,7 @@ class BaseDatabaseSchemaEditor(object):
     def _create_fk_sql(self, model, field, suffix):
         from_table = model._meta.db_table
         from_column = field.column
-        to_table = field.target_field.model._meta.db_table
+        _, to_table = split_identifier(field.target_field.model._meta.db_table)
         to_column = field.target_field.column
         suffix = suffix % {
             "to_table": to_table,
@@ -946,7 +962,7 @@ class BaseDatabaseSchemaEditor(object):
             "table": self.quote_name(from_table),
             "name": self.quote_name(self._create_index_name(model, [from_column], suffix=suffix)),
             "column": self.quote_name(from_column),
-            "to_table": self.quote_name(to_table),
+            "to_table": self.quote_name(field.target_field.model._meta.db_table),
             "to_column": self.quote_name(to_column),
             "deferrable": self.connection.ops.deferrable_sql(),
         }
@@ -966,7 +982,7 @@ class BaseDatabaseSchemaEditor(object):
 
     def _constraint_names(self, model, column_names=None, unique=None,
                           primary_key=None, index=None, foreign_key=None,
-                          check=None):
+                          check=None, type_=None):
         """
         Returns all constraint names matching the columns and conditions
         """
@@ -989,6 +1005,8 @@ class BaseDatabaseSchemaEditor(object):
                 if check is not None and infodict['check'] != check:
                     continue
                 if foreign_key is not None and not infodict['foreign_key']:
+                    continue
+                if type_ is not None and infodict['type'] != type_:
                     continue
                 result.append(name)
         return result

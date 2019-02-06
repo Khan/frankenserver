@@ -2770,6 +2770,261 @@ namespace storage_onestore_v3 {
     }
   }
 }
+namespace storage_onestore_v3\EntitySummary {
+  class PropertySummary extends \google\net\ProtocolMessage {
+    public function getName() {
+      if (!isset($this->name)) {
+        return '';
+      }
+      return $this->name;
+    }
+    public function setName($val) {
+      $this->name = $val;
+      return $this;
+    }
+    public function clearName() {
+      unset($this->name);
+      return $this;
+    }
+    public function hasName() {
+      return isset($this->name);
+    }
+    public function getPropertyTypeForStats() {
+      if (!isset($this->property_type_for_stats)) {
+        return '';
+      }
+      return $this->property_type_for_stats;
+    }
+    public function setPropertyTypeForStats($val) {
+      $this->property_type_for_stats = $val;
+      return $this;
+    }
+    public function clearPropertyTypeForStats() {
+      unset($this->property_type_for_stats);
+      return $this;
+    }
+    public function hasPropertyTypeForStats() {
+      return isset($this->property_type_for_stats);
+    }
+    public function getSizeBytes() {
+      if (!isset($this->size_bytes)) {
+        return 0;
+      }
+      return $this->size_bytes;
+    }
+    public function setSizeBytes($val) {
+      $this->size_bytes = $val;
+      return $this;
+    }
+    public function clearSizeBytes() {
+      unset($this->size_bytes);
+      return $this;
+    }
+    public function hasSizeBytes() {
+      return isset($this->size_bytes);
+    }
+    public function clear() {
+      $this->clearName();
+      $this->clearPropertyTypeForStats();
+      $this->clearSizeBytes();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->name)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->name));
+      }
+      if (isset($this->property_type_for_stats)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->property_type_for_stats));
+      }
+      if (isset($this->size_bytes)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->size_bytes);
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->name)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->name);
+      }
+      if (isset($this->property_type_for_stats)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->property_type_for_stats);
+      }
+      if (isset($this->size_bytes)) {
+        $out->putVarInt32(24);
+        $out->putVarInt32($this->size_bytes);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setName(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->setPropertyTypeForStats(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 24:
+            $this->setSizeBytes($d->getVarInt32());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->name)) return 'name';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasName()) {
+        $this->setName($x->getName());
+      }
+      if ($x->hasPropertyTypeForStats()) {
+        $this->setPropertyTypeForStats($x->getPropertyTypeForStats());
+      }
+      if ($x->hasSizeBytes()) {
+        $this->setSizeBytes($x->getSizeBytes());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->name) !== isset($x->name)) return false;
+      if (isset($this->name) && $this->name !== $x->name) return false;
+      if (isset($this->property_type_for_stats) !== isset($x->property_type_for_stats)) return false;
+      if (isset($this->property_type_for_stats) && $this->property_type_for_stats !== $x->property_type_for_stats) return false;
+      if (isset($this->size_bytes) !== isset($x->size_bytes)) return false;
+      if (isset($this->size_bytes) && !$this->integerEquals($this->size_bytes, $x->size_bytes)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->name)) {
+        $res .= $prefix . "name: " . $this->debugFormatString($this->name) . "\n";
+      }
+      if (isset($this->property_type_for_stats)) {
+        $res .= $prefix . "property_type_for_stats: " . $this->debugFormatString($this->property_type_for_stats) . "\n";
+      }
+      if (isset($this->size_bytes)) {
+        $res .= $prefix . "size_bytes: " . $this->debugFormatInt32($this->size_bytes) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace storage_onestore_v3 {
+  class EntitySummary extends \google\net\ProtocolMessage {
+    private $large_raw_property = array();
+    public function getLargeRawPropertySize() {
+      return sizeof($this->large_raw_property);
+    }
+    public function getLargeRawPropertyList() {
+      return $this->large_raw_property;
+    }
+    public function mutableLargeRawProperty($idx) {
+      if (!isset($this->large_raw_property[$idx])) {
+        $val = new \storage_onestore_v3\EntitySummary\PropertySummary();
+        $this->large_raw_property[$idx] = $val;
+        return $val;
+      }
+      return $this->large_raw_property[$idx];
+    }
+    public function getLargeRawProperty($idx) {
+      if (isset($this->large_raw_property[$idx])) {
+        return $this->large_raw_property[$idx];
+      }
+      if ($idx >= end(array_keys($this->large_raw_property))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \storage_onestore_v3\EntitySummary\PropertySummary();
+    }
+    public function addLargeRawProperty() {
+      $val = new \storage_onestore_v3\EntitySummary\PropertySummary();
+      $this->large_raw_property[] = $val;
+      return $val;
+    }
+    public function clearLargeRawProperty() {
+      $this->large_raw_property = array();
+    }
+    public function clear() {
+      $this->clearLargeRawProperty();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      $this->checkProtoArray($this->large_raw_property);
+      $res += 1 * sizeof($this->large_raw_property);
+      foreach ($this->large_raw_property as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      $this->checkProtoArray($this->large_raw_property);
+      foreach ($this->large_raw_property as $value) {
+        $out->putVarInt32(10);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addLargeRawProperty()->tryMerge($tmp);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      foreach ($this->large_raw_property as $value) {
+        if (!$value->isInitialized()) return 'large_raw_property';
+      }
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      foreach ($x->getLargeRawPropertyList() as $v) {
+        $this->addLargeRawProperty()->copyFrom($v);
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (sizeof($this->large_raw_property) !== sizeof($x->large_raw_property)) return false;
+      foreach (array_map(null, $this->large_raw_property, $x->large_raw_property) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      foreach ($this->large_raw_property as $value) {
+        $res .= $prefix . "large_raw_property <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
 namespace storage_onestore_v3 {
   class CompositeProperty extends \google\net\ProtocolMessage {
     private $value = array();
@@ -2902,6 +3157,7 @@ namespace storage_onestore_v3\Index {
     const VERSION_UNSPECIFIED = 0;
     const V1 = 1;
     const V2 = 2;
+    const V3 = 3;
   }
 }
 namespace storage_onestore_v3\Index\Property {
@@ -2915,6 +3171,7 @@ namespace storage_onestore_v3\Index\Property {
   class Mode {
     const MODE_UNSPECIFIED = 0;
     const GEOSPATIAL = 3;
+    const ARRAY_CONTAINS = 4;
   }
 }
 namespace storage_onestore_v3\Index {

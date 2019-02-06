@@ -35,7 +35,7 @@ else:
 
 
 def start_process(args, input_string='', env=None, cwd=None, stdout=None,
-                  stderr=None):
+                  stderr=None, shell=False):
   """Starts a subprocess like subprocess.Popen, but is threadsafe.
 
   The value of input_string is passed to stdin of the subprocess, which is then
@@ -51,6 +51,8 @@ def start_process(args, input_string='', env=None, cwd=None, stdout=None,
         stdout descriptor for the subprocess.
     stderr: A file descriptor, file object or subprocess.PIPE to use for the
         stderr descriptor for the subprocess.
+    shell: A boolean. If True, the specified command will be executed through
+        the shell.
 
   Returns:
     A subprocess.Popen instance for the created subprocess.
@@ -70,8 +72,11 @@ def start_process(args, input_string='', env=None, cwd=None, stdout=None,
     else:
       startupinfo = None
 
+    if shell:
+      args = ' '.join(args)
     p = subprocess.Popen(args, env=env, cwd=cwd, stdout=stdout, stderr=stderr,
-                         stdin=subprocess.PIPE, startupinfo=startupinfo)
+                         stdin=subprocess.PIPE, startupinfo=startupinfo,
+                         shell=shell)
     if _SUBPROCESS_STDIN_IS_THREAD_HOSTILE:
       p.stdin.write(input_string)
       p.stdin.close()

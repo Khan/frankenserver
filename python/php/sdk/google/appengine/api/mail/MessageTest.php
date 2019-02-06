@@ -258,6 +258,7 @@ class MessageTest extends ApiProxyTestBase {
    * - bcc, bcc (array)
    * - cc, cc (array)
    * - html body
+   * - amp html body
    * - reply to
    */
   public function testSucceedFields() {
@@ -265,29 +266,32 @@ class MessageTest extends ApiProxyTestBase {
     $message_proto = new MailMessage();
     $this->setupMessageSimple($message, $message_proto);
 
-    $message->addTo(array("b@test.com", "c@test.com"));
-    $message_proto->addTo("b@test.com");
-    $message_proto->addTo("c@test.com");
+    $message->addTo(['b@test.com', 'c@test.com']);
+    $message_proto->addTo('b@test.com');
+    $message_proto->addTo('c@test.com');
 
-    $message->addBcc("a@example.com");
-    $message_proto->addBcc("a@example.com");
+    $message->addBcc('a@example.com');
+    $message_proto->addBcc('a@example.com');
 
-    $message->addBcc(array("b@example.com", "c@example.com"));
-    $message_proto->addBcc("b@example.com");
-    $message_proto->addBcc("c@example.com");
+    $message->addBcc(['b@example.com', 'c@example.com']);
+    $message_proto->addBcc('b@example.com');
+    $message_proto->addBcc('c@example.com');
 
-    $message->addCc("d@example.com");
-    $message_proto->addCc("d@example.com");
+    $message->addCc('d@example.com');
+    $message_proto->addCc('d@example.com');
 
-    $message->addCc(array("e@example.com", "f@example.com"));
-    $message_proto->addCc("e@example.com");
-    $message_proto->addCc("f@example.com");
+    $message->addCc(['e@example.com', 'f@example.com']);
+    $message_proto->addCc('e@example.com');
+    $message_proto->addCc('f@example.com');
 
-    $message->setHtmlBody("text body");
-    $message_proto->setHtmlbody("text body");
+    $message->setHtmlBody('text body');
+    $message_proto->setHtmlbody('text body');
 
-    $message->setReplyTo("reply@example.com");
-    $message_proto->setReplyto("reply@example.com");
+    $message->setAmpHtmlBody('amp html body');
+    $message_proto->setAmpHtmlBody('amp html body');
+
+    $message->setReplyTo('reply@example.com');
+    $message_proto->setReplyto('reply@example.com');
 
     $response = new VoidProto();
     $this->apiProxyMock->expectCall('mail', 'Send', $message_proto, $response);

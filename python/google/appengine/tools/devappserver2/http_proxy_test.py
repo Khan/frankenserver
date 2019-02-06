@@ -187,6 +187,49 @@ class HttpProxyTest(wsgi_test_utils.WSGITestCase):
                         request_type=instance.NORMAL_REQUEST)
     self.mox.VerifyAll()
 
+  def test_handle_ssl(self):
+    response = FakeHttpResponse(200,
+                                'OK',
+                                [('Foo', 'a'), ('Foo', 'b'), ('Var', 'c')],
+                                'response')
+    login.get_user_info(None).AndReturn(('', False, ''))
+    httplib.HTTPConnection.connect()  # pylint: disable=no-value-for-parameter
+    httplib.HTTPConnection.request(
+        'GET', '/get%20request?key=value', None,
+        {'HEADER': 'value',
+         http_runtime_constants.REQUEST_ID_HEADER: 'request id',
+         'X-AppEngine-Country': 'ZZ',
+         'X-Appengine-User-Email': '',
+         'X-Appengine-User-Id': '',
+         'X-Appengine-User-Is-Admin': '0',
+         'X-Appengine-User-Nickname': '',
+         'X-Appengine-User-Organization': '',
+         'X-Appengine-Dev-LocalSSL': '1',
+         'X-APPENGINE-DEV-SCRIPT': 'get.py',
+         'X-APPENGINE-SERVER-NAME': 'localhost',
+         'X-APPENGINE-SERVER-PORT': '8080',
+         'X-APPENGINE-SERVER-PROTOCOL': 'HTTP/1.1',
+        })
+    httplib.HTTPConnection.getresponse().AndReturn(response)  # pylint: disable=no-value-for-parameter
+    httplib.HTTPConnection.close()  # pylint: disable=no-value-for-parameter
+    environ = {'HTTP_HEADER': 'value', 'PATH_INFO': '/get request',
+               'QUERY_STRING': 'key=value',
+               'HTTP_X_APPENGINE_USER_ID': '123',
+               'SERVER_NAME': 'localhost',
+               'SERVER_PORT': '8080',
+               'SERVER_PROTOCOL': 'HTTP/1.1',
+               'wsgi.url_scheme': 'https',
+              }
+    self.mox.ReplayAll()
+    expected_headers = [('Foo', 'a'), ('Foo', 'b'), ('Var', 'c')]
+    self.assertResponse('200 OK', expected_headers, 'response',
+                        self.proxy.handle, environ,
+                        url_map=self.url_map,
+                        match=re.match(self.url_map.url, '/get%20request'),
+                        request_id='request id',
+                        request_type=instance.NORMAL_REQUEST)
+    self.mox.VerifyAll()
+
   def test_handle_with_error(self):
     error_handler_file = os.path.join(self.tmpdir, 'error.html')
     with open(error_handler_file, 'w') as f:

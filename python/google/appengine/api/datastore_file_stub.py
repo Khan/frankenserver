@@ -45,7 +45,6 @@ import collections
 import logging
 import os
 import struct
-import sys
 import tempfile
 import threading
 import weakref
@@ -480,16 +479,7 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
               datastore_pb.Error.INTERNAL_ERROR,
               self.READ_ERROR_MSG % (self.__datastore_file, e))
         except struct.error, e:
-          if (sys.version_info[0:3] == (2, 5, 0)
-              and e.message.startswith('unpack requires a string argument')):
-
-
-            raise apiproxy_errors.ApplicationError(
-                datastore_pb.Error.INTERNAL_ERROR,
-                self.READ_PY250_MSG + self.READ_ERROR_MSG %
-                (self.__datastore_file, e))
-          else:
-            raise
+          raise
 
         self._StoreRecord(record)
 

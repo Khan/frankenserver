@@ -42,7 +42,9 @@ except ImportError:
 
 import atexit
 import collections
+import httplib
 import itertools
+import json
 import logging
 import os
 import random
@@ -51,6 +53,8 @@ import threading
 import time
 import weakref
 
+from google.net.proto import ProtocolBuffer
+from google.appengine.datastore import entity_pb
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_admin
@@ -65,8 +69,6 @@ from google.appengine.datastore import datastore_query
 from google.appengine.datastore import datastore_stub_index
 from google.appengine.datastore import datastore_v4_pb
 from google.appengine.runtime import apiproxy_errors
-from google.net.proto import ProtocolBuffer
-from google.appengine.datastore import entity_pb
 
 if datastore_pbs._CLOUD_DATASTORE_ENABLED:
   from google.appengine.datastore.datastore_pbs import googledatastore
@@ -177,6 +179,12 @@ _MAX_SCATTERED_ID = _MAX_SEQUENTIAL_ID + 1 + _MAX_SCATTERED_COUNTER
 
 
 _SCATTER_SHIFT = 64 - _MAX_SEQUENTIAL_BIT + 1
+
+
+
+
+
+_EMULATOR_CONFIG_CACHE = None
 
 
 def _GetScatterProperty(entity_proto):
@@ -2065,6 +2073,9 @@ class PseudoRandomHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
       seed: A hashable object to use as a seed. Use None to use the current
         timestamp.
     """
+    self.is_using_cloud_datastore_emulator = False
+    self.emulator_port = None
+
     self.SetProbability(probability)
     self.SetSeed(seed)
 
@@ -2072,17 +2083,32 @@ class PseudoRandomHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
     """Change the probability of a transaction applying.
 
     Args:
-      probability: A number between 0 and 1 that determins the probability of a
+      probability: A number between 0 and 1 that determines the probability of a
         transaction applying before a global query is run.
     """
     if probability < 0 or probability > 1:
       raise TypeError('probability must be a number between 0 and 1, found %r' %
                       probability)
     self._probability = probability
+    if self.is_using_cloud_datastore_emulator:
+      UpdateEmulatorConfig(port=self.emulator_port, consistency_policy=self)
 
   def SetSeed(self, seed):
     """Reset the seed."""
     self._random = random.Random(seed)
+    self._seed = seed
+    if self.is_using_cloud_datastore_emulator:
+      UpdateEmulatorConfig(port=self.emulator_port, consistency_policy=self)
+
+  @property
+  def probability(self):
+    """Return the probability of applying a job."""
+    return self._probability
+
+  @property
+  def random_seed(self):
+    """Return the random seed."""
+    return self._seed
 
   def _ShouldApply(self, txn, meta_data):
     return self._random.random() < self._probability
@@ -2141,10 +2167,6 @@ class BaseTransactionManager(object):
     Returns:
       A datastore_pb.Transaction for the created transaction
     """
-    Check(not (allow_multiple_eg and isinstance(
-        self._consistency_policy, MasterSlaveConsistencyPolicy)),
-          'transactions on multiple entity groups only allowed with the '
-          'High Replication datastore')
     Check((previous_transaction is None) or
           mode == datastore_pb.BeginTransactionRequest.READ_WRITE,
           'previous_transaction can only be set in READ_WRITE mode')
@@ -2461,6 +2483,21 @@ class BaseIndexManager(object):
 
   def _OnIndexChange(self, app_id):
     pass
+
+
+def _CheckAutoIdPolicy(auto_id_policy):
+  """Check value of auto_id_policy.
+
+  Args:
+    auto_id_policy: string constant.
+
+  Raises:
+    TypeError: if auto_id_policy is not one of SEQUENTIAL or SCATTERED.
+  """
+  valid_policies = (SEQUENTIAL, SCATTERED)
+  if auto_id_policy not in valid_policies:
+    raise TypeError('auto_id_policy must be in %s, found %s instead',
+                    valid_policies, auto_id_policy)
 
 
 class BaseDatastore(BaseTransactionManager, BaseIndexManager):
@@ -2909,10 +2946,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     Raises:
       TypeError: if auto_id_policy is not one of SEQUENTIAL or SCATTERED.
     """
-    valid_policies = (SEQUENTIAL, SCATTERED)
-    if auto_id_policy not in valid_policies:
-      raise TypeError('auto_id_policy must be in %s, found %s instead',
-                      valid_policies, auto_id_policy)
+    _CheckAutoIdPolicy(auto_id_policy)
     self._auto_id_policy = auto_id_policy
 
 
@@ -5383,3 +5417,81 @@ def _SetBeforeAscending(position, first_direction):
   position.set_before_ascending(
       position.before()
       != (first_direction == datastore_pb.Query_Order.DESCENDING))
+
+
+def _CheckConsistencyPolicyForCloudEmulator(consistency_policy):
+  """Check if a consistency policy is supported by GCD Emulator.
+
+  Args:
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+
+  Raises:
+    UnsupportedConsistencyPolicyError: Consistency policy is not an instance
+      of the above two policies.
+  """
+  if not isinstance(
+      consistency_policy, (
+          MasterSlaveConsistencyPolicy, PseudoRandomHRConsistencyPolicy)):
+    raise TypeError(
+        'Using Cloud Datastore Emulator, consistency policy must be in in '
+        '(%s, %s), found %s instead' % (
+            MasterSlaveConsistencyPolicy.__name__,
+            PseudoRandomHRConsistencyPolicy.__name__,
+            consistency_policy.__class__))
+
+
+def _BuildEmulatorConfigJson(auto_id_policy=None, consistency_policy=None):
+  """Update the emulator config with its client side cache.
+
+  Args:
+    auto_id_policy: A string indicating how GCD Emulator assigns auto IDs,
+      should be either SEQUENTIAL or SCATTERED.
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+
+  Returns:
+    A dict representing emulator_config.
+  """
+
+
+  emulator_config = {}
+  if auto_id_policy:
+    _CheckAutoIdPolicy(auto_id_policy)
+    emulator_config['idAllocationPolicy'] = {'policy': auto_id_policy.upper()}
+  if consistency_policy:
+    _CheckConsistencyPolicyForCloudEmulator(consistency_policy)
+    emulator_config['jobPolicy'] = {}
+    if isinstance(consistency_policy, MasterSlaveConsistencyPolicy):
+      emulator_config['jobPolicy']['forceStrongConsistency'] = True
+    else:
+      emulator_config['jobPolicy'] = {
+          'probabilityJobPolicy': {
+              'randomSeed': consistency_policy.random_seed,
+              'unappliedJobPercentage': 100.0 * (
+                  1.0 - consistency_policy.probability)}
+      }
+  return emulator_config
+
+
+def UpdateEmulatorConfig(
+    port, auto_id_policy=None, consistency_policy=None):
+  """Update the cloud datastore emulator's config with its client side cache.
+
+  Args:
+    port: A integer indicating the port number of emulator.
+    auto_id_policy: A string indicating how GCD Emulator assigns auto IDs,
+      should be either SEQUENTIAL or SCATTERED.
+    consistency_policy: An instance of PseudoRandomHRConsistencyPolicy or
+      MasterSlaveConsistencyPolicy.
+  """
+  emulator_config = _BuildEmulatorConfigJson(auto_id_policy, consistency_policy)
+  global _EMULATOR_CONFIG_CACHE
+  if not _EMULATOR_CONFIG_CACHE or _EMULATOR_CONFIG_CACHE != emulator_config:
+    connection = httplib.HTTPConnection('localhost', port)
+    connection.request('PATCH', '/v1/config', json.dumps(emulator_config),
+                       {'Content-Type': 'application/json'})
+    response = connection.getresponse()
+
+    response.read()
+    _EMULATOR_CONFIG_CACHE = emulator_config

@@ -20,7 +20,12 @@
 from google.net.proto import ProtocolBuffer
 import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -106,7 +111,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -116,7 +121,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -238,7 +243,7 @@ class URLFetchRequest_Header(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -386,7 +391,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_method()): self.set_method(x.method())
     if (x.has_url()): self.set_url(x.url())
-    for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
+    for i in range(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_payload()): self.set_payload(x.payload())
     if (x.has_followredirects()): self.set_followredirects(x.followredirects())
     if (x.has_deadline()): self.set_deadline(x.deadline())
@@ -430,7 +435,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.method_)
     n += self.lengthString(len(self.url_))
     n += 2 * len(self.header_)
-    for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
+    for i in range(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_payload_): n += 1 + self.lengthString(len(self.payload_))
     if (self.has_followredirects_): n += 2
     if (self.has_deadline_): n += 9
@@ -446,7 +451,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.url_))
     n += 2 * len(self.header_)
-    for i in xrange(len(self.header_)): n += self.header_[i].ByteSizePartial()
+    for i in range(len(self.header_)): n += self.header_[i].ByteSizePartial()
     if (self.has_payload_): n += 1 + self.lengthString(len(self.payload_))
     if (self.has_followredirects_): n += 2
     if (self.has_deadline_): n += 9
@@ -467,7 +472,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(self.method_)
     out.putVarInt32(18)
     out.putPrefixedString(self.url_)
-    for i in xrange(len(self.header_)):
+    for i in range(len(self.header_)):
       out.putVarInt32(27)
       self.header_[i].OutputUnchecked(out)
       out.putVarInt32(28)
@@ -491,7 +496,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_url_):
       out.putVarInt32(18)
       out.putPrefixedString(self.url_)
-    for i in xrange(len(self.header_)):
+    for i in range(len(self.header_)):
       out.putVarInt32(27)
       self.header_[i].OutputPartial(out)
       out.putVarInt32(28)
@@ -534,7 +539,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -558,7 +563,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kMethod = 1
   kUrl = 2
@@ -707,7 +712,7 @@ class URLFetchResponse_Header(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -879,7 +884,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_content()): self.set_content(x.content())
     if (x.has_statuscode()): self.set_statuscode(x.statuscode())
-    for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
+    for i in range(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_contentwastruncated()): self.set_contentwastruncated(x.contentwastruncated())
     if (x.has_externalbytessent()): self.set_externalbytessent(x.externalbytessent())
     if (x.has_externalbytesreceived()): self.set_externalbytesreceived(x.externalbytesreceived())
@@ -928,7 +933,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_content_): n += 1 + self.lengthString(len(self.content_))
     n += self.lengthVarInt64(self.statuscode_)
     n += 2 * len(self.header_)
-    for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
+    for i in range(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_contentwastruncated_): n += 2
     if (self.has_externalbytessent_): n += 1 + self.lengthVarInt64(self.externalbytessent_)
     if (self.has_externalbytesreceived_): n += 1 + self.lengthVarInt64(self.externalbytesreceived_)
@@ -945,7 +950,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthVarInt64(self.statuscode_)
     n += 2 * len(self.header_)
-    for i in xrange(len(self.header_)): n += self.header_[i].ByteSizePartial()
+    for i in range(len(self.header_)): n += self.header_[i].ByteSizePartial()
     if (self.has_contentwastruncated_): n += 2
     if (self.has_externalbytessent_): n += 1 + self.lengthVarInt64(self.externalbytessent_)
     if (self.has_externalbytesreceived_): n += 1 + self.lengthVarInt64(self.externalbytesreceived_)
@@ -973,7 +978,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.content_)
     out.putVarInt32(16)
     out.putVarInt32(self.statuscode_)
-    for i in xrange(len(self.header_)):
+    for i in range(len(self.header_)):
       out.putVarInt32(27)
       self.header_[i].OutputUnchecked(out)
       out.putVarInt32(28)
@@ -1006,7 +1011,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_statuscode_):
       out.putVarInt32(16)
       out.putVarInt32(self.statuscode_)
-    for i in xrange(len(self.header_)):
+    for i in range(len(self.header_)):
       out.putVarInt32(27)
       self.header_[i].OutputPartial(out)
       out.putVarInt32(28)
@@ -1067,7 +1072,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1094,7 +1099,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kContent = 1
   kStatusCode = 2

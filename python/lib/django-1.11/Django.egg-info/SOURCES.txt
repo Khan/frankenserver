@@ -2164,6 +2164,7 @@ django/contrib/postgres/forms/array.py
 django/contrib/postgres/forms/hstore.py
 django/contrib/postgres/forms/jsonb.py
 django/contrib/postgres/forms/ranges.py
+django/contrib/postgres/jinja2/postgres/widgets/split_array.html
 django/contrib/postgres/locale/ar/LC_MESSAGES/django.mo
 django/contrib/postgres/locale/ar/LC_MESSAGES/django.po
 django/contrib/postgres/locale/be/LC_MESSAGES/django.mo
@@ -2270,6 +2271,7 @@ django/contrib/postgres/locale/zh_Hans/LC_MESSAGES/django.mo
 django/contrib/postgres/locale/zh_Hans/LC_MESSAGES/django.po
 django/contrib/postgres/locale/zh_Hant/LC_MESSAGES/django.mo
 django/contrib/postgres/locale/zh_Hant/LC_MESSAGES/django.po
+django/contrib/postgres/templates/postgres/widgets/split_array.html
 django/contrib/redirects/__init__.py
 django/contrib/redirects/admin.py
 django/contrib/redirects/apps.py
@@ -3042,6 +3044,7 @@ django/db/migrations/operations/base.py
 django/db/migrations/operations/fields.py
 django/db/migrations/operations/models.py
 django/db/migrations/operations/special.py
+django/db/migrations/operations/utils.py
 django/db/models/__init__.py
 django/db/models/aggregates.py
 django/db/models/base.py
@@ -3325,6 +3328,7 @@ docs/howto/jython.txt
 docs/howto/legacy-databases.txt
 docs/howto/outputting-csv.txt
 docs/howto/outputting-pdf.txt
+docs/howto/overriding-templates.txt
 docs/howto/upgrade-version.txt
 docs/howto/windows.txt
 docs/howto/writing-migrations.txt
@@ -3531,7 +3535,17 @@ docs/releases/1.10.4.txt
 docs/releases/1.10.5.txt
 docs/releases/1.10.6.txt
 docs/releases/1.10.7.txt
+docs/releases/1.10.8.txt
 docs/releases/1.10.txt
+docs/releases/1.11.1.txt
+docs/releases/1.11.2.txt
+docs/releases/1.11.3.txt
+docs/releases/1.11.4.txt
+docs/releases/1.11.5.txt
+docs/releases/1.11.6.txt
+docs/releases/1.11.7.txt
+docs/releases/1.11.8.txt
+docs/releases/1.11.9.txt
 docs/releases/1.11.txt
 docs/releases/1.2.1.txt
 docs/releases/1.2.2.txt
@@ -4014,6 +4028,7 @@ tests/context_processors/views.py
 tests/context_processors/templates/context_processors/debug.html
 tests/context_processors/templates/context_processors/request_attrs.html
 tests/csrf_tests/__init__.py
+tests/csrf_tests/csrf_token_error_handler_urls.py
 tests/csrf_tests/test_context_processor.py
 tests/csrf_tests/tests.py
 tests/csrf_tests/views.py
@@ -4261,8 +4276,10 @@ tests/forms_tests/widget_tests/test_input.py
 tests/forms_tests/widget_tests/test_multiplehiddeninput.py
 tests/forms_tests/widget_tests/test_multiwidget.py
 tests/forms_tests/widget_tests/test_nullbooleanselect.py
+tests/forms_tests/widget_tests/test_numberinput.py
 tests/forms_tests/widget_tests/test_passwordinput.py
 tests/forms_tests/widget_tests/test_radioselect.py
+tests/forms_tests/widget_tests/test_render_deprecation.py
 tests/forms_tests/widget_tests/test_select.py
 tests/forms_tests/widget_tests/test_selectdatewidget.py
 tests/forms_tests/widget_tests/test_selectmultiple.py

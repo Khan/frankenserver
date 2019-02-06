@@ -305,11 +305,10 @@ def _RemoveRedundantHandlers(handler_list):
 
   no_duplicates = []
   patterns_found_so_far = set()
-  for i in xrange(len(handler_list)):
-    current_handler = handler_list[i]
+  for i, current_handler in enumerate(handler_list):
     matched_by_later = False
-    for j in xrange(i + 1, len(handler_list)):
-      if current_handler.IsFullyHandledBy(handler_list[j]):
+    for other_handler in handler_list[i+1:]:
+      if current_handler.IsFullyHandledBy(other_handler):
         matched_by_later = True
         break
 
@@ -351,7 +350,7 @@ def _ReorderHandlers(handler_list):
   Args:
     handler_list: Unordered list of handlers.
   """
-  for i, j in itertools.combinations(xrange(len(handler_list)), 2):
+  for i, j in itertools.combinations(range(len(handler_list)), 2):
     if handler_list[i].MatchesAll(handler_list[j]):
       handler_list[i], handler_list[j] = handler_list[j], handler_list[i]
 
@@ -372,7 +371,7 @@ def _GivePropertiesFromGeneralToSpecific(handler_list):
   Args:
     handler_list: List of ordered Handlers.
   """
-  for i, j in itertools.combinations(xrange(len(handler_list)), 2):
+  for i, j in itertools.combinations(range(len(handler_list)), 2):
     if handler_list[j].MatchesAll(handler_list[i]):
       if isinstance(handler_list[i], SimpleHandler):
         handler_list[i] = handler_list[i].CreateOverlappedHandler()

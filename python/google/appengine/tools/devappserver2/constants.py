@@ -127,3 +127,9 @@ INSTANCE_CLASS_MEMORY_LIMIT = {
     'F4': 512,
     'F4_1G': 1024
 }
+
+# Prefixes of log messages when starting subprocesses. Complete log messages
+# will all be in the format of "My log msg prefix: <host>:<port>"
+API_SERVER_STARTING_MSG = 'Starting API server at'
+GRPC_API_SERVER_STARTING_MSG = 'Starting gRPC API server at'
+DATASTORE_EMULATOR_STARTING_MSG = 'Starting Cloud Datastore emulator at'

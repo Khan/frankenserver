@@ -24,6 +24,7 @@ Library for parsing client_deploy.yaml files and working with these in memory.
 
 
 
+from __future__ import absolute_import
 import os
 
 

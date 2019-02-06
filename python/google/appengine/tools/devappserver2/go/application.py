@@ -37,14 +37,9 @@ from google.appengine.tools.devappserver2.go import goroots
 # confident depending on the goroot and gopath being in the same place relative
 # to it.
 #
-# This gopath will be used in the event that the user does not already have a
-# GOPATH in their os.environ.
-#
 # devappserver2: $HOME/go_appengine/google/appengine/tools/devappserver2
-# gopath:        $HOME/go_appengine/gopath
 ROOT_PATH = os.path.normpath(
     os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..'))
-GOPATH = os.path.join(ROOT_PATH, 'gopath')
 
 
 def _rmtree(directory):
@@ -160,7 +155,6 @@ class GoApplication(object):
         '-arch', self._arch,
         '-dynamic',
         '-goroot', self._goroot,
-        '-gopath', os.environ.get('GOPATH', GOPATH),
         '-nobuild_files', '^' + str(self._module_configuration.nobuild_files),
         '-incremental_rebuild',
         '-unsafe',

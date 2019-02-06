@@ -139,11 +139,9 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
     """
     if not self._runtime_config_getter().go_config.enable_watching_go_path:
       return []
-    try:
-      go_path = os.environ['GOPATH']
-    except KeyError:
-      return []
     else:
+      default_gopath = os.path.join(os.path.expanduser('~'), 'go')
+      go_path = os.environ.get('GOPATH', default_gopath)
       if sys.platform.startswith('win32'):
         roots = go_path.split(';')
       else:

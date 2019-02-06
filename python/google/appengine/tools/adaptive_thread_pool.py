@@ -28,11 +28,15 @@ active workers, or increasing the number when requests latency reduces.
 
 
 import logging
-import Queue
 import sys
 import threading
 import time
 import traceback
+
+import google
+
+from six.moves import queue
+from six.moves import range
 
 from google.appengine.tools.requeue import ReQueue
 
@@ -157,7 +161,7 @@ class WorkerThread(threading.Thread):
 
           try:
             item = self.__work_queue.get(block=True, timeout=1.0)
-          except Queue.Empty:
+          except queue.Empty:
 
             instruction = ThreadGate.HOLD
             continue
@@ -188,7 +192,7 @@ class WorkerThread(threading.Thread):
 
               try:
                 self.__work_queue.reput(item, block=False)
-              except Queue.Full:
+              except queue.Full:
                 logger.error('[%s] Failed to reput work item.', self.getName())
                 raise Error('Failed to reput work item')
             else:
@@ -233,7 +237,7 @@ class AdaptiveThreadPool(object):
                queue_size=None,
                base_thread_name=None,
                worker_thread_factory=WorkerThread,
-               queue_factory=Queue.Queue):
+               queue_factory=queue.Queue):
     """Initialize an AdaptiveThreadPool.
 
     An adaptive thread pool executes WorkItems using a number of
@@ -258,7 +262,7 @@ class AdaptiveThreadPool(object):
     self.__thread_gate = ThreadGate(num_threads)
     self.__num_threads = num_threads
     self.__threads = []
-    for i in xrange(num_threads):
+    for i in range(num_threads):
       thread = worker_thread_factory(self, self.__thread_gate)
       if base_thread_name:
         base = base_thread_name
@@ -287,7 +291,7 @@ class AdaptiveThreadPool(object):
         block indefinitely.
 
     Raises:
-      Queue.Full if the submit queue is full.
+      queue.Full if the submit queue is full.
     """
     self.requeue.put(item, block=block, timeout=timeout)
 
@@ -305,7 +309,7 @@ class AdaptiveThreadPool(object):
       try:
         unused_item = self.requeue.get_nowait()
         self.requeue.task_done()
-      except Queue.Empty:
+      except queue.Empty:
 
         pass
     for thread in self.__threads:
@@ -405,7 +409,7 @@ class ThreadGate(object):
 
   def EnableAllThreads(self):
     """Enable all worker threads."""
-    for unused_idx in xrange(self.__num_threads - self.__enabled_count):
+    for unused_idx in range(self.__num_threads - self.__enabled_count):
       self.EnableThread()
 
   def StartWork(self):

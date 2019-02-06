@@ -110,6 +110,7 @@ answer newbie questions, and generally made Django that much better:
     berto
     Bill Fenner <fenner@gmail.com>
     Bjørn Stabell <bjorn@exoweb.net>
+    Bo Marchman <bo.marchman@gmail.com>
     Bojan Mihelac <bmihelac@mihelac.org>
     Bouke Haarsma <bouke@haarsma.eu>
     Božidar Benko <bbenko@gmail.com>
@@ -459,6 +460,7 @@ answer newbie questions, and generally made Django that much better:
     Lex Berezhny <lex@damoti.com>
     Liang Feng <hutuworm@gmail.com>
     limodou
+    Lincoln Smith <lincoln.smith@anu.edu.au>
     Loek van Gent <loek@barakken.nl>
     Loïc Bistuer <loic.bistuer@sixmedia.com>
     Lowe Thiderman <lowe.thiderman@gmail.com>
@@ -633,6 +635,7 @@ answer newbie questions, and generally made Django that much better:
     pradeep.gowda@gmail.com
     Preston Holmes <preston@ptone.com>
     Preston Timmons <prestontimmons@gmail.com>
+    Rachel Tobin <rmtobin@me.com>
     Rachel Willmer <http://www.willmer.com/kb/>
     Radek Švarz <http://www.svarz.cz/translate/>
     Rajesh Dhawan <rajesh.dhawan@gmail.com>
@@ -732,6 +735,7 @@ answer newbie questions, and generally made Django that much better:
     Sutrisno Efendi <kangfend@gmail.com>
     Swaroop C H <http://www.swaroopch.info>
     Szilveszter Farkas <szilveszter.farkas@gmail.com>
+    Taavi Teska <taaviteska@gmail.com>
     Tai Lee <real.human@mrmachine.net>
     Takashi Matsuo <matsuo.takashi@gmail.com>
     Tareque Hossain <http://www.codexn.com>
@@ -761,6 +765,7 @@ answer newbie questions, and generally made Django that much better:
     Tome Cvitan <tome@cvitan.com>
     Tomek Paczkowski <tomek@hauru.eu>
     Tom Insam
+    Tomer Chachamu
     Tommy Beadle <tbeadle@gmail.com>
     Tom Tobin
     Tore Lundqvist <tore.lundqvist@gmail.com>
@@ -812,6 +817,7 @@ answer newbie questions, and generally made Django that much better:
     Yoong Kang Lim <yoongkang.lim@gmail.com>
     Yusuke Miyazaki <miyazaki.dev@gmail.com>
     Zachary Voase <zacharyvoase@gmail.com>
+    Zach Liu <zachliu@gmail.com>
     Zach Thompson <zthompson47@gmail.com>
     Zain Memon
     Zak Johnson <zakj@nox.cx>
@@ -830,7 +836,6 @@ A big THANK YOU goes to:
 
     Ian Bicking for convincing Adrian to ditch code generation.
 
-    Mark Pilgrim for "Dive Into Python" (http://www.diveintopython.net,
-    http://www.diveintopython3.net).
+    Mark Pilgrim for "Dive Into Python" (http://www.diveintopython3.net).
 
     Guido van Rossum for creating Python.

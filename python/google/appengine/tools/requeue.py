@@ -19,9 +19,12 @@
 
 
 import logging
-import Queue
 import threading
 import time
+
+import google
+
+from six.moves import queue
 
 logger = logging.getLogger('google.appengine.tools.requeue')
 
@@ -34,14 +37,14 @@ class ReQueue(object):
   in addition, getting an item that has been reput does not increase
   the number of outstanding tasks.
 
-  This class shares an interface with Queue.Queue and provides the
+  This class shares an interface with queue.Queue and provides the
   additional reput method.
   """
 
   def __init__(self,
                queue_capacity,
                requeue_capacity=None,
-               queue_factory=Queue.Queue,
+               queue_factory=queue.Queue,
                get_time=time.time):
     """Initialize a ReQueue instance.
 
@@ -109,7 +112,7 @@ class ReQueue(object):
         try:
           result = action()
           success = True
-        except Exception, e:
+        except Exception as e:
 
           if not isinstance(e, exc):
             raise e
@@ -134,12 +137,12 @@ class ReQueue(object):
       timeout: Maximum on how long to wait until the queue is non-full.
 
     Raises:
-      Queue.Full if the queue is full and the timeout expires.
+      queue.Full if the queue is full and the timeout expires.
     """
     def PutAction():
       self.queue.put(item, block=False)
     self._DoWithTimeout(PutAction,
-                        Queue.Full,
+                        queue.Full,
                         self.get_cond,
                         self.put_cond,
                         self.lock,
@@ -160,12 +163,12 @@ class ReQueue(object):
       timeout: Maximum on how long to wait until the queue is non-full.
 
     Raises:
-      Queue.Full is the queue is full and the timeout expires.
+      queue.Full is the queue is full and the timeout expires.
     """
     def ReputAction():
       self.requeue.put(item, block=False)
     self._DoWithTimeout(ReputAction,
-                        Queue.Full,
+                        queue.Full,
                         self.get_cond,
                         self.put_cond,
                         self.lock,
@@ -183,7 +186,7 @@ class ReQueue(object):
       An item from the requeue.
 
     Raises:
-      Queue.Empty if the queue is empty and the timeout expires.
+      queue.Empty if the queue is empty and the timeout expires.
     """
     def GetAction():
 
@@ -192,13 +195,13 @@ class ReQueue(object):
 
 
         self.requeue.task_done()
-      except Queue.Empty:
+      except queue.Empty:
 
         result = self.queue.get(block=False)
 
       return result
     return self._DoWithTimeout(GetAction,
-                               Queue.Empty,
+                               queue.Empty,
                                self.put_cond,
                                self.get_cond,
                                self.lock,

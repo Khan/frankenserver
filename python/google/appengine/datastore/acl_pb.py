@@ -20,7 +20,12 @@
 from google.net.proto import ProtocolBuffer
 import abc
 import array
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -148,7 +153,7 @@ class Scope(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -160,7 +165,7 @@ class Scope(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ktype = 1
   kvalue = 2
@@ -205,7 +210,7 @@ class Entry(ProtocolBuffer.ProtocolMessage):
   display_name_ = ""
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.lazy_init_lock_ = _Lock()
     if contents is not None: self.MergeFromString(contents)
 
   def scope(self):
@@ -335,7 +340,7 @@ class Entry(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -351,7 +356,7 @@ class Entry(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kscope = 1
   kpermission = 2
@@ -416,7 +421,7 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_owner()): self.set_owner(x.owner())
-    for i in xrange(x.entries_size()): self.add_entries().CopyFrom(x.entries(i))
+    for i in range(x.entries_size()): self.add_entries().CopyFrom(x.entries(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -437,14 +442,14 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_owner_): n += 1 + self.lengthString(len(self.owner_))
     n += 1 * len(self.entries_)
-    for i in xrange(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSize())
+    for i in range(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_owner_): n += 1 + self.lengthString(len(self.owner_))
     n += 1 * len(self.entries_)
-    for i in xrange(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSizePartial())
+    for i in range(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -455,7 +460,7 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
     if (self.has_owner_):
       out.putVarInt32(10)
       out.putPrefixedString(self.owner_)
-    for i in xrange(len(self.entries_)):
+    for i in range(len(self.entries_)):
       out.putVarInt32(18)
       out.putVarInt32(self.entries_[i].ByteSize())
       self.entries_[i].OutputUnchecked(out)
@@ -464,7 +469,7 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
     if (self.has_owner_):
       out.putVarInt32(10)
       out.putPrefixedString(self.owner_)
-    for i in xrange(len(self.entries_)):
+    for i in range(len(self.entries_)):
       out.putVarInt32(18)
       out.putVarInt32(self.entries_[i].ByteSizePartial())
       self.entries_[i].OutputPartial(out)
@@ -483,7 +488,7 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -502,7 +507,7 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kowner = 1
   kentries = 2

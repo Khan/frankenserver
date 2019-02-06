@@ -37,7 +37,6 @@ constant values instead of app-specific values:
 
 import binascii
 import logging
-import sys
 import time
 
 try:
@@ -193,7 +192,7 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
           email_address=email_address,
           private_key_path=private_key_path,
           oauth_url=oauth_url)
-    elif sys.version_info >= (2, 6):
+    else:
       from oauth2client import client
       from google.appengine.api.app_identity import app_identity_defaultcredentialsbased_stub as ai_stub
       try:
@@ -208,10 +207,6 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
                           '. Falling back on dummy AppIdentityServiceStub.',
                           str(error))
         return AppIdentityServiceStub()
-    else:
-      logging.debug('Running under Python 2.5 uses dummy '
-                    'AppIdentityServiceStub.')
-      return AppIdentityServiceStub()
 
   def Clear(self):
     """Resets the state on the App Identity stub."""

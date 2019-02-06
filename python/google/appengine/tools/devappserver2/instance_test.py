@@ -18,10 +18,12 @@
 
 
 
+import os
 import time
 import unittest
 
 import google
+import mock
 import mox
 
 from google.appengine.tools.devappserver2 import instance
@@ -624,6 +626,30 @@ class TestInstance(unittest.TestCase):
     self.assertEqual([(now, 42), (now + 1, 43), (now + 3, 44), (now + 4, 45)],
                      list(inst._request_history))
 
+
+class TestModernInstanceFactoryMixin(unittest.TestCase):
+
+  def setUp(self):
+    self._mix_in = instance.ModernInstanceFactoryMixin()
+    self._mix_in._module_configuration = mock.Mock()
+
+  def test_get_google_cloud_project_from_env(self):
+    self._mix_in._module_configuration.application_external_name = 'p1'
+    os.environ['GOOGLE_CLOUD_PROJECT'] = 'p2'
+    self.assertEqual('p1', self._mix_in._get_google_cloud_project())
+
+  def test_get_google_cloud_project_from_config(self):
+    if 'GOOGLE_CLOUD_PROJECT' in os.environ:
+      del os.environ['GOOGLE_CLOUD_PROJECT']
+    self._mix_in._module_configuration.application_external_name = 'p1'
+    self.assertEqual('p1', self._mix_in._get_google_cloud_project())
+
+  def test_get_google_cloud_project_from_default(self):
+    if 'GOOGLE_CLOUD_PROJECT' in os.environ:
+      del os.environ['GOOGLE_CLOUD_PROJECT']
+    self._mix_in._module_configuration.application_external_name = None
+    self.assertEqual(instance.TEST_GOOGLE_CLOUD_PROJECT,
+                     self._mix_in._get_google_cloud_project())
 
 if __name__ == '__main__':
   unittest.main()

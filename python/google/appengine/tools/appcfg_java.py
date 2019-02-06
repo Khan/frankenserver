@@ -62,8 +62,10 @@ class CompileError(Error):
 
 
 def IsWarFileWithoutYaml(dir_path):
-  if os.path.isfile(os.path.join(dir_path, 'app.yaml')):
-    return False
+  alt_dir_path = os.path.join(dir_path, 'WEB-INF', 'appengine-generated')
+  for yaml_dir_path in (dir_path, alt_dir_path):
+    if os.path.isfile(os.path.join(yaml_dir_path, 'app.yaml')):
+      return False
   web_inf = os.path.join(dir_path, 'WEB-INF')
   return (os.path.isdir(web_inf) and
           set(['appengine-web.xml', 'web.xml']).issubset(os.listdir(web_inf)))

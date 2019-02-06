@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "requests"
-description:
-    "Python HTTP Client"
+description: "Python HTTP Client"
 
 third_party {
   url {

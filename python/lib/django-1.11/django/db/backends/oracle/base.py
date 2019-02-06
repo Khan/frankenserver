@@ -200,9 +200,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                              settings_dict['PASSWORD'], dsn)
 
     def get_connection_params(self):
-        conn_params = self.settings_dict['OPTIONS'].copy()
-        if 'use_returning_into' in conn_params:
-            del conn_params['use_returning_into']
+        # Specify encoding to support unicode in DSN.
+        conn_params = {'encoding': 'UTF-8', 'nencoding': 'UTF-8'}
+        user_params = self.settings_dict['OPTIONS'].copy()
+        if 'use_returning_into' in user_params:
+            del user_params['use_returning_into']
+        conn_params.update(user_params)
         return conn_params
 
     def get_new_connection(self, conn_params):
@@ -359,6 +362,8 @@ class OracleParam(object):
         elif string_size > 4000:
             # Mark any string param greater than 4000 characters as a CLOB.
             self.input_size = Database.CLOB
+        elif isinstance(param, decimal.Decimal):
+            self.input_size = Database.NUMBER
         else:
             self.input_size = None
 
@@ -400,10 +405,23 @@ class FormatStylePlaceholderCursor(object):
 
     def __init__(self, connection):
         self.cursor = connection.cursor()
-        # Necessary to retrieve decimal values without rounding error.
-        self.cursor.numbersAsStrings = True
+        self.cursor.outputtypehandler = self._output_type_handler
         # Default arraysize of 1 is highly sub-optimal.
         self.cursor.arraysize = 100
+
+    @staticmethod
+    def _output_type_handler(cursor, name, defaultType, length, precision, scale):
+        """
+        Called for each db column fetched from cursors. Return numbers as
+        strings so that decimal values don't have rounding error.
+        """
+        if defaultType == Database.NUMBER:
+            return cursor.var(
+                Database.STRING,
+                size=255,
+                arraysize=cursor.arraysize,
+                outconverter=str,
+            )
 
     def _format_params(self, params):
         try:

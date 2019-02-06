@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "webob"
-description:
-    "Python HTTP request and response objects for WSGI."
+description: "Python HTTP request and response objects for WSGI."
 
 third_party {
   url {

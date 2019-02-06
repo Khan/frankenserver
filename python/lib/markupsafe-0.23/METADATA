@@ -2,8 +2,8 @@
 
 name: "markupsafe"
 description:
-    "Implements a XML/HTML/XHTML Markup safe string for Python. Used by "
-    "jinja2."
+  "Implements a XML/HTML/XHTML Markup safe string for Python. Used by "
+  "jinja2."
 
 third_party {
   url {

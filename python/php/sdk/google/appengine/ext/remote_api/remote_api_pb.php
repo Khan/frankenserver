@@ -94,11 +94,29 @@ namespace google\appengine\ext\remote_api {
     public function hasRequestId() {
       return isset($this->request_id);
     }
+    public function getTraceContext() {
+      if (!isset($this->trace_context)) {
+        return '';
+      }
+      return $this->trace_context;
+    }
+    public function setTraceContext($val) {
+      $this->trace_context = $val;
+      return $this;
+    }
+    public function clearTraceContext() {
+      unset($this->trace_context);
+      return $this;
+    }
+    public function hasTraceContext() {
+      return isset($this->trace_context);
+    }
     public function clear() {
       $this->clearServiceName();
       $this->clearMethod();
       $this->clearRequest();
       $this->clearRequestId();
+      $this->clearTraceContext();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -118,6 +136,10 @@ namespace google\appengine\ext\remote_api {
         $res += 1;
         $res += $this->lengthString(strlen($this->request_id));
       }
+      if (isset($this->trace_context)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->trace_context));
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -136,6 +158,10 @@ namespace google\appengine\ext\remote_api {
       if (isset($this->request_id)) {
         $out->putVarInt32(42);
         $out->putPrefixedString($this->request_id);
+      }
+      if (isset($this->trace_context)) {
+        $out->putVarInt32(50);
+        $out->putPrefixedString($this->trace_context);
       }
     }
     public function tryMerge($d) {
@@ -160,6 +186,11 @@ namespace google\appengine\ext\remote_api {
           case 42:
             $length = $d->getVarInt32();
             $this->setRequestId(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 50:
+            $length = $d->getVarInt32();
+            $this->setTraceContext(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -190,6 +221,9 @@ namespace google\appengine\ext\remote_api {
       if ($x->hasRequestId()) {
         $this->setRequestId($x->getRequestId());
       }
+      if ($x->hasTraceContext()) {
+        $this->setTraceContext($x->getTraceContext());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -201,6 +235,8 @@ namespace google\appengine\ext\remote_api {
       if (isset($this->request) && $this->request !== $x->request) return false;
       if (isset($this->request_id) !== isset($x->request_id)) return false;
       if (isset($this->request_id) && $this->request_id !== $x->request_id) return false;
+      if (isset($this->trace_context) !== isset($x->trace_context)) return false;
+      if (isset($this->trace_context) && $this->trace_context !== $x->trace_context) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -216,6 +252,9 @@ namespace google\appengine\ext\remote_api {
       }
       if (isset($this->request_id)) {
         $res .= $prefix . "request_id: " . $this->debugFormatString($this->request_id) . "\n";
+      }
+      if (isset($this->trace_context)) {
+        $res .= $prefix . "trace_context: " . $this->debugFormatString($this->trace_context) . "\n";
       }
       return $res;
     }

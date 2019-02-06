@@ -15,21 +15,21 @@
 # limitations under the License.
 #
 """A simple mapping of go versions to goroot directories."""
-# LINT.IfChange
+
 GOROOTS = {
-    'go1': 'goroot-1.8',
+    'go1': 'goroot-1.9',
     'go1.6': 'goroot-1.6',
     'go1.8': 'goroot-1.8',
     'go1.9': 'goroot-1.9',
 }
-# LINT.ThenChange(
-#   //depot/google/appengine/release/BUILD,
-#   //depot/google/appengine/runtime/go/compiler/integration_test.cc,
-#   //depot/google/appengine/runtime/go/sdk/build_sdk.go,
-#   //depot/google/appengine/runtime/go/stager/gas.go,
-#   //depot/google/appengine/runtime/go/testdata/BUILD,
-#   //depot/google/cloud/sdk/component_build/cloud_tool_defs.py,
-#   //depot/google/third_party/cloudsdk/external/linux_packaging/rpm/specs/\
-#       google-cloud-sdk-app-engine-go.spec,
-#   //depot/google/third_party/go/appengine/sdk/build/build-clone-zip.sh,
-#   //depot/google/third_party/go/appengine/sdk/rebuild.sh)
+
+
+
+
+
+
+
+
+
+
+

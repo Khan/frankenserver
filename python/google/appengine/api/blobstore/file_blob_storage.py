@@ -20,7 +20,7 @@
 
 """In-memory implementation of Blobstore stub storage based on file system.
 
-This module contains an implementation of `blobstore_stub.BlobStorage` that
+This module contains an implementation of `blob_storage.BlobStorage` that
 writes blobs directly to a file system.
 """
 
@@ -38,7 +38,7 @@ import errno
 import os
 
 from google.appengine.api import blobstore
-from google.appengine.api.blobstore import blobstore_stub
+from google.appengine.api.blobstore import blob_storage
 
 
 __all__ = ['FileBlobStorage']
@@ -49,7 +49,7 @@ import __builtin__
 _local_open = __builtin__.open
 
 
-class FileBlobStorage(blobstore_stub.BlobStorage):
+class FileBlobStorage(blob_storage.BlobStorage):
   """The storage mechanism that stores blob data on a local disk."""
 
   def __init__(self, storage_directory, app_id):

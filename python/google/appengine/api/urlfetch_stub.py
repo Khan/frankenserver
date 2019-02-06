@@ -81,11 +81,6 @@ _API_CALL_DEADLINE = 5.0
 _API_CALL_VALIDATE_CERTIFICATE_DEFAULT = False
 
 
-_CONNECTION_SUPPORTS_TIMEOUT = sys.version_info >= (2, 6)
-
-
-_CONNECTION_SUPPORTS_SSL_TUNNEL = sys.version_info >= (2, 6)
-
 
 _MAX_REQUEST_SIZE = 10485760
 
@@ -144,7 +139,8 @@ def _IsAllowedPort(port):
 
 
 
-  if ((port >= 80 and port <= 90) or
+  if (port == 0 or
+      (port >= 80 and port <= 90) or
       (port >= 440 and port <= 450) or
       port >= 1024):
     return True
@@ -177,6 +173,10 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     super(URLFetchServiceStub, self).__init__(service_name,
                                               max_request_size=MAX_REQUEST_SIZE)
     self._urlmatchers_to_fetch_functions = urlmatchers_to_fetch_functions or []
+    self.http_proxy = None
+
+  def _Dynamic_SetHttpProxy(self, request, response):
+    self.http_proxy = (request.http_proxy_host(), request.http_proxy_port())
 
   def _Dynamic_Fetch(self, request, response):
     """Trivial implementation of URLFetchService::Fetch().
@@ -236,31 +236,41 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     if request.has_mustvalidateservercertificate():
       validate_certificate = request.mustvalidateservercertificate()
 
-    fetch_function = self._GetFetchFunction(request.url())
-    fetch_function(request.url(), payload, method,
-                   request.header_list(), request, response,
-                   follow_redirects=request.followredirects(),
-                   deadline=deadline,
-                   validate_certificate=validate_certificate)
+    custom_fetch_function = self._GetCustomFetchFunction(request.url())
+    if custom_fetch_function:
+      custom_fetch_function(request.url(), payload, method,
+                            request.header_list(), request, response,
+                            follow_redirects=request.followredirects(),
+                            deadline=deadline,
+                            validate_certificate=validate_certificate)
+    else:
+      self._RetrieveURL(request.url(), payload, method,
+                        request.header_list(), request, response,
+                        follow_redirects=request.followredirects(),
+                        deadline=deadline,
+                        validate_certificate=validate_certificate,
+                        http_proxy=self.http_proxy)
 
-  def _GetFetchFunction(self, url):
-    """Get the fetch function for a url.
+  def _GetCustomFetchFunction(self, url):
+    """Get the custom fetch function for a url.
 
     Args:
       url: A url to fetch from. str.
 
     Returns:
-      A fetch function for this url.
+      A custom fetch function for this url, or None if no matching custom
+      function is found.
     """
     for urlmatcher, fetch_function in self._urlmatchers_to_fetch_functions:
       if urlmatcher(url):
         return fetch_function
-    return self._RetrieveURL
+    return None
 
   @staticmethod
   def _RetrieveURL(url, payload, method, headers, request, response,
                    follow_redirects=True, deadline=_API_CALL_DEADLINE,
-                   validate_certificate=_API_CALL_VALIDATE_CERTIFICATE_DEFAULT):
+                   validate_certificate=_API_CALL_VALIDATE_CERTIFICATE_DEFAULT,
+                   http_proxy=None):
     """Retrieves a URL over network.
 
     Args:
@@ -279,6 +289,8 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       validate_certificate: If true, do not send request to server unless the
         certificate is valid, signed by a trusted CA and the hostname matches
         the certificate.
+      http_proxy: Tuple of (hostname, port), where hostname is a string and port
+        is an int, to use as the http proxy.
 
     Raises:
       Raises an apiproxy_errors.ApplicationError exception with
@@ -329,6 +341,10 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       if not host and not protocol:
         host = last_host
         protocol = last_protocol
+
+
+      if port == '0':
+        host = host.replace(':0', '')
 
 
 
@@ -386,7 +402,10 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
           connection_class = httplib.HTTPConnection
           default_port = 80
 
-          if os.environ.get('HTTP_PROXY') and not _IsLocalhost(host):
+          if http_proxy and not _IsLocalhost(host):
+            proxy_host = '%s:%d' % (http_proxy[0],
+                                    http_proxy[1])
+          elif os.environ.get('HTTP_PROXY') and not _IsLocalhost(host):
             _, proxy_host, _, _, _ = (
                 urlparse.urlsplit(os.environ.get('HTTP_PROXY')))
         elif protocol == 'https':
@@ -400,8 +419,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
           default_port = 443
 
-          if (_CONNECTION_SUPPORTS_SSL_TUNNEL and
-              os.environ.get('HTTPS_PROXY') and not _IsLocalhost(host)):
+          if os.environ.get('HTTPS_PROXY') and not _IsLocalhost(host):
             _, proxy_host, _, _, _ = (
                 urlparse.urlsplit(os.environ.get('HTTPS_PROXY')))
         else:
@@ -416,8 +434,18 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
-        connection_kwargs = (
-            {'timeout': deadline} if _CONNECTION_SUPPORTS_TIMEOUT else {})
+        connection_kwargs = {'timeout': deadline}
+
+
+
+
+        if (not validate_certificate and sys.version_info >= (2, 7, 9)
+            and protocol == 'https'):
+
+
+
+          import ssl
+          connection_kwargs['context'] = ssl._create_unverified_context()
 
         if proxy_host:
           proxy_address, _, proxy_port = proxy_host.partition(':')
@@ -437,13 +465,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         last_protocol = protocol
         last_host = host
 
-        if not _CONNECTION_SUPPORTS_TIMEOUT:
-          orig_timeout = socket.getdefaulttimeout()
         try:
-          if not _CONNECTION_SUPPORTS_TIMEOUT:
-
-
-            socket.setdefaulttimeout(deadline)
           _SendRequest(connection, method, full_path, payload, adjusted_headers)
           http_response = connection.getresponse()
           if method == 'HEAD':
@@ -451,8 +473,6 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
           else:
             http_response_data = http_response.read()
         finally:
-          if not _CONNECTION_SUPPORTS_TIMEOUT:
-            socket.setdefaulttimeout(orig_timeout)
           connection.close()
       except _fancy_urllib_InvalidCertException, e:
         raise apiproxy_errors.ApplicationError(

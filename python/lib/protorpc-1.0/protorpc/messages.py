@@ -1744,7 +1744,7 @@ def find_definition(name, relative_to=None, importer=__import__):
   """Find definition by name in module-space.
 
   The find algorthm will look for definitions by name relative to a message
-  definition or by fully qualfied name.  If no definition is found relative
+  definition or by fully qualified name.  If no definition is found relative
   to the relative_to parameter it will do the same search against the container
   of relative_to.  If relative_to is a nested Message, it will search its
   message_definition().  If that message has no message_definition() it will

@@ -37,6 +37,7 @@ Class:
 import base64
 import os
 import StringIO
+import tempfile
 import time
 import urlparse
 
@@ -47,11 +48,13 @@ from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api import users
 from google.appengine.api.blobstore import blobstore_service_pb
+from google.appengine.api.blobstore import blobstore_stub_service_pb
+from google.appengine.api.blobstore import dict_blob_storage
+from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.runtime import apiproxy_errors
 
 
-__all__ = ['BlobStorage',
-           'BlobstoreServiceStub',
+__all__ = ['BlobstoreServiceStub',
            'ConfigurationError',
            'CreateUploadSession',
            'Error',
@@ -108,45 +111,6 @@ def CreateUploadSession(creation,
   return str(entity.key())
 
 
-class BlobStorage(object):
-  """Base class for defining how blobs are stored.
-
-  This base class merely defines an interface that all stub blob-storage
-  mechanisms must implement.
-  """
-
-  def StoreBlob(self, blob_key, blob_stream):
-    """Store blob stream.
-
-    Implement this method to persist blob data.
-
-    Args:
-      blob_key: Blob key of blob to store.
-      blob_stream: Stream or stream-like object that will generate blob content.
-    """
-    raise NotImplementedError('Storage class must override StoreBlob method.')
-
-  def OpenBlob(self, blob_key):
-    """Open blob for streaming.
-
-    Args:
-      blob_key: Blob-key of existing blob to open for reading.
-
-    Returns:
-      Open file stream for reading blob.  Caller is responsible for closing
-      file.
-    """
-    raise NotImplementedError('Storage class must override OpenBlob method.')
-
-  def DeleteBlob(self, blob_key):
-    """Delete blob data from storage.
-
-    Args:
-      blob_key: Blob-key of existing blob to delete.
-    """
-    raise NotImplementedError('Storage class must override DeleteBlob method.')
-
-
 class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
   """Datastore backed Blobstore service stub.
 
@@ -181,7 +145,9 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
                time_function=time.time,
                service_name='blobstore',
                uploader_path='_ah/upload/',
-               request_data=None):
+               request_data=None,
+               storage_dir=None,
+               app_id='app-id'):
     """Constructor.
 
     Args:
@@ -192,6 +158,9 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
         by this service stub.
       request_data: A apiproxy_stub.RequestData instance used to look up state
         associated with the request that generated an API call.
+      storage_dir: Directory for blobstore file storage if clients sets
+        no_storage to true.
+      app_id: App ID for blobstore file storage.
     """
     super(BlobstoreServiceStub, self).__init__(service_name,
                                                request_data=request_data)
@@ -199,6 +168,11 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     self.__time_function = time_function
     self.__next_session_id = 1
     self.__uploader_path = uploader_path
+
+    if not storage_dir:
+      storage_dir = os.path.join(tempfile.mkdtemp(), 'blobstore')
+    self._storage_dir = storage_dir
+    self._app_id = app_id
 
   @classmethod
   def ToDatastoreBlobKey(cls, blobkey):
@@ -342,6 +316,25 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     del unused_request_id
 
     self.CreateBlob(request.blob_key(), request.content())
+
+  def _Dynamic_SetBlobStorageType(self, request, unused_response,
+                                  unused_request_id):
+    """Configure whether stub should store blobs in-memory or on-disk.
+
+    This is primarily used by the Java blobstore client APIs to switch between
+    memory and file storage.
+
+    Args:
+      request: An instance of
+        blobstore_stub_service_pb.SetBlobStorageTypeRequest.
+    """
+    if request.storage_type() == (blobstore_stub_service_pb
+                                  .SetBlobStorageTypeRequest.MEMORY):
+      self.__storage = dict_blob_storage.DictBlobStorage()
+    elif request.storage_type() == (blobstore_stub_service_pb
+                                    .SetBlobStorageTypeRequest.FILE):
+      self.__storage = file_blob_storage.FileBlobStorage(
+          self._storage_dir, self._app_id)
 
   def _Dynamic_FetchData(self, request, response, unused_request_id):
     """Fetch a blob fragment from a blob by its blob-key.

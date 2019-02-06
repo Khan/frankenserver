@@ -96,6 +96,7 @@ EXTENSION_MIME_MAP = {
     'au': 'audio/basic',
     'avi': 'video/x-msvideo',
     'bmp': 'image/x-ms-bmp',
+    'c': 'text/plain',
     'css': 'text/css',
     'csv': 'text/csv',
     'doc': 'application/msword',
@@ -112,6 +113,7 @@ EXTENSION_MIME_MAP = {
     'jpg': 'image/jpeg',
     'kml': 'application/vnd.google-earth.kml+xml',
     'kmz': 'application/vnd.google-earth.kmz',
+    'log': 'text/plain',
     'm4a': 'audio/mp4',
     'mid': 'audio/mid',
     'mov': 'video/quicktime',
@@ -126,6 +128,7 @@ EXTENSION_MIME_MAP = {
     'oga': 'audio/ogg',
     'ogg': 'audio/ogg',
     'ogv': 'video/ogg',
+    'patch': 'text/plain',
     'pdf': 'application/pdf',
     'png': 'image/png',
     'pot': 'text/plain',
@@ -321,7 +324,7 @@ def _email_sequence(emails):
     provided; otherwise returns email addresses as-is.
   """
   if isinstance(emails, basestring):
-    return emails,
+    return [email_address.strip() for email_address in emails.split(',')]
   return emails
 
 
@@ -516,6 +519,12 @@ def mail_message_to_mime_message(protocol_message):
     parts.append(MIMEText.MIMEText(
         protocol_message.htmlbody(), _subtype='html',
         _charset=_GuessCharset(protocol_message.htmlbody())))
+  if protocol_message.has_amphtmlbody():
+    parts.append(
+        MIMEText.MIMEText(
+            protocol_message.amphtmlbody(),
+            _subtype='x-amp-html',
+            _charset=_GuessCharset(protocol_message.amphtmlbody())))
 
   if len(parts) == 1:
 
@@ -910,12 +919,14 @@ class _EmailMessageBase(object):
       'subject',
       'body',
       'html',
+      'amp_html',
       'attachments',
   ])
 
   ALLOWED_EMPTY_PROPERTIES = set([
       'subject',
-      'body'
+      'body',
+      'amp_html',
   ])
 
 
@@ -1017,6 +1028,15 @@ class _EmailMessageBase(object):
         html.decode()
       found_body = True
 
+    try:
+      amp_html = self.amp_html
+    except AttributeError:
+      pass
+    else:
+      if isinstance(amp_html, EncodedPayload):
+
+        amp_html.decode()
+
     if hasattr(self, 'attachments'):
       for attachment in _attachment_sequence(self.attachments):
 
@@ -1086,6 +1106,12 @@ class _EmailMessageBase(object):
       if isinstance(html, EncodedPayload):
         html = html.decode()
       message.set_htmlbody(_to_str(html))
+
+    if hasattr(self, 'amp_html'):
+      amp_html = self.amp_html
+      if isinstance(amp_html, EncodedPayload):
+        amp_html = amp_html.decode()
+      message.set_amphtmlbody(_to_str(amp_html))
 
     if hasattr(self, 'attachments'):
       for attachment in _attachment_sequence(self.attachments):

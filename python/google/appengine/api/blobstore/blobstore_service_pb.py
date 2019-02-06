@@ -21,7 +21,10 @@ from google.net.proto import ProtocolBuffer
 import abc
 import array
 import base64
-import dummy_thread as thread
+try:
+  from thread import allocate_lock as _Lock
+except ImportError:
+  from threading import Lock as _Lock
 try:
   from google3.net.proto import _net_proto___parse__python
 except ImportError:
@@ -41,6 +44,8 @@ try:
   _server_stub_base_class = rpcserver.BaseRpcServer
 except ImportError:
   _server_stub_base_class = object
+
+if hasattr(__builtins__, 'xrange'): range = xrange
 
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
@@ -146,7 +151,7 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
       tt = d.getVarInt32()
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -156,7 +161,7 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
 
   _TEXT = _BuildTagLookupTable({
@@ -172,7 +177,7 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.BlobstoreServiceError'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSAQxVUkxfVE9PX0xPTkeYAQKMAYsBkgERUEVSTUlTU0lPTl9ERU5JRUSYAQOMAYsBkgEOQkxPQl9OT1RfRk9VTkSYAQSMAYsBkgEXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0WYAQWMAYsBkgEZQkxPQl9GRVRDSF9TSVpFX1RPT19MQVJHRZgBBowBiwGSARVBUkdVTUVOVF9PVVRfT0ZfUkFOR0WYAQiMAYsBkgEQSU5WQUxJRF9CTE9CX0tFWZgBCYwBdLoBhw0KMGFwcGhvc3RpbmcvYXBpL2Jsb2JzdG9yZS9ibG9ic3RvcmVfc2VydmljZS5wcm90bxIKYXBwaG9zdGluZxodYXBwaG9zdGluZy9hcGkvYXBpX2Jhc2UucHJvdG8i6wEKFUJsb2JzdG9yZVNlcnZpY2VFcnJvciLRAQoJRXJyb3JDb2RlEgYKAk9LEAASEgoOSU5URVJOQUxfRVJST1IQARIQCgxVUkxfVE9PX0xPTkcQAhIVChFQRVJNSVNTSU9OX0RFTklFRBADEhIKDkJMT0JfTk9UX0ZPVU5EEAQSGwoXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0UQBRIdChlCTE9CX0ZFVENIX1NJWkVfVE9PX0xBUkdFEAYSGQoVQVJHVU1FTlRfT1VUX09GX1JBTkdFEAgSFAoQSU5WQUxJRF9CTE9CX0tFWRAJIq4BChZDcmVhdGVVcGxvYWRVUkxSZXF1ZXN0EhQKDHN1Y2Nlc3NfcGF0aBgBIAIoCRIdChVtYXhfdXBsb2FkX3NpemVfYnl0ZXMYAiABKAMSJgoebWF4X3VwbG9hZF9zaXplX3Blcl9ibG9iX2J5dGVzGAMgASgDEhYKDmdzX2J1Y2tldF9uYW1lGAQgASgJEh8KF3VybF9leHBpcnlfdGltZV9zZWNvbmRzGAUgASgFIiYKF0NyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlEgsKA3VybBgBIAIoCSI0ChFEZWxldGVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAMoCRINCgV0b2tlbhgCIAEoCSJMChBGZXRjaERhdGFSZXF1ZXN0EhAKCGJsb2Jfa2V5GAEgAigJEhMKC3N0YXJ0X2luZGV4GAIgAigDEhEKCWVuZF9pbmRleBgDIAIoAyImChFGZXRjaERhdGFSZXNwb25zZRIRCgRkYXRhGOgHIAIoDEICCAEiTgoQQ2xvbmVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAIoDBIRCgltaW1lX3R5cGUYAiACKAwSFQoNdGFyZ2V0X2FwcF9pZBgDIAIoDCIlChFDbG9uZUJsb2JSZXNwb25zZRIQCghibG9iX2tleRgBIAIoDCIoChREZWNvZGVCbG9iS2V5UmVxdWVzdBIQCghibG9iX2tleRgBIAMoCSIoChVEZWNvZGVCbG9iS2V5UmVzcG9uc2USDwoHZGVjb2RlZBgBIAMoCSI4CiRDcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkiOQolQ3JlYXRlRW5jb2RlZEdvb2dsZVN0b3JhZ2VLZXlSZXNwb25zZRIQCghibG9iX2tleRgBIAIoCTK0BAoQQmxvYnN0b3JlU2VydmljZRJcCg9DcmVhdGVVcGxvYWRVUkwSIi5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlcXVlc3QaIy5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlIgASSQoKRGVsZXRlQmxvYhIdLmFwcGhvc3RpbmcuRGVsZXRlQmxvYlJlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgASSgoJRmV0Y2hEYXRhEhwuYXBwaG9zdGluZy5GZXRjaERhdGFSZXF1ZXN0Gh0uYXBwaG9zdGluZy5GZXRjaERhdGFSZXNwb25zZSIAEkoKCUNsb25lQmxvYhIcLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVxdWVzdBodLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVzcG9uc2UiABJWCg1EZWNvZGVCbG9iS2V5EiAuYXBwaG9zdGluZy5EZWNvZGVCbG9iS2V5UmVxdWVzdBohLmFwcGhvc3RpbmcuRGVjb2RlQmxvYktleVJlc3BvbnNlIgAShgEKHUNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5EjAuYXBwaG9zdGluZy5DcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QaMS5hcHBob3N0aW5nLkNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5UmVzcG9uc2UiAEI+CiJjb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuYmxvYnN0b3JlEAIgASgBQhJCbG9ic3RvcmVTZXJ2aWNlUGI="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjBhcHBob3N0aW5nL2FwaS9ibG9ic3RvcmUvYmxvYnN0b3JlX3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuQmxvYnN0b3JlU2VydmljZUVycm9yc3oJRXJyb3JDb2RliwGSAQJPS5gBAIwBiwGSAQ5JTlRFUk5BTF9FUlJPUpgBAYwBiwGSAQxVUkxfVE9PX0xPTkeYAQKMAYsBkgERUEVSTUlTU0lPTl9ERU5JRUSYAQOMAYsBkgEOQkxPQl9OT1RfRk9VTkSYAQSMAYsBkgEXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0WYAQWMAYsBkgEZQkxPQl9GRVRDSF9TSVpFX1RPT19MQVJHRZgBBowBiwGSARVBUkdVTUVOVF9PVVRfT0ZfUkFOR0WYAQiMAYsBkgEQSU5WQUxJRF9CTE9CX0tFWZgBCYwBdLoBhQ0KMGFwcGhvc3RpbmcvYXBpL2Jsb2JzdG9yZS9ibG9ic3RvcmVfc2VydmljZS5wcm90bxIKYXBwaG9zdGluZxodYXBwaG9zdGluZy9hcGkvYXBpX2Jhc2UucHJvdG8i6wEKFUJsb2JzdG9yZVNlcnZpY2VFcnJvciLRAQoJRXJyb3JDb2RlEgYKAk9LEAASEgoOSU5URVJOQUxfRVJST1IQARIQCgxVUkxfVE9PX0xPTkcQAhIVChFQRVJNSVNTSU9OX0RFTklFRBADEhIKDkJMT0JfTk9UX0ZPVU5EEAQSGwoXREFUQV9JTkRFWF9PVVRfT0ZfUkFOR0UQBRIdChlCTE9CX0ZFVENIX1NJWkVfVE9PX0xBUkdFEAYSGQoVQVJHVU1FTlRfT1VUX09GX1JBTkdFEAgSFAoQSU5WQUxJRF9CTE9CX0tFWRAJIq4BChZDcmVhdGVVcGxvYWRVUkxSZXF1ZXN0EhQKDHN1Y2Nlc3NfcGF0aBgBIAIoCRIdChVtYXhfdXBsb2FkX3NpemVfYnl0ZXMYAiABKAMSJgoebWF4X3VwbG9hZF9zaXplX3Blcl9ibG9iX2J5dGVzGAMgASgDEhYKDmdzX2J1Y2tldF9uYW1lGAQgASgJEh8KF3VybF9leHBpcnlfdGltZV9zZWNvbmRzGAUgASgFIiYKF0NyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlEgsKA3VybBgBIAIoCSI0ChFEZWxldGVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAMoCRINCgV0b2tlbhgCIAEoCSJMChBGZXRjaERhdGFSZXF1ZXN0EhAKCGJsb2Jfa2V5GAEgAigJEhMKC3N0YXJ0X2luZGV4GAIgAigDEhEKCWVuZF9pbmRleBgDIAIoAyImChFGZXRjaERhdGFSZXNwb25zZRIRCgRkYXRhGOgHIAIoDEICCAEiTgoQQ2xvbmVCbG9iUmVxdWVzdBIQCghibG9iX2tleRgBIAIoDBIRCgltaW1lX3R5cGUYAiACKAwSFQoNdGFyZ2V0X2FwcF9pZBgDIAIoDCIlChFDbG9uZUJsb2JSZXNwb25zZRIQCghibG9iX2tleRgBIAIoDCIoChREZWNvZGVCbG9iS2V5UmVxdWVzdBIQCghibG9iX2tleRgBIAMoCSIoChVEZWNvZGVCbG9iS2V5UmVzcG9uc2USDwoHZGVjb2RlZBgBIAMoCSI4CiRDcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QSEAoIZmlsZW5hbWUYASACKAkiOQolQ3JlYXRlRW5jb2RlZEdvb2dsZVN0b3JhZ2VLZXlSZXNwb25zZRIQCghibG9iX2tleRgBIAIoCTK0BAoQQmxvYnN0b3JlU2VydmljZRJcCg9DcmVhdGVVcGxvYWRVUkwSIi5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlcXVlc3QaIy5hcHBob3N0aW5nLkNyZWF0ZVVwbG9hZFVSTFJlc3BvbnNlIgASSQoKRGVsZXRlQmxvYhIdLmFwcGhvc3RpbmcuRGVsZXRlQmxvYlJlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgASSgoJRmV0Y2hEYXRhEhwuYXBwaG9zdGluZy5GZXRjaERhdGFSZXF1ZXN0Gh0uYXBwaG9zdGluZy5GZXRjaERhdGFSZXNwb25zZSIAEkoKCUNsb25lQmxvYhIcLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVxdWVzdBodLmFwcGhvc3RpbmcuQ2xvbmVCbG9iUmVzcG9uc2UiABJWCg1EZWNvZGVCbG9iS2V5EiAuYXBwaG9zdGluZy5EZWNvZGVCbG9iS2V5UmVxdWVzdBohLmFwcGhvc3RpbmcuRGVjb2RlQmxvYktleVJlc3BvbnNlIgAShgEKHUNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5EjAuYXBwaG9zdGluZy5DcmVhdGVFbmNvZGVkR29vZ2xlU3RvcmFnZUtleVJlcXVlc3QaMS5hcHBob3N0aW5nLkNyZWF0ZUVuY29kZWRHb29nbGVTdG9yYWdlS2V5UmVzcG9uc2UiAEI8CiJjb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuYmxvYnN0b3JlEAIoAUISQmxvYnN0b3JlU2VydmljZVBi"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -395,7 +400,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -410,7 +415,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   ksuccess_path = 1
   kmax_upload_size_bytes = 2
@@ -544,7 +549,7 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -555,7 +560,7 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kurl = 1
 
@@ -618,7 +623,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+    for i in range(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
     if (x.has_token()): self.set_token(x.token())
 
   if _net_proto___parse__python is not None:
@@ -664,14 +669,14 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
@@ -680,7 +685,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_token()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
     if (self.has_token_):
@@ -688,7 +693,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.token_)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
     if (self.has_token_):
@@ -706,7 +711,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -723,7 +728,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   ktoken = 2
@@ -918,7 +923,7 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -931,7 +936,7 @@ class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   kstart_index = 2
@@ -1059,7 +1064,7 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1070,7 +1075,7 @@ class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdata = 1000
 
@@ -1262,7 +1267,7 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1275,7 +1280,7 @@ class CloneBlobRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
   kmime_type = 2
@@ -1403,7 +1408,7 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1414,7 +1419,7 @@ class CloneBlobResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 
@@ -1462,7 +1467,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+    for i in range(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -1505,25 +1510,25 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.blob_key_)
-    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    for i in range(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
     return n
 
   def Clear(self):
     self.clear_blob_key()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.blob_key_)):
+    for i in range(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
 
@@ -1535,7 +1540,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1551,7 +1556,7 @@ class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 
@@ -1599,7 +1604,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.decoded_size()): self.add_decoded(x.decoded(i))
+    for i in range(x.decoded_size()): self.add_decoded(x.decoded(i))
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -1642,25 +1647,25 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += 1 * len(self.decoded_)
-    for i in xrange(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
+    for i in range(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.decoded_)
-    for i in xrange(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
+    for i in range(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
     return n
 
   def Clear(self):
     self.clear_decoded()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.decoded_)):
+    for i in range(len(self.decoded_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.decoded_[i])
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.decoded_)):
+    for i in range(len(self.decoded_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.decoded_[i])
 
@@ -1672,7 +1677,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1688,7 +1693,7 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kdecoded = 1
 
@@ -1810,7 +1815,7 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1821,7 +1826,7 @@ class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kfilename = 1
 
@@ -1943,7 +1948,7 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
         continue
 
 
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError()
       d.skipData(tt)
 
 
@@ -1954,7 +1959,7 @@ class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+    return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kblob_key = 1
 

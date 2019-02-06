@@ -58,7 +58,7 @@ indexes:
 
 
 import google
-import yaml
+from google.appengine._internal.ruamel import yaml
 
 import copy
 import itertools
@@ -71,6 +71,7 @@ from google.appengine.api import validation
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_pb
+
 
 
 
@@ -111,7 +112,7 @@ class Property(validation.Validated):
     super(Property, self).CheckInitialized()
 
 
-def _PropertyPresenter(dumper, prop):
+def PropertyPresenter(dumper, prop):
   """A PyYaml presenter for Property.
 
   It differs from the default by not outputting 'mode: null' and direction when
@@ -136,8 +137,6 @@ def _PropertyPresenter(dumper, prop):
     del prop_copy.direction
 
   return dumper.represent_object(prop_copy)
-
-yaml.add_representer(Property, _PropertyPresenter)
 
 
 class Index(validation.Validated):
@@ -187,6 +186,10 @@ class IndexDefinitions(validation.Validated):
       appinfo.APPLICATION: validation.Optional(appinfo.APPLICATION_RE_STRING),
       'indexes': validation.Optional(validation.Repeated(Index)),
   }
+
+
+index_yaml = yaml.YAML(typ='unsafe')
+index_yaml.representer.add_representer(Property, PropertyPresenter)
 
 
 def ParseIndexDefinitions(document, open_fn=None):

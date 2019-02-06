@@ -39,7 +39,8 @@ _WORD_SEPARATOR_RE = re.compile('|'.join(_WORD_SEPARATORS))
 
 
 
-_SINGLE_QUOTE_RE = re.compile('^\'*(.*?)\'*$')
+
+_SINGLE_QUOTE_RE = re.compile('^\'*(.*?)\'*$', re.DOTALL)
 
 
 def _StripSeparators(value):

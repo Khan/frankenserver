@@ -21,7 +21,6 @@
 import __builtin__
 import imp
 import os
-import platform
 import re
 import sys
 import traceback
@@ -123,9 +122,10 @@ _WHITE_LIST_C_MODULES = [
     'zlib',
 ]
 
-WIN_ONLY_WHITELISTS = ['_winreg', '_ctypes']
+WIN_ONLY_WHITELISTS = ['_winreg', '_ctypes', 'msvcrt']
 if sys.platform.startswith('win'):
   # platform.system() dependes on _winreg and _ctypes on windows.
+  # Click (a Flask dependency) depends on msvcrt on windows.
 
 
 
@@ -202,6 +202,7 @@ THIRD_PARTY_C_MODULES = _ThirdPartyCModules([
     _ThirdPartyCModule('numpy', r'numpy(\..*)?$'),
     _ThirdPartyCModule('ujson', r'ujson(\..*)?$'),
     _ThirdPartyCModule('grpcio', r'grpc(\..*)?$', import_name='grpc'),
+    _ThirdPartyCModule('protobuf', r'google.protobuf(\..*)?$'),
     _ThirdPartyCModule(
         'PIL', r'(PIL(\..*)?|_imaging|_imagingft|_imagingmath)$'),
     _ThirdPartyCModule('pytz', r'pytz(\..*)?$'),
@@ -304,11 +305,7 @@ def enable_sandbox(config):
   # Note that the above code (see _find_shared_object_c_module) imports modules
   # that must be pruned so please use care if you move the call to
   # _prune_sys_modules.
-  #
-  # Also note that _prune_sys_modules may not make sense for non-CPython
-  # environments, so in that situation, don't.
-  if platform.python_implementation() == 'CPython':
-    _prune_sys_modules()
+  _prune_sys_modules()
   path_override_hook = PathOverrideImportHook(
       THIRD_PARTY_C_MODULES.get_importable_module_names(config))
   python_lib_paths.extend(path_override_hook.extra_sys_paths)

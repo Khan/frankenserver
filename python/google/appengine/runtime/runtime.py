@@ -188,6 +188,8 @@ def CgiDictFromParsedUrl(url):
   environ['SERVER_NAME'] = url.hostname
   if url.path:
     environ['PATH_INFO'] = urlparse.unquote(url.path)
+    environ['REQUEST_URI'] = url.path
   else:
     environ['PATH_INFO'] = '/'
+    environ['REQUEST_URI'] = '/'
   return environ

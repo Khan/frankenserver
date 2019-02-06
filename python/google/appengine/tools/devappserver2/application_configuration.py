@@ -53,6 +53,13 @@ ENV_VARIABLES_CHANGED = 5
 ERROR_HANDLERS_CHANGED = 6
 NOBUILD_FILES_CHANGED = 7
 
+# entrypoint changes are needed for modern runtimes(at least Python3).
+# For Python3, adding/removing entrypoint can trigger re-creation of the local
+# virtualenv.
+ENTRYPOINT_ADDED = 8
+ENTRYPOINT_CHANGED = 9  # changes from a non-empty value to non-empty value
+ENTRYPOINT_REMOVED = 10
+
 
 
 
@@ -77,9 +84,23 @@ def java_supported():
 class ModuleConfiguration(object):
   """Stores module configuration information.
 
-  Configuration options are guaranteed to be constant for the lifetime
-  of the instance.
+  Most configuration options are mutable and may change any time
+  check_for_updates is called. Client code must be able to cope with these
+  changes.
+
+  Other properties are immutable (see _IMMUTABLE_PROPERTIES) and are guaranteed
+  to be constant for the lifetime of the instance.
   """
+
+  _IMMUTABLE_PROPERTIES = [
+      ('application', 'application'),
+      ('version', 'major_version'),
+      ('runtime', 'runtime'),
+      ('threadsafe', 'threadsafe'),
+      ('module', 'module_name'),
+      ('basic_scaling', 'basic_scaling_config'),
+      ('manual_scaling', 'manual_scaling_config'),
+      ('automatic_scaling', 'automatic_scaling_config')]
 
   def __init__(self, config_path, app_id=None, runtime=None,
                env_variables=None):
@@ -290,6 +311,10 @@ class ModuleConfiguration(object):
     return self._app_info_external.env
 
   @property
+  def entrypoint(self):
+    return self._app_info_external.entrypoint
+
+  @property
   def runtime(self):
     return self._runtime
 
@@ -410,6 +435,26 @@ class ModuleConfiguration(object):
 
     self._mtimes = self._get_mtimes(files_to_check)
 
+    for app_info_attribute, self_attribute in self._IMMUTABLE_PROPERTIES:
+      app_info_value = getattr(app_info_external, app_info_attribute)
+      self_value = getattr(self, self_attribute)
+      if (app_info_value == self_value or
+          app_info_value == getattr(self._app_info_external,
+                                    app_info_attribute)):
+        # Only generate a warning if the value is both different from the
+        # immutable value *and* different from the last loaded value.
+        continue
+
+      if isinstance(app_info_value, types.StringTypes):
+        logging.warning('Restart the development module to see updates to "%s" '
+                        '["%s" => "%s"]',
+                        app_info_attribute,
+                        self_value,
+                        app_info_value)
+      else:
+        logging.warning('Restart the development module to see updates to "%s"',
+                        app_info_attribute)
+
     changes = set()
     if (app_info_external.GetNormalizedLibraries() !=
         self.normalized_libraries):
@@ -426,6 +471,15 @@ class ModuleConfiguration(object):
       changes.add(ENV_VARIABLES_CHANGED)
     if app_info_external.error_handlers != self.error_handlers:
       changes.add(ERROR_HANDLERS_CHANGED)
+
+    # identify what kind of change happened to entrypoint
+    if app_info_external.entrypoint != self.entrypoint:
+      if app_info_external.entrypoint and self.entrypoint:
+        changes.add(ENTRYPOINT_CHANGED)
+      elif app_info_external.entrypoint:
+        changes.add(ENTRYPOINT_ADDED)
+      else:
+        changes.add(ENTRYPOINT_REMOVED)
 
     self._app_info_external = app_info_external
     if changes:
@@ -656,6 +710,10 @@ class BackendConfiguration(object):
   @property
   def application(self):
     return self._module_configuration.application
+
+  @property
+  def entrypoint(self):
+    return self._module_configuration.entrypoint
 
   @property
   def partition(self):

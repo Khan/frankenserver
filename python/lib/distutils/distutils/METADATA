@@ -2,9 +2,9 @@
 
 name: "distutils"
 description:
-    "Distutils provides utilities for packaging and installing python "
-    "packages. Generally distributed as part of python, but removed from borg "
-    "to cut down the size of the borg python distribution."
+  "Distutils provides utilities for packaging and installing python "
+  "packages. Generally distributed as part of python, but removed from borg "
+  "to cut down the size of the borg python distribution."
 
 third_party {
   url {

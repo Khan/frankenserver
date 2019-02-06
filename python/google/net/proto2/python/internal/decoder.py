@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Code for decoding protocol buffer primitives.
 
 This code is very similar to encoder.py -- read the docs for that module first.
@@ -71,8 +69,15 @@ we repeatedly read a tag, look up the corresponding decoder, and invoke it.
 
 
 import struct
-import sys
-_PY2 = sys.version_info[0] < 3
+
+from google.appengine._internal import six
+
+if six.PY3:
+  long = int
+else:
+  import re
+  _SURROGATE_PATTERN = re.compile(six.u(r'[\ud800-\udfff]'))
+
 from google.net.proto2.python.internal import encoder
 from google.net.proto2.python.internal import wire_format
 from google.net.proto2.python.public import message
@@ -100,14 +105,11 @@ def _VarintDecoder(mask, result_type):
   decoder returns a (value, new_pos) pair.
   """
 
-  local_ord = ord
-  py2 = _PY2
-
   def DecodeVarint(buffer, pos):
     result = 0
     shift = 0
     while 1:
-      b = local_ord(buffer[pos]) if py2 else buffer[pos]
+      b = six.indexbytes(buffer, pos)
       result |= ((b & 0x7f) << shift)
       pos += 1
       if not (b & 0x80):
@@ -120,25 +122,22 @@ def _VarintDecoder(mask, result_type):
   return DecodeVarint
 
 
-def _SignedVarintDecoder(mask, result_type):
+def _SignedVarintDecoder(bits, result_type):
   """Like _VarintDecoder() but decodes signed values."""
 
-  local_ord = ord
-  py2 = _PY2
+  signbit = 1 << (bits - 1)
+  mask = (1 << bits) - 1
 
   def DecodeVarint(buffer, pos):
     result = 0
     shift = 0
     while 1:
-      b = local_ord(buffer[pos]) if py2 else buffer[pos]
+      b = six.indexbytes(buffer, pos)
       result |= ((b & 0x7f) << shift)
       pos += 1
       if not (b & 0x80):
-        if result > 0x7fffffffffffffff:
-          result -= (1 << 64)
-          result |= ~mask
-        else:
-          result &= mask
+        result &= mask
+        result = (result ^ signbit) - signbit
         result = result_type(result)
         return (result, pos)
       shift += 7
@@ -151,15 +150,15 @@ def _SignedVarintDecoder(mask, result_type):
 
 
 _DecodeVarint = _VarintDecoder((1 << 64) - 1, long)
-_DecodeSignedVarint = _SignedVarintDecoder((1 << 64) - 1, long)
+_DecodeSignedVarint = _SignedVarintDecoder(64, long)
 
 
 _DecodeVarint32 = _VarintDecoder((1 << 32) - 1, int)
-_DecodeSignedVarint32 = _SignedVarintDecoder((1 << 32) - 1, int)
+_DecodeSignedVarint32 = _SignedVarintDecoder(32, int)
 
 
 def ReadTag(buffer, pos):
-  """Read a tag from the buffer, and return a (tag_bytes, new_pos) tuple.
+  """Read a tag from the memoryview, and return a (tag_bytes, new_pos) tuple.
 
   We return the raw bytes of the tag rather than decoding them.  The raw
   bytes can then be used to look up the proper decoder.  This effectively allows
@@ -167,15 +166,21 @@ def ReadTag(buffer, pos):
   for work that is done in C (searching for a byte string in a hash table).
   In a low-level language it would be much cheaper to decode the varint and
   use that, but not in Python.
+
+  Args:
+    buffer: memoryview object of the encoded bytes
+    pos: int of the current position to start from
+
+  Returns:
+    Tuple[bytes, int] of the tag data and new position.
   """
-
-  py2 = _PY2
-
   start = pos
-  while (ord(buffer[pos]) if py2 else buffer[pos]) & 0x80:
+  while six.indexbytes(buffer, pos) & 0x80:
     pos += 1
   pos += 1
-  return (buffer[start:pos], pos)
+
+  tag_bytes = buffer[start:pos].tobytes()
+  return tag_bytes, pos
 
 
 
@@ -287,28 +292,32 @@ def _FloatDecoder():
   """
 
   local_unpack = struct.unpack
-  b = (lambda x:x) if _PY2 else lambda x:x.encode('latin1')
 
   def InnerDecode(buffer, pos):
+    """Decode serialized float to a float and new position.
+
+    Args:
+      buffer: memoryview of the serialized bytes
+      pos: int, position in the memory view to start at.
+
+    Returns:
+      Tuple[float, int] of the deserialized float value and new position
+      in the serialized data.
+    """
 
 
     new_pos = pos + 4
-    float_bytes = buffer[pos:new_pos]
+    float_bytes = buffer[pos:new_pos].tobytes()
 
 
 
 
-    if ((float_bytes[3:4] in b('\x7F\xFF'))
+    if (float_bytes[3:4] in b'\x7F\xFF' and float_bytes[2:3] >= b'\x80'):
 
-        and (float_bytes[2:3] >= b('\x80'))):
-
-
-      if float_bytes[0:3] != b('\x00\x00\x80'):
-
+      if float_bytes[0:3] != b'\x00\x00\x80':
         return (_NAN, new_pos)
 
-      if float_bytes[3:4] == b('\xFF'):
-
+      if float_bytes[3:4] == b'\xFF':
         return (_NEG_INF, new_pos)
       return (_POS_INF, new_pos)
 
@@ -327,23 +336,29 @@ def _DoubleDecoder():
   """
 
   local_unpack = struct.unpack
-  b = (lambda x:x) if _PY2 else lambda x:x.encode('latin1')
 
   def InnerDecode(buffer, pos):
+    """Decode serialized double to a double and new position.
+
+    Args:
+      buffer: memoryview of the serialized bytes.
+      pos: int, position in the memory view to start at.
+
+    Returns:
+      Tuple[float, int] of the decoded double value and new position
+      in the serialized data.
+    """
 
 
     new_pos = pos + 8
-    double_bytes = buffer[pos:new_pos]
+    double_bytes = buffer[pos:new_pos].tobytes()
 
 
 
 
-
-
-
-    if ((double_bytes[7:8] in b('\x7F\xFF'))
-        and (double_bytes[6:7] >= b('\xF0'))
-        and (double_bytes[0:7] != b('\x00\x00\x00\x00\x00\x00\xF0'))):
+    if ((double_bytes[7:8] in b'\x7F\xFF')
+        and (double_bytes[6:7] >= b'\xF0')
+        and (double_bytes[0:7] != b'\x00\x00\x00\x00\x00\x00\xF0')):
       return (_NAN, new_pos)
 
 
@@ -359,6 +374,18 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
   if is_packed:
     local_DecodeVarint = _DecodeVarint
     def DecodePackedField(buffer, pos, end, message, field_dict):
+      """Decode serialized packed enum to its value and a new position.
+
+      Args:
+        buffer: memoryview of the serialized bytes.
+        pos: int, position in the memory view to start at.
+        end: int, end position of serialized data
+        message: Message object to store unknown fields in
+        field_dict: Map[Descriptor, Any] to store decoded values in.
+
+      Returns:
+        int, new position in serialized data.
+      """
       value = field_dict.get(key)
       if value is None:
         value = field_dict.setdefault(key, new_default(message))
@@ -369,6 +396,7 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
       while pos < endpoint:
         value_start_pos = pos
         (element, pos) = _DecodeSignedVarint32(buffer, pos)
+
         if element in enum_type.values_by_number:
           value.append(element)
         else:
@@ -376,8 +404,10 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
             message._unknown_fields = []
           tag_bytes = encoder.TagBytes(field_number,
                                        wire_format.WIRETYPE_VARINT)
+
           message._unknown_fields.append(
-              (tag_bytes, buffer[value_start_pos:pos]))
+              (tag_bytes, buffer[value_start_pos:pos].tobytes()))
+
       if pos > endpoint:
         if element in enum_type.values_by_number:
           del value[-1]
@@ -390,18 +420,32 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
     tag_bytes = encoder.TagBytes(field_number, wire_format.WIRETYPE_VARINT)
     tag_len = len(tag_bytes)
     def DecodeRepeatedField(buffer, pos, end, message, field_dict):
+      """Decode serialized repeated enum to its value and a new position.
+
+      Args:
+        buffer: memoryview of the serialized bytes.
+        pos: int, position in the memory view to start at.
+        end: int, end position of serialized data
+        message: Message object to store unknown fields in
+        field_dict: Map[Descriptor, Any] to store decoded values in.
+
+      Returns:
+        int, new position in serialized data.
+      """
       value = field_dict.get(key)
       if value is None:
         value = field_dict.setdefault(key, new_default(message))
       while 1:
         (element, new_pos) = _DecodeSignedVarint32(buffer, pos)
+
         if element in enum_type.values_by_number:
           value.append(element)
         else:
           if not message._unknown_fields:
             message._unknown_fields = []
           message._unknown_fields.append(
-              (tag_bytes, buffer[pos:new_pos]))
+              (tag_bytes, buffer[pos:new_pos].tobytes()))
+
 
 
         pos = new_pos + tag_len
@@ -413,10 +457,23 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
     return DecodeRepeatedField
   else:
     def DecodeField(buffer, pos, end, message, field_dict):
+      """Decode serialized repeated enum to its value and a new position.
+
+      Args:
+        buffer: memoryview of the serialized bytes.
+        pos: int, position in the memory view to start at.
+        end: int, end position of serialized data
+        message: Message object to store unknown fields in
+        field_dict: Map[Descriptor, Any] to store decoded values in.
+
+      Returns:
+        int, new position in serialized data.
+      """
       value_start_pos = pos
       (enum_value, pos) = _DecodeSignedVarint32(buffer, pos)
       if pos > end:
         raise _DecodeError('Truncated message.')
+
       if enum_value in enum_type.values_by_number:
         field_dict[key] = enum_value
       else:
@@ -425,7 +482,8 @@ def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
         tag_bytes = encoder.TagBytes(field_number,
                                      wire_format.WIRETYPE_VARINT)
         message._unknown_fields.append(
-          (tag_bytes, buffer[value_start_pos:pos]))
+            (tag_bytes, buffer[value_start_pos:pos].tobytes()))
+
       return pos
     return DecodeField
 
@@ -462,19 +520,32 @@ BoolDecoder = _ModifiedDecoder(
     wire_format.WIRETYPE_VARINT, _DecodeVarint, bool)
 
 
-def StringDecoder(field_number, is_repeated, is_packed, key, new_default):
+def StringDecoder(field_number, is_repeated, is_packed, key, new_default,
+                  is_strict_utf8=False):
   """Returns a decoder for a string field."""
 
   local_DecodeVarint = _DecodeVarint
-  local_unicode = unicode
+  local_unicode = six.text_type
 
-  def _ConvertToUnicode(byte_str):
+  def _ConvertToUnicode(memview):
+    """Convert byte to unicode."""
+    byte_str = memview.tobytes()
     try:
-      return local_unicode(byte_str, 'utf-8')
-    except UnicodeDecodeError, e:
+      value = local_unicode(byte_str, 'utf-8')
+    except UnicodeDecodeError as e:
 
       e.reason = '%s in field: %s' % (e, key.full_name)
       raise
+
+    if is_strict_utf8 and six.PY2:
+      if _SURROGATE_PATTERN.search(value):
+        reason = ('String field %s contains invalid UTF-8 data when parsing'
+                  'a protocol buffer: surrogates not allowed. Use'
+                  'the bytes type if you intend to send raw bytes.') % (
+                      key.full_name)
+        raise message.DecodeError(reason)
+
+    return value
 
   assert not is_packed
   if is_repeated:
@@ -527,7 +598,7 @@ def BytesDecoder(field_number, is_repeated, is_packed, key, new_default):
         new_pos = pos + size
         if new_pos > end:
           raise _DecodeError('Truncated string.')
-        value.append(buffer[pos:new_pos])
+        value.append(buffer[pos:new_pos].tobytes())
 
         pos = new_pos + tag_len
         if buffer[new_pos:pos] != tag_bytes or new_pos == end:
@@ -540,7 +611,7 @@ def BytesDecoder(field_number, is_repeated, is_packed, key, new_default):
       new_pos = pos + size
       if new_pos > end:
         raise _DecodeError('Truncated string.')
-      field_dict[key] = buffer[pos:new_pos]
+      field_dict[key] = buffer[pos:new_pos].tobytes()
       return new_pos
     return DecodeField
 
@@ -646,10 +717,10 @@ def MessageDecoder(field_number, is_repeated, is_packed, key, new_default):
 
 MESSAGE_SET_ITEM_TAG = encoder.TagBytes(1, wire_format.WIRETYPE_START_GROUP)
 
-def MessageSetItemDecoder(extensions_by_number):
+def MessageSetItemDecoder(descriptor):
   """Returns a decoder for a MessageSet item.
 
-  The parameter is the _extensions_by_number map for the message class.
+  The parameter is the message Descriptor.
 
   The message set message looks like this:
     message MessageSet {
@@ -669,6 +740,18 @@ def MessageSetItemDecoder(extensions_by_number):
   local_SkipField = SkipField
 
   def DecodeItem(buffer, pos, end, message, field_dict):
+    """Decode serialized message set to its value and new position.
+
+    Args:
+      buffer: memoryview of the serialized bytes.
+      pos: int, position in the memory view to start at.
+      end: int, end position of serialized data
+      message: Message object to store unknown fields in
+      field_dict: Map[Descriptor, Any] to store decoded values in.
+
+    Returns:
+      int, new position in serialized data.
+    """
     message_set_item_start = pos
     type_id = -1
     message_start = -1
@@ -698,7 +781,8 @@ def MessageSetItemDecoder(extensions_by_number):
     if message_start == -1:
       raise _DecodeError('MessageSet item missing message.')
 
-    extension = extensions_by_number.get(type_id)
+    extension = message.Extensions._FindExtensionByNumber(type_id)
+
     if extension is not None:
       value = field_dict.get(extension)
       if value is None:
@@ -711,12 +795,57 @@ def MessageSetItemDecoder(extensions_by_number):
     else:
       if not message._unknown_fields:
         message._unknown_fields = []
-      message._unknown_fields.append((MESSAGE_SET_ITEM_TAG,
-                                      buffer[message_set_item_start:pos]))
+      message._unknown_fields.append(
+          (MESSAGE_SET_ITEM_TAG, buffer[message_set_item_start:pos].tobytes()))
+
 
     return pos
 
   return DecodeItem
+
+
+
+def MapDecoder(field_descriptor, new_default, is_message_map):
+  """Returns a decoder for a map field."""
+
+  key = field_descriptor
+  tag_bytes = encoder.TagBytes(field_descriptor.number,
+                               wire_format.WIRETYPE_LENGTH_DELIMITED)
+  tag_len = len(tag_bytes)
+  local_DecodeVarint = _DecodeVarint
+
+  message_type = field_descriptor.message_type
+
+  def DecodeMap(buffer, pos, end, message, field_dict):
+    submsg = message_type._concrete_class()
+    value = field_dict.get(key)
+    if value is None:
+      value = field_dict.setdefault(key, new_default(message))
+    while 1:
+
+      (size, pos) = local_DecodeVarint(buffer, pos)
+      new_pos = pos + size
+      if new_pos > end:
+        raise _DecodeError('Truncated message.')
+
+      submsg.Clear()
+      if submsg._InternalParse(buffer, pos, new_pos) != new_pos:
+
+
+        raise _DecodeError('Unexpected end-group tag.')
+
+      if is_message_map:
+        value[submsg.key].MergeFrom(submsg.value)
+      else:
+        value[submsg.key] = submsg.value
+
+
+      pos = new_pos + tag_len
+      if buffer[new_pos:pos] != tag_bytes or new_pos == end:
+
+        return new_pos
+
+  return DecodeMap
 
 
 
@@ -727,7 +856,7 @@ def _SkipVarint(buffer, pos, end):
 
 
 
-  while ord(buffer[pos:pos+1]) & 0x80:
+  while ord(buffer[pos:pos+1].tobytes()) & 0x80:
     pos += 1
   pos += 1
   if pos > end:

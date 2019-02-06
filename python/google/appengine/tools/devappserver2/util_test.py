@@ -57,6 +57,22 @@ class UtilTest(unittest.TestCase):
                       'HTTP_X_USER_IP': '127.0.0.1',
                       'HTTP_ACCESS_CONTROL_ALLOW_ORIGIN': 'google.com'})
 
+  def test_construct_url_from_environ(self):
+    environ = {
+        'HTTP_HOST': 'localhost:8080',
+        'PATH_INFO': '/index',
+        'QUERY_STRING': 'name=test'
+    }
+
+    self.assertEqual(
+        util.construct_url_from_environ(
+            environ, secure=True, include_query_params=True, port=8081),
+        'https://localhost:8081/index?name=test')
+    self.assertEqual(
+        util.construct_url_from_environ(
+            environ, secure=False, include_query_params=False, port=80),
+        'http://localhost:80/index')
+
 
 class HTTPServerIPv6Test(unittest.TestCase):
 

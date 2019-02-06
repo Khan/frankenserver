@@ -31,8 +31,6 @@ configured for an application. Supports loading the records from backend.yaml.
 
 
 import os
-import yaml
-from yaml import representer
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
   from google.appengine.api import validation
@@ -70,28 +68,10 @@ VALID_OPTIONS = frozenset([PUBLIC, DYNAMIC, FAILFAST])
 
 STATE = 'state'
 
+
 class BadConfig(Exception):
   """An invalid configuration was provided."""
 
-class ListWithoutSort(list):
-  def sort(self):
-    pass
-
-class SortedDict(dict):
-  def __init__(self, keys, data):
-    super(SortedDict, self).__init__()
-    self.keys = keys
-    self.update(data)
-
-  def items(self):
-    result = ListWithoutSort()
-    for key in self.keys:
-      if type(self.get(key)) != type(None):
-        result.append((key, self.get(key)))
-    return result
-
-representer.SafeRepresenter.add_representer(
-    SortedDict, representer.SafeRepresenter.represent_dict)
 
 class BackendEntry(validation.Validated):
   """A backend entry describes a single backend."""
@@ -138,14 +118,14 @@ class BackendEntry(validation.Validated):
     """Returns a sorted dictionary representing the backend entry."""
     self.ParseOptions().WriteOptions()
     result = super(BackendEntry, self).ToDict()
-    return SortedDict([NAME,
-                       CLASS,
-                       INSTANCES,
-                       START,
-                       OPTIONS,
-                       MAX_CONCURRENT_REQUESTS,
-                       STATE],
-                      result)
+    return validation.SortedDict([NAME,
+                                  CLASS,
+                                  INSTANCES,
+                                  START,
+                                  OPTIONS,
+                                  MAX_CONCURRENT_REQUESTS,
+                                  STATE],
+                                 result)
 
   def ParseOptions(self):
     """Parses the 'options' field and sets appropriate fields."""

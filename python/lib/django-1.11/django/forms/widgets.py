@@ -409,7 +409,7 @@ class ClearableFileInput(FileInput):
         context = super(ClearableFileInput, self).get_context(name, value, attrs)
         checkbox_name = self.clear_checkbox_name(name)
         checkbox_id = self.clear_checkbox_id(checkbox_name)
-        context.update({
+        context['widget'].update({
             'checkbox_name': checkbox_name,
             'checkbox_id': checkbox_id,
             'is_initial': self.is_initial(value),
@@ -463,7 +463,9 @@ class DateTimeBaseInput(TextInput):
         self.format = format if format else None
 
     def format_value(self, value):
-        return formats.localize_input(value, self.format or formats.get_format(self.format_key)[0])
+        if value is not None:
+            # localize_input() returns str on Python 2.
+            return force_text(formats.localize_input(value, self.format or formats.get_format(self.format_key)[0]))
 
 
 class DateInput(DateTimeBaseInput):
@@ -567,25 +569,23 @@ class ChoiceWidget(Widget):
 
     def optgroups(self, name, value, attrs=None):
         """Return a list of optgroups for this widget."""
-        default = (None, [], 0)
-        groups = [default]
+        groups = []
         has_selected = False
 
-        for option_value, option_label in chain(self.choices):
+        for index, (option_value, option_label) in enumerate(chain(self.choices)):
             if option_value is None:
                 option_value = ''
 
+            subgroup = []
             if isinstance(option_label, (list, tuple)):
-                index = groups[-1][2] + 1
+                group_name = option_value
                 subindex = 0
-                subgroup = []
-                groups.append((option_value, subgroup, index))
                 choices = option_label
             else:
-                index = len(default[1])
-                subgroup = default[1]
+                group_name = None
                 subindex = None
                 choices = [(option_value, option_label)]
+            groups.append((group_name, subgroup, index))
 
             for subvalue, sublabel in choices:
                 selected = (
@@ -943,7 +943,7 @@ class SelectDateWidget(Widget):
     def get_context(self, name, value, attrs):
         context = super(SelectDateWidget, self).get_context(name, value, attrs)
         date_context = {}
-        year_choices = [(i, i) for i in self.years]
+        year_choices = [(i, force_text(i)) for i in self.years]
         if self.is_required is False:
             year_choices.insert(0, self.year_none_value)
         year_attrs = context['widget']['attrs'].copy()

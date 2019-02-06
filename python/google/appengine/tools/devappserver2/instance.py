@@ -19,7 +19,9 @@
 
 
 import collections
+import datetime
 import logging
+import os
 import threading
 import time
 
@@ -43,6 +45,8 @@ INTERACTIVE_REQUEST = 4
 ALWAYS = 0               # Always restart instances.
 AFTER_FIRST_REQUEST = 1  # Restart instances that have received >= 1 request.
 NEVER = 2                # Never restart instances.
+
+TEST_GOOGLE_CLOUD_PROJECT = 'test'
 
 
 class CannotAcceptRequests(errors.Error):
@@ -286,6 +290,14 @@ class Instance(object):
       self._last_request_end_time = time.time()
       self._started = True
     logging.debug('Started instance: %s', self)
+    try:
+      logging.info('Instance PID: %s', self._runtime_proxy._process.pid)  # pylint: disable=protected-access
+    except Exception as e:  # pylint: disable=broad-except
+      logger = logging.getLogger()
+      logger.warn('Could not get PID of instance')
+      if logger.isEnabledFor(logging.DEBUG):
+        logger.exception(e)
+      logger.error(str(e))
     # We are in development mode, here be optimistic for the health of the
     # instance so it can respond instantly to the first request.
     self.set_health(True)
@@ -522,3 +534,65 @@ class InstanceFactory(object):
       The newly created instance.Instance.
     """
     raise NotImplementedError()
+
+
+class ModernInstanceFactoryMixin(object):
+  """A mixin with methods common to all modern runtime instance factories."""
+
+  def _get_google_cloud_project(self):
+    """Determine the value of cloud project id.
+
+    first look at the env var called GOOGLE_CLOUD_PROJECT, then look at
+    module_configuration.
+
+    Returns:
+      A string representing the project id.
+    """
+    app_external_name = self._module_configuration.application_external_name
+    if app_external_name:
+      return app_external_name
+    elif 'GOOGLE_CLOUD_PROJECT' in os.environ:
+      cloud_project_id = os.environ['GOOGLE_CLOUD_PROJECT']
+      logging.info('Detected GOOGLE_CLOUD_PROJECT=%s in environment variables',
+                   cloud_project_id)
+      return cloud_project_id
+    else:
+      logging.info('Cannot decide GOOGLE_CLOUD_PROJECT, using "%s" as a fake '
+                   'value', TEST_GOOGLE_CLOUD_PROJECT)
+      return TEST_GOOGLE_CLOUD_PROJECT
+
+  def get_modern_env_vars(self, instance_id):
+    """Return environment variables common to every modern runtime."""
+
+    instance_start_time = datetime.datetime.now().strftime('%Y%m%dt%H%M%S')
+    runtime_environ = {
+        'GAE_ENV': 'localdev',
+        'GAE_INSTANCE': instance_id,
+        'GAE_MEMORY_MB': str(self._module_configuration.memory_limit),
+        'GAE_RUNTIME': self._module_configuration.runtime,
+        'GAE_SERVICE': self._module_configuration.module_name,
+        'GAE_VERSION': (
+            self._module_configuration.major_version or instance_start_time),
+        'GOOGLE_CLOUD_PROJECT': self._get_google_cloud_project(),
+        'LC_CTYPE': 'C.UTF-8',
+
+        # $HOME, $PWD and $PATH should just be same as in the shell executing
+        # dev_appsever.
+        'HOME': os.environ.get('HOME', ''),
+        'PWD': os.environ.get('PWD', ''),
+        'PATH': os.environ.get('PATH', '')
+    }
+
+    # User configured env vars.
+    for env_var in self._runtime_config_getter().environ:
+      if env_var.key not in runtime_environ:
+        # We don't allow users to override the standard runtime environment
+        # variables.
+        runtime_environ[env_var.key] = env_var.value
+      else:
+        logging.warning(
+            'Environment variable %s is part of the runtime environment and '
+            'cannot be overridden. Please check the --env_var flag passed to '
+            'dev_appserver.', env_var.key)
+
+    return runtime_environ

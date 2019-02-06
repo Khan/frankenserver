@@ -37,20 +37,18 @@ from __future__ import with_statement
 __all__ = [
     "GoogleCloudStorageConsistentOutputWriter",
     "GoogleCloudStorageConsistentRecordOutputWriter",
-    "GoogleCloudStorageKeyValueOutputWriter",
-    "GoogleCloudStorageOutputWriter",
-    "GoogleCloudStorageRecordOutputWriter",
-    "COUNTER_IO_WRITE_BYTES",
-    "COUNTER_IO_WRITE_MSEC",
-    "OutputWriter",
-    "GCSRecordsPool"
-    ]
+    "GoogleCloudStorageConsistentRecordVerifiedRecordOutputWriter",
+    "GoogleCloudStorageKeyValueOutputWriter", "GoogleCloudStorageOutputWriter",
+    "GoogleCloudStorageRecordOutputWriter", "COUNTER_IO_WRITE_BYTES",
+    "COUNTER_IO_WRITE_MSEC", "OutputWriter", "GCSRecordsPool"
+]
 
 
 
 
 import cStringIO
 import gc
+import io
 import logging
 import pickle
 import random
@@ -986,6 +984,8 @@ class GoogleCloudStorageConsistentOutputWriter(
     data = f.read(self._REWRITE_BLOCK_SIZE)
     while data:
 
+      if not self.verify(data):
+        raise errors.WriterValidationError("Unable to validate output data.")
       mainfile.write(data)
       data = f.read(self._REWRITE_BLOCK_SIZE)
     f.close()
@@ -1092,6 +1092,18 @@ class GoogleCloudStorageConsistentOutputWriter(
 
     shard_state.writer_state = {"filename": self.status.mainfile.name}
 
+  def verify(self, chunk):
+    """Validates that a chunk is valid.
+
+    May be overridden by subclasses.
+
+    Args:
+      chunk: a block of data.
+    Returns:
+      True if the data is valid.
+    """
+    return True
+
 
 class _GoogleCloudStorageRecordOutputWriterBase(_GoogleCloudStorageBase):
   """Wraps a GCS writer with a records.RecordsWriter.
@@ -1174,6 +1186,28 @@ GoogleCloudStorageRecordOutputWriter = _GoogleCloudStorageRecordOutputWriter
 class GoogleCloudStorageConsistentRecordOutputWriter(
     _GoogleCloudStorageRecordOutputWriterBase):
   WRITER_CLS = GoogleCloudStorageConsistentOutputWriter
+
+
+class _GoogleCloudStorageConsistentRecordVerifiedOutputWriter(
+    GoogleCloudStorageConsistentOutputWriter):
+  """A record output writer that does strict data verification."""
+
+  def verify(self, block):
+    try:
+      reader = records.RecordsReader(io.BytesIO(block), strict=True)
+      while True:
+        reader.read()
+    except errors.InvalidRecordError:
+      return False
+    except EOFError:
+
+      pass
+    return True
+
+
+class GoogleCloudStorageConsistentRecordVerifiedRecordOutputWriter(
+    _GoogleCloudStorageRecordOutputWriterBase):
+  WRITER_CLS = _GoogleCloudStorageConsistentRecordVerifiedOutputWriter
 
 
 

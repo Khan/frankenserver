@@ -37,3 +37,7 @@ class DockerfileError(Error):
 
 class GrpcPortError(Error):
   """Raised if a grpc port was not allocated as desired."""
+
+
+class Python3NotFoundError(Error):
+  """Raised if Python3 executable is missing."""

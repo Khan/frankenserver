@@ -1,8 +1,7 @@
 # Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
 
 name: "django"
-description:
-    "Django is a python-based web framework."
+description: "Django is a python-based web framework."
 
 third_party {
   url {

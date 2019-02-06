@@ -167,10 +167,14 @@ try:
   from google.appengine.ext.remote_api import remote_api_stub
 except ImportError:
   pass
+try:
 
 
 
 
+  from google.appengine.ext.testbed import apiserver_util
+except ImportError:
+  apiserver_util = None
 
 
 DEFAULT_ENVIRONMENT = {
@@ -246,7 +250,7 @@ AUTO_ID_POLICY_SCATTERED = datastore_stub_util.SCATTERED
 
 def urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
                          follow_redirects=False, deadline=None,
-                         validate_certificate=None):
+                         validate_certificate=None, http_proxy=None):
 
   """Forwards Google Cloud Storage `urlfetch` requests to gcs_dispatcher."""
   headers_map = dict(
@@ -287,7 +291,22 @@ class StubNotSupportedError(Error):
 
 
 class EmulatorSupportChecker(object):
-  """A static class. Checks whether datastore emulator is supported."""
+  """A static class. Checks whether datastore emulator is supported.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  """
 
   _check_lock = threading.Lock()
   _use_datastore_emulator = None
@@ -295,7 +314,19 @@ class EmulatorSupportChecker(object):
 
   @classmethod
   def get_api_port(cls):
+    """Returns the integer port number that api_server listens on."""
     return cls._api_port
+
+  @classmethod
+  def get_emulator_port(cls):
+    """Returns the integer port number that datastore emulator listens on."""
+    return cls._emulator_port
+
+  @classmethod
+  def init(cls, api_port, emulator_port):
+    cls._api_port = api_port
+    cls._emulator_port = emulator_port
+    cls._use_datastore_emulator = True
 
   @classmethod
   def check(cls):
@@ -315,6 +346,7 @@ class EmulatorSupportChecker(object):
 
         cls._use_datastore_emulator = True
         cls._api_port = int(os.environ['API_SERVER_PORT'])
+        cls._emulator_port = int(os.environ['DATASTORE_EMULATOR_PORT'])
 
 
 
@@ -348,13 +380,17 @@ class Testbed(object):
 
     self._blob_storage = None
 
-  def activate(self):
+  def activate(self, use_datastore_emulator=False):
     """Activates the testbed.
 
     Invoking this method will also assign default values to environment
     variables that are required by App Engine services, such as
     `os.environ['APPLICATION_ID']`. You can set custom values with
     `setup_env()`.
+
+    Args:
+      use_datastore_emulator: True if user specifies testbed to use the Cloud
+        Datastore Emulator.
     """
     self._orig_env = dict(os.environ)
     self.setup_env()
@@ -371,7 +407,13 @@ class Testbed(object):
     apiproxy_stub_map.apiproxy = self._test_stub_map
     self._activated = True
 
-    self._use_datastore_emulator = EmulatorSupportChecker.check()
+    if use_datastore_emulator:
+      if not EmulatorSupportChecker.check():
+        api_port, emulator_port = apiserver_util.setup_api_server()
+        EmulatorSupportChecker.init(api_port, emulator_port)
+      self._use_datastore_emulator = True
+    else:
+      self._use_datastore_emulator = EmulatorSupportChecker.check()
     if self._use_datastore_emulator:
       self.api_port = EmulatorSupportChecker.get_api_port()
       self.rpc_server = remote_api_stub.ConfigureRemoteApi(
@@ -382,6 +424,7 @@ class Testbed(object):
           services=[],
           apiproxy=self._test_stub_map,
           use_remote_datastore=False)
+      self._emulator_port = EmulatorSupportChecker.get_emulator_port()
 
   def deactivate(self):
     """Deactivates the testbed.
@@ -606,10 +649,20 @@ class Testbed(object):
       delegate_stub = (
           remote_api_stub.DatastoreStubTestbedDelegate(
               self.rpc_server, '/', stub_kw_args.get(
-                  'max_request_size', apiproxy_stub.MAX_REQUEST_SIZE)))
+                  'max_request_size', apiproxy_stub.MAX_REQUEST_SIZE),
+              emulator_port=self._emulator_port))
       delegate_stub.Clear()
       self._test_stub_map.RegisterStub(
           DATASTORE_SERVICE_NAME, delegate_stub)
+      consistency_policy = stub_kw_args.get(
+          'consistency_policy',
+          datastore_stub_util.PseudoRandomHRConsistencyPolicy(probability=1.0))
+      datastore_stub_util.UpdateEmulatorConfig(
+          self._emulator_port, auto_id_policy, consistency_policy)
+      if isinstance(consistency_policy,
+                    datastore_stub_util.PseudoRandomHRConsistencyPolicy):
+        consistency_policy.is_using_cloud_datastore_emulator = True
+        consistency_policy.emulator_port = self._emulator_port
 
 
       self._enabled_stubs[DATASTORE_SERVICE_NAME] = None
