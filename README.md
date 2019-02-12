@@ -73,3 +73,16 @@ from upstream using the tarballs.
 12. Run `python/run_tests.py`.  Or, since it may not actually run successfully,
     just do whatever testing seems reasonable -- run a few e2e tests against
     your dev server; load some pages; and test anything else you think suspect.
+    For example, as of Feb 2019, I ran the following (the tests are somewhat
+    arbitrary):
+    ```
+    virtualenv ~/.virtualenv/frankenserver -p python2  # create fresh venv
+    source ~/.virtualenv/frankenserver/bin/activate
+    pip install mock
+    PYTHONPATH=. ./run_tests.py google.appengine.tools.devappserver2.{devappserver2_test,inotify_file_watcher_test,python.runtime.runtime_test}
+    ```
+    plus I ran some (arbitrary) e2e tests from webapp as a more end-to-end
+    test of the dev server:
+    ```
+    tools/runtests.py --max-size=large coaches/end_to_end/coach_invitations_e2etest.py assignments/end_to_end/auto_assign_e2etest.py
+    ```
