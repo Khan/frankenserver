@@ -24,7 +24,14 @@ import os.path
 import google
 
 
-_SDKROOT = os.path.dirname(os.path.dirname(google.__file__))
+# The location of devappserver2 source code changes infrequently enough we are
+# confident depending on relative paths.
+#
+# __file__ is located at:
+# <SDK_ROOT>/google/appengine/tools/devappserver2/java/application.py
+_SDKROOT = os.path.abspath(__file__)
+for _ in range(6):
+  _SDKROOT = os.path.dirname(_SDKROOT)
 
 
 class JavaApplication(object):

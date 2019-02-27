@@ -69,18 +69,18 @@ handlers:
 
 By default, the deferred module uses the URL above, and the default queue.
 
-Example usage:
+Example usage::
 
-  def do_something_later(key, amount):
-    entity = MyModel.get(key)
-    entity.total += amount
-    entity.put()
+    def do_something_later(key, amount):
+      entity = MyModel.get(key)
+      entity.total += amount
+      entity.put()
 
-  # Use default URL and queue name, no task name, execute ASAP.
-  deferred.defer(do_something_later, my_key, 20)
+    # Use default URL and queue name, no task name, execute ASAP.
+    deferred.defer(do_something_later, my_key, 20)
 
-  # Providing non-default task queue arguments
-  deferred.defer(do_something_later, my_key, 20, _queue="foo", _countdown=60)
+    # Providing non-default task queue arguments
+    deferred.defer(do_something_later, my_key, 20, _queue="foo", _countdown=60)
 """
 
 

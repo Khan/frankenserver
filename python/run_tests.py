@@ -41,12 +41,6 @@ TEST_LIBRARY_PATHS = [
     os.path.join(DIR_PATH, 'lib', 'webapp2-2.5.1'),
     os.path.join(DIR_PATH, 'lib', 'mox'),
     os.path.join(DIR_PATH, 'lib', 'protorpc-1.0'),
-    os.path.join(DIR_PATH, 'lib', 'httplib2'),
-    os.path.join(DIR_PATH, 'lib', 'oauth2client'),
-    os.path.join(DIR_PATH, 'lib', 'pyasn1'),
-    os.path.join(DIR_PATH, 'lib', 'pyasn1_modules'),
-    os.path.join(DIR_PATH, 'lib', 'rsa'),
-    os.path.join(DIR_PATH, 'lib', 'portpicker'),
 ]
 
 

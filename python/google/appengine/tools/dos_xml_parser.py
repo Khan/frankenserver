@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Directly processes text of dos.xml.
 
 DosXmlParser is called with an XML string to produce a list of BlackListEntry
@@ -22,6 +23,10 @@ objects containing the data from the XML.
 DosXmlParser: converts XML to list of BlackListEntrys.
 BlacklistEntry: describes a blacklisted IP.
 """
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 import re
 from xml.etree import ElementTree

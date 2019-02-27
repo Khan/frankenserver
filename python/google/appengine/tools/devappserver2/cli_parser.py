@@ -506,17 +506,6 @@ def create_command_line_parser(configuration=None):
                          restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
                          help='path to the xdebug extension')
 
-
-
-
-
-
-
-
-
-
-
-
   # App Identity
   appidentity_group = parser.add_argument_group('Application Identity')
   appidentity_group.add_argument(
@@ -570,7 +559,7 @@ def create_command_line_parser(configuration=None):
       '--enable_watching_go_path',
       action=boolean_action.BooleanAction,
       const=True,
-      default=False,
+      default=True,
       restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
       help='Enable watching $GOPATH for go app dependency changes. If file '
       'watcher complains about too many files to watch, you can set it to '
@@ -694,7 +683,7 @@ def create_command_line_parser(configuration=None):
       '--support_datastore_emulator',
       action=boolean_action.BooleanAction,
       const=True,
-      default=False,
+      default=None,
       help='Support datastore local emulation with Cloud Datastore emulator.')
   # Port number on which dev_appserver should launch Cloud Datastore emulator.
   datastore_group.add_argument(
@@ -841,12 +830,6 @@ def create_command_line_parser(configuration=None):
       'flag is more useful for diagnosing problems in dev_appserver.py rather '
       'than in application code)')
   misc_group.add_argument(
-      '--dev_appserver_log_setup_script', default=None,
-      help='path to a Python script that will be run to set up logging for '
-      'the development server. The default log set up is always run, and this '
-      'script will simply run afterwards (so clear out any log handlers if '
-      'necessary).')
-  misc_group.add_argument(
       '--skip_sdk_update_check',
       action=boolean_action.BooleanAction,
       const=True,
@@ -865,6 +848,12 @@ def create_command_line_parser(configuration=None):
       'in the format of key=value, and you can define multiple envrionment '
       'variables. For example: --env_var KEY_1=val1 --env_var KEY_2=val2. '
       'You can also define environment variables in app.yaml.')
+  misc_group.add_argument(
+      '--check_java_for_cloud_datastore_emulator',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=True,
+      help=argparse.SUPPRESS)
   # The client id used for Google Analytics usage reporting. If this is set,
   # usage metrics will be sent to Google Analytics. This should only be set by
   # the Cloud SDK dev_appserver.py wrapper.

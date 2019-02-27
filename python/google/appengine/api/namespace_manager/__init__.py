@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Namespace Manager Module."""
 
 
@@ -25,4 +23,5 @@
 
 
 
-from namespace_manager import *
+from __future__ import absolute_import
+from google.appengine.api.namespace_manager.namespace_manager import *

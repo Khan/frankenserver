@@ -63,12 +63,13 @@ def _rmtree(directory):
     pass
 
 
-def _run_tool(tool, extra_args):
+def _run_tool(tool, extra_args, extra_env=None):
   """Run external executable tool.
 
   Args:
     tool: string name of the tool to run.
     extra_args: additional arguments for tool.
+    extra_env: additional environment variables for tool.
 
   Returns:
     A tuple of the (stdout, stderr) from the process.
@@ -76,15 +77,21 @@ def _run_tool(tool, extra_args):
   Raises:
     BuildError: if tool fails.
   """
+  if not extra_env:
+    extra_env = {}
+  env = os.environ.copy()
+  env.update(extra_env)
   args = [tool]
   if sys.platform.startswith('win'):
     args = [tool + '.exe']
   args.extend(extra_args)
   logging.debug('Calling: %s', ' '.join(args))
   try:
-    process = safe_subprocess.start_process(args,
-                                            stdout=subprocess.PIPE,
-                                            stderr=subprocess.PIPE)
+    process = safe_subprocess.start_process(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env)
     stdout, stderr = process.communicate()
   except OSError as e:
     msg = '%s not found.' % args[0]

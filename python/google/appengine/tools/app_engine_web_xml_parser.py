@@ -95,7 +95,7 @@ class AppEngineWebXmlParser(object):
     element_name = xml_parser_utils.GetTag(child_node)
     camel_case_name = ''.join(part.title() for part in element_name.split('-'))
     method_name = 'Process%sNode' % camel_case_name
-    if hasattr(self, method_name) and method_name is not 'ProcessChildNode':
+    if hasattr(self, method_name) and method_name != 'ProcessChildNode':
       getattr(self, method_name)(child_node)
     else:
       self.errors.append('Second-level tag not recognized: <%s>' % element_name)
@@ -141,6 +141,13 @@ class AppEngineWebXmlParser(object):
 
   def ProcessInstanceClassNode(self, node):
     self.app_engine_web_xml.instance_class = node.text
+
+  def ProcessVpcAccessConnectorNode(self, node):
+    """Sets vpc access connector settings."""
+    vpc_access_connector = VpcAccessConnector()
+    vpc_access_connector.name = xml_parser_utils.GetChildNodeText(
+        node, 'name').strip()
+    self.app_engine_web_xml.vpc_access_connector = vpc_access_connector
 
   def ProcessAutomaticScalingNode(self, node):
     """Sets automatic scaling settings."""
@@ -290,6 +297,12 @@ class AppEngineWebXmlParser(object):
 
   def ProcessEnvNode(self, node):
     self.app_engine_web_xml.env = node.text
+
+  def ProcessEntrypointNode(self, node):
+    self.app_engine_web_xml.entrypoint = node.text
+
+  def ProcessRuntimeChannelNode(self, node):
+    self.app_engine_web_xml.runtime_channel = node.text
 
   def ProcessApiConfigNode(self, node):
     servlet = xml_parser_utils.GetAttribute(node, 'servlet-class').strip()
@@ -521,6 +534,7 @@ class AppEngineWebXml(ValueMixin):
     self.staging = None
     self.env_variables = {}
     self.instance_class = None
+    self.vpc_access_connector = None
     self.automatic_scaling = None
     self.manual_scaling = None
     self.basic_scaling = None
@@ -671,6 +685,11 @@ class AppEngineWebXml(ValueMixin):
 
 class AutomaticScaling(ValueMixin):
   """Instances contain information about automatic scaling settings."""
+  pass
+
+
+class VpcAccessConnector(ValueMixin):
+  """Instances contain information about vpc access connector settings."""
   pass
 
 

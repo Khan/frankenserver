@@ -133,29 +133,3 @@ def Version():
 
 def IsPythonDefaultSerializationDeterministic():
   return _python_deterministic_proto_serialization
-
-
-
-if _implementation_type == 'cpp':
-  try:
-
-    from google.net.proto2.python.internal.cpp import _message
-
-    def GetPythonProto3PreserveUnknownsDefault():
-      return _message.GetPythonProto3PreserveUnknownsDefault()
-
-    def SetPythonProto3PreserveUnknownsDefault(preserve):
-      _message.SetPythonProto3PreserveUnknownsDefault(preserve)
-  except ImportError:
-
-    pass
-else:
-  _python_proto3_preserve_unknowns_default = True
-
-  def GetPythonProto3PreserveUnknownsDefault():
-    return _python_proto3_preserve_unknowns_default
-
-  def SetPythonProto3PreserveUnknownsDefault(preserve):
-    global _python_proto3_preserve_unknowns_default
-    _python_proto3_preserve_unknowns_default = preserve
-

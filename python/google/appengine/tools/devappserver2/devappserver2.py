@@ -51,6 +51,10 @@ PARSER = cli_parser.create_command_line_parser(
     cli_parser.DEV_APPSERVER_CONFIGURATION)
 
 
+# Minimum java version required by the Cloud Datastore Emulator
+_CLOUD_DATASTORE_EMULATOR_JAVA_VERSION = 8
+
+
 class PhpVersionError(Exception):
   """Raised when multiple versions of php are in app yaml."""
 
@@ -64,6 +68,59 @@ class PhpPathError(Exception):
 
 class MissingDatastoreEmulatorError(Exception):
   """Raised when Datastore Emulator cannot be found."""
+
+
+class _DatastoreEmulatorDepManager(object):
+  """Manages dependencies of using Cloud Datastore Emulator."""
+
+  def _gen_grpc_import_report(self):
+    """Try to import grpc and generate a report.
+
+    Returns:
+      A dict.
+    """
+    report = {}
+    report['MaxUnicode'] = sys.maxunicode
+    try:
+      # Using '__import__()' instead of 'import' for easiness to mock
+      __import__('grpc')
+    except ImportError as e:
+      report['ImportError'] = repr(e)
+    return report
+
+  @property
+  def grpc_import_report(self):
+
+
+
+    return self._grpc_import_report
+
+  @property
+  def java_major_version(self):
+    return self._java_major_version
+
+  @property
+  def satisfied(self):
+    return self.error_hint is None
+
+  @property
+  def error_hint(self):
+    return self._error_hint
+
+  def __init__(self):
+    self._grpc_import_report = self._gen_grpc_import_report()
+    self._java_major_version = util.get_java_major_version()
+
+    self._error_hint = None
+    if self._java_major_version < _CLOUD_DATASTORE_EMULATOR_JAVA_VERSION:
+      self._error_hint = (
+          'Cannot use the Cloud Datastore Emulator because Java is absent. '
+          'Please make sure Java %s+ is installed, and added to your system '
+          'path' % _CLOUD_DATASTORE_EMULATOR_JAVA_VERSION)
+    elif 'ImportError' in self._grpc_import_report:
+      self._error_hint = (
+          'Cannot use the Cloud Datastore Emulator because the packaged grpcio '
+          'is incompatible to this system. Please install grpcio using pip')
 
 
 class DevelopmentServer(object):
@@ -92,40 +149,83 @@ class DevelopmentServer(object):
         self._dispatcher.get_default_version(module_name),
         instance)
 
-  @property
-  def _can_find_datastore_emulator(self):
-    return (self._options.datastore_emulator_cmd is not None
-            and os.path.exists(self._options.datastore_emulator_cmd))
+  def _correct_datastore_emulator_cmd(self):
+    """Returns the path to cloud datastore emulator invocation script.
 
-  def _correct_datastore_emulator_cmd(self, value):
-    """Returns the path to cloud datastore emulator invocation script."""
-    if value:
-      return value
+    This is for the edge case when dev_appserver is invoked from
+    <google-cloud-sdk>/platform/google_appengine/dev_appserver.py.
+    """
+    if self._options.datastore_emulator_cmd:
+      return
     # __file__ returns <cloud-sdk>/platform/google_appengine/dev_appserver.py
-    res = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    platform_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     emulator_script = (
         'cloud_datastore_emulator.cmd' if sys.platform.startswith('win')
         else 'cloud_datastore_emulator')
 
-    return os.path.join(res, 'cloud-datastore-emulator', emulator_script)
+    self._options.datastore_emulator_cmd = os.path.join(
+        platform_dir, 'cloud-datastore-emulator', emulator_script)
 
-  def _check_datastore_emulator_support(self):
-    """Flag checks for migrating to the Cloud Datastore Emulator."""
-    if (self._options.support_datastore_emulator
-        and not self._can_find_datastore_emulator):
+  def _fail_for_using_datastore_emulator_from_legacy_sdk(self):
+    """Error out on attempts to use the emulator from the legacy GAE SDK."""
+    if (self._options.support_datastore_emulator and (
+        self._options.datastore_emulator_cmd is None
+        or not os.path.exists(self._options.datastore_emulator_cmd))):
       raise MissingDatastoreEmulatorError(
           'Cannot find Cloud Datastore Emulator. Please make sure that you are '
           'using the Google Cloud SDK and have installed the Cloud Datastore '
           'Emulator.')
-    # TODO: Once switched to opt-out, remove following message.
-    if (not self._options.support_datastore_emulator
-        and self._can_find_datastore_emulator):
-      logging.warning(
-          '*** Notice ***\nIn a few weeks dev_appserver will default to using '
-          'the Cloud Datastore Emulator. We strongly recommend you to enable '
-          'this change earlier.\n'
-          'To opt-in, run dev_appserver with the flag '
-          '--support_datastore_emulator=True\n'
+
+  def _decide_use_datastore_emulator(self):
+    """Decide whether to use the Cloud Datastore Emulator.
+
+    - if --support_datastore_emulator is not set, enable it based on Google
+    Analytics client ID. If grpc or java is not satisfied, fall back to old path
+    with info level logging.
+    - if --support_datastore_emulator is True/False, respect it. But, if grpc or
+    java is not satisfied, raise exception.
+
+    The decision is stored into _options.support_datastore_emulator.
+
+    Raises:
+      RuntimeError: if --support_datastore_emulator = True while emulator deps
+      aren't satisfied.
+    """
+    explicitly_support = self._options.support_datastore_emulator
+
+    # If --support_datastore_emulator is empty, select by analytics client ID.
+    client_id = self._options.google_analytics_client_id
+    selected = (explicitly_support is None and client_id)
+
+    dep_manager = None
+    self.grpc_import_report = None
+    self.java_major_version = None
+
+    if explicitly_support or selected:
+      # Lazy create dep_manager, because it checks Java.
+      # On MacOS checking Java may cause annoying prompt window.
+      dep_manager = _DatastoreEmulatorDepManager()
+      self.grpc_import_report = dep_manager.grpc_import_report
+      self.java_major_version = dep_manager.java_major_version
+
+    # Adjust logic based on whether dependencies are satisfied
+    if explicitly_support and not dep_manager.satisfied:
+      raise RuntimeError(dep_manager.error_hint)
+    if selected:
+      if dep_manager.satisfied:
+        # Store the decision result in options.support_datastore_emulator
+        self._options.support_datastore_emulator = True
+      else:
+        logging.debug(dep_manager.error_hint)
+
+    if self._options.support_datastore_emulator:
+      # TODO: When rollout is 100%, remove the message.
+      logging.info(
+          'Using Cloud Datastore Emulator.\n'
+          'We are gradually rolling out the emulator as the default datastore '
+          'implementation of dev_appserver.\n'
+          'If broken, you can temporarily disable it by '
+          '--support_datastore_emulator=False\n'
           'Read the documentation: '
           'https://cloud.google.com/appengine/docs/standard/python/tools/migrate-cloud-datastore-emulator\n'  # pylint: disable=line-too-long
           'Help us validate that the feature is ready by taking this survey: https://goo.gl/forms/UArIcs8K9CUSCm733\n'  # pylint: disable=line-too-long
@@ -151,22 +251,14 @@ class DevelopmentServer(object):
     """
     self._options = options
 
-    self._options.datastore_emulator_cmd = self._correct_datastore_emulator_cmd(
-        self._options.datastore_emulator_cmd)
-    self._check_datastore_emulator_support()
+    self._correct_datastore_emulator_cmd()
+    self._fail_for_using_datastore_emulator_from_legacy_sdk()
+    self._decide_use_datastore_emulator()
 
     logging.getLogger().setLevel(
         constants.LOG_LEVEL_TO_PYTHON_CONSTANT[options.dev_appserver_log_level])
 
     parsed_env_variables = dict(options.env_variables or [])
-
-    if options.dev_appserver_log_setup_script:
-      try:
-        execfile(options.dev_appserver_log_setup_script, {}, {})
-      except Exception as e:
-        logging.exception("Error executing log setup script at %r.",
-                          options.dev_appserver_log_setup_script)
-
     configuration = application_configuration.ApplicationConfiguration(
         config_paths=options.config_paths,
         app_id=options.app_id,
@@ -229,16 +321,13 @@ class DevelopmentServer(object):
           bool(ssl_certificate_paths), options,
           multi_module=len(configuration.modules) > 1,
           dispatch_config=configuration.dispatch is not None,
+          grpc_import_report=self.grpc_import_report,
+          java_major_version=self.java_major_version
       )
 
     self._dispatcher = dispatcher.Dispatcher(
         configuration, options.host, options.port, options.auth_domain,
         constants.LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
-
-
-
-
-
         self._create_php_config(options, php_version),
         self._create_python_config(options),
         self._create_java_config(options),
@@ -371,18 +460,6 @@ class DevelopmentServer(object):
       php_config.php_version = php_version
 
     return php_config
-
-
-
-
-
-
-
-
-
-
-
-
 
   @staticmethod
   def _create_python_config(options):

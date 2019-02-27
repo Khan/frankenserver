@@ -561,7 +561,10 @@ function refreshJobDetail(jobId, detail) {
   var jobParams = $('#detail-params');
   jobParams.empty();
 
-  var status = (detail.active ? 'running' : detail.result_status) || 'unknown';
+  var status = detail.result_status || 'unknown';
+  if (detail.active) {
+    status = 'running ' + detail.active_shards + ' shards';
+  }
   $('<li class="status-text">').text(status).appendTo(jobParams);
 
   $('<li>')
@@ -676,14 +679,14 @@ function refreshJobDetail(jobId, detail) {
 
     var status = (shard.active ? 'running' : shard.result_status) || 'unknown';
     row.append($('<td>').text(status));
+    row.append($('<td>').text(getElapsedTimeString(
+        detail.start_timestamp_ms, shard.updated_timestamp_ms)));
+    row.append($('<td>').text(shard.counters.Entities));
+    row.append($('<td>').text(shard.counters.Bytes));
 
-    // TODO: Set colgroup width for shard description.
     row.append($('<td>').text(shard.shard_description));
 
     row.append($('<td>').text(shard.last_work_item || 'Unknown'));
-
-    row.append($('<td>').text(getElapsedTimeString(
-        detail.start_timestamp_ms, shard.updated_timestamp_ms)));
 
     row.appendTo(mapperBody);
   });

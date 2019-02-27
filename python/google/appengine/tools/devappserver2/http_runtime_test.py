@@ -91,9 +91,12 @@ class FakeTee(object):
 
 
 class ModuleConfigurationStub(object):
-  def __init__(self, application_root='/tmp', error_handlers=None):
+
+  def __init__(self, application_root='/tmp', error_handlers=None,
+               runtime='python'):
     self.application_root = application_root
     self.error_handlers = error_handlers
+    self.runtime = runtime
 
 
 class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
@@ -425,7 +428,7 @@ class HttpRuntimeProxyReverseFlavorTest(wsgi_test_utils.WSGITestCase):
                                   script=r'\1.py')
 
     self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
-    self.mox.StubOutWithMock(portpicker, 'PickUnusedPort')
+    self.mox.StubOutWithMock(portpicker, 'pick_unused_port')
     http_proxy.HttpProxy.wait_for_connection(self.process)
 
   def tearDown(self):
@@ -434,7 +437,7 @@ class HttpRuntimeProxyReverseFlavorTest(wsgi_test_utils.WSGITestCase):
 
   def test_basic(self):
     """Basic functionality test of START_PROCESS_REVERSE flavor."""
-    portpicker.PickUnusedPort().AndReturn(2345)
+    portpicker.pick_unused_port().AndReturn(2345)
     # As the lock is mocked out, this provides a mox expectation.
     with self.proxy._process_lock:
       safe_subprocess.start_process_file(

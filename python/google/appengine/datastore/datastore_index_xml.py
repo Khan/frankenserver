@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Directly processes text of datastore-indexes.xml.
 
 IndexesXmlParser is called with an XML string to produce an IndexXml object
@@ -28,6 +29,10 @@ Index: describes a single index specified in datastore-indexes.xml
 
 
 
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 from xml.etree import ElementTree
 
@@ -104,7 +109,7 @@ class IndexesXmlParser(object):
         raise ValidationError('\n'.join(self.errors))
 
       return IndexDefinitions(indexes=self.indexes)
-    except ElementTree.ParseError, e:
+    except ElementTree.ParseError as e:
       raise ValidationError('Bad input -- not valid XML: %s' % e)
 
   def ProcessIndexNode(self, node):
@@ -125,7 +130,7 @@ class IndexesXmlParser(object):
       return
 
     index = Index()
-    index.kind = node.attrib.get('kind', '')
+    index.kind = node.attrib.get('kind')
     if not index.kind:
       self.errors.append(MISSING_KIND)
     ancestor = node.attrib.get('ancestor', 'false')

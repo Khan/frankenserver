@@ -84,9 +84,23 @@ def java_supported():
 class ModuleConfiguration(object):
   """Stores module configuration information.
 
-  Configuration options are guaranteed to be constant for the lifetime
-  of the instance.
+  Most configuration options are mutable and may change any time
+  check_for_updates is called. Client code must be able to cope with these
+  changes.
+
+  Other properties are immutable (see _IMMUTABLE_PROPERTIES) and are guaranteed
+  to be constant for the lifetime of the instance.
   """
+
+  _IMMUTABLE_PROPERTIES = [
+      ('application', 'application'),
+      ('version', 'major_version'),
+      ('runtime', 'runtime'),
+      ('threadsafe', 'threadsafe'),
+      ('module', 'module_name'),
+      ('basic_scaling', 'basic_scaling_config'),
+      ('manual_scaling', 'manual_scaling_config'),
+      ('automatic_scaling', 'automatic_scaling_config')]
 
   def __init__(self, config_path, app_id=None, runtime=None,
                env_variables=None):
@@ -137,6 +151,7 @@ class ModuleConfiguration(object):
                                    self.application_external_name)
     self._api_version = self._app_info_external.api_version
     self._module_name = self._app_info_external.module
+    self._main = self._app_info_external.main
     self._version = self._app_info_external.version
     self._threadsafe = self._app_info_external.threadsafe
     self._basic_scaling_config = self._app_info_external.basic_scaling
@@ -271,6 +286,10 @@ class ModuleConfiguration(object):
   @property
   def module_name(self):
     return self._module_name or appinfo.DEFAULT_MODULE
+
+  @property
+  def main(self):
+    return self._main or ''
 
   @property
   def major_version(self):
@@ -420,6 +439,26 @@ class ModuleConfiguration(object):
     self._last_failure_message = None
 
     self._mtimes = self._get_mtimes(files_to_check)
+
+    for app_info_attribute, self_attribute in self._IMMUTABLE_PROPERTIES:
+      app_info_value = getattr(app_info_external, app_info_attribute)
+      self_value = getattr(self, self_attribute)
+      if (app_info_value == self_value or
+          app_info_value == getattr(self._app_info_external,
+                                    app_info_attribute)):
+        # Only generate a warning if the value is both different from the
+        # immutable value *and* different from the last loaded value.
+        continue
+
+      if isinstance(app_info_value, types.StringTypes):
+        logging.warning('Restart the development module to see updates to "%s" '
+                        '["%s" => "%s"]',
+                        app_info_attribute,
+                        self_value,
+                        app_info_value)
+      else:
+        logging.warning('Restart the development module to see updates to "%s"',
+                        app_info_attribute)
 
     changes = set()
     if (app_info_external.GetNormalizedLibraries() !=
@@ -696,6 +735,10 @@ class BackendConfiguration(object):
   @property
   def module_name(self):
     return self._backend_entry.name
+
+  @property
+  def main(self):
+    return self._module_configuration.main
 
   @property
   def major_version(self):

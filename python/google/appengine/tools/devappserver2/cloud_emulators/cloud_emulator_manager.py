@@ -80,7 +80,7 @@ class DatastoreEmulatorManager(object):
                     'directory.' % (filename, dirname))
 
   def Launch(self, port, silent, index_file, require_indexes=False,
-             storage_file=''):
+             storage_file='', auto_id_policy=None):
     """Launch the emulator synchronously.
 
     Args:
@@ -90,9 +90,11 @@ class DatastoreEmulatorManager(object):
       require_indexes: A bool passing the flag 'require_indexes' to
         the emulator.
       storage_file: A string indicating emulator's storage file fullname.
+      auto_id_policy: A string specifying how the emualtor assigns auto id.
     """
     options = [
-        '--allow_reserved_kinds',
+        '--regenerate_indexes=false',
+        '--auto_id_policy=%s' % auto_id_policy,
         '--port=%d' % port]
     if not self._is_test:
       # Override emulator options.

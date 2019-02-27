@@ -445,6 +445,24 @@ class CurlLiteTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testSetTimeoutMS() {
+    $url = 'http://google.com';
+    $this->setupRequest($url);
+    $this->request->setDeadline(0.5);
+    $this->apiProxyMock->expectCall('urlfetch',
+                                    'Fetch',
+                                    $this->request,
+                                    $this->response);
+
+    $curl_lite = new CurlLite();
+    $result = $curl_lite->setOptionsArray([
+      CURLOPT_TIMEOUT_MS => 500,
+      CURLOPT_URL => $url
+    ]);
+    $curl_lite->exec();
+    $this->assertEquals($result, true);
+  }
+
   public function mockLog($log_level, $log_message) {
     $this->assertFalse(empty($this->expected_log_messages));
     $expected = array_shift($this->expected_log_messages);

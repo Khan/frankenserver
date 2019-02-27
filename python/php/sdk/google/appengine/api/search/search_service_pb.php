@@ -3519,9 +3519,27 @@ namespace google\appengine {
     public function clearIndexSpec() {
       $this->index_spec = array();
     }
+    public function getRequireEmptyIndex() {
+      if (!isset($this->require_empty_index)) {
+        return false;
+      }
+      return $this->require_empty_index;
+    }
+    public function setRequireEmptyIndex($val) {
+      $this->require_empty_index = $val;
+      return $this;
+    }
+    public function clearRequireEmptyIndex() {
+      unset($this->require_empty_index);
+      return $this;
+    }
+    public function hasRequireEmptyIndex() {
+      return isset($this->require_empty_index);
+    }
     public function clear() {
       $this->clearSource();
       $this->clearIndexSpec();
+      $this->clearRequireEmptyIndex();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3533,6 +3551,9 @@ namespace google\appengine {
       $res += 1 * sizeof($this->index_spec);
       foreach ($this->index_spec as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->require_empty_index)) {
+        $res += 2;
       }
       return $res;
     }
@@ -3547,6 +3568,10 @@ namespace google\appengine {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->require_empty_index)) {
+        $out->putVarInt32(24);
+        $out->putBoolean($this->require_empty_index);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3560,6 +3585,9 @@ namespace google\appengine {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->addIndexSpec()->tryMerge($tmp);
+            break;
+          case 24:
+            $this->setRequireEmptyIndex($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3583,6 +3611,9 @@ namespace google\appengine {
       foreach ($x->getIndexSpecList() as $v) {
         $this->addIndexSpec()->copyFrom($v);
       }
+      if ($x->hasRequireEmptyIndex()) {
+        $this->setRequireEmptyIndex($x->getRequireEmptyIndex());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3592,6 +3623,8 @@ namespace google\appengine {
       foreach (array_map(null, $this->index_spec, $x->index_spec) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->require_empty_index) !== isset($x->require_empty_index)) return false;
+      if (isset($this->require_empty_index) && $this->require_empty_index !== $x->require_empty_index) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3601,6 +3634,9 @@ namespace google\appengine {
       }
       foreach ($this->index_spec as $value) {
         $res .= $prefix . "index_spec <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->require_empty_index)) {
+        $res .= $prefix . "require_empty_index: " . $this->debugFormatBool($this->require_empty_index) . "\n";
       }
       return $res;
     }

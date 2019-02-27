@@ -18,11 +18,16 @@
 
 
 
+import os
+import shutil
 import socket
+import stat
+import tempfile
 import unittest
 import wsgiref
 
 import google
+import mock
 import mox
 
 from google.appengine.tools import sdk_update_checker
@@ -104,6 +109,86 @@ class GetSDKVersionTest(unittest.TestCase):
     self.assertEqual(util._DEFAULT_SDK_VERSION,
                      util.get_sdk_version())
     self.mox.VerifyAll()
+
+
+class GetJavaMajorVersoinTest(unittest.TestCase):
+
+  def testJavaExecutableNotFound(self):
+    with mock.patch('subprocess.check_output', side_effect=OSError()):
+      self.assertIsNone(util.get_java_major_version())
+
+  def testJava8Installed(self):
+    # Java 8 and its lower versions are pre http://openjdk.java.net/jeps/223
+    with mock.patch('subprocess.check_output', return_value='version "1.8.0"'):
+      self.assertEqual(8, util.get_java_major_version())
+
+  def testJava9Installed(self):
+    # Java 9 and its higher versions are post http://openjdk.java.net/jeps/223
+    with mock.patch('subprocess.check_output', return_value='version "9.0.1"'):
+      self.assertEqual(9, util.get_java_major_version())
+
+  def testInvaidVersionString(self):
+    with mock.patch('subprocess.check_output', return_value='foobar'):
+      self.assertIsNone(util.get_java_major_version())
+
+
+class FindJavaOnSystemPathTest(unittest.TestCase):
+  """Tests finding java executable on $PATH."""
+
+  def setUp(self):
+    self.orig_path = os.environ.get('PATH', None)
+    self.tempdir = tempfile.mkdtemp()
+
+  def tearDown(self):
+    if self.orig_path:
+      os.environ['PATH'] = self.orig_path
+    shutil.rmtree(self.tempdir)
+
+  def _create_fake_java_executable(self, java_path):
+    with open(java_path, 'w') as fout:
+      fout.write('')
+    st = os.stat(java_path)
+    os.chmod(java_path, st.st_mode | stat.S_IEXEC)
+
+  def testWindows_HasJava_PathQuoted(self):
+    java_path = os.path.join(self.tempdir, 'java.exe')
+    self._create_fake_java_executable(java_path)
+    os.environ['PATH'] = '"%s":"%s"'% (
+        self.tempdir, os.path.join(self.tempdir, 'foo'))
+    with mock.patch('platform.system', return_value='windows'):
+      self.assertEqual(java_path, util._find_java_on_system_path())
+
+  def testWindows_HasJava_PathNotQuoted(self):
+    java_path = os.path.join(self.tempdir, 'java.exe')
+    self._create_fake_java_executable(java_path)
+    os.environ['PATH'] = '%s:%s'% (
+        self.tempdir, os.path.join(self.tempdir, 'foo'))
+    with mock.patch('platform.system', return_value='windows'):
+      self.assertEqual(java_path, util._find_java_on_system_path())
+
+  def testWindows_NoJava(self):
+    java_path = os.path.join(self.tempdir, 'java.sh')
+    self._create_fake_java_executable(java_path)
+    os.environ['PATH'] = '%s:%s'% (
+        self.tempdir, os.path.join(self.tempdir, 'foo'))
+    with mock.patch('platform.system', return_value='windows'):
+      self.assertEqual(None, util._find_java_on_system_path())
+
+  def testNonWindows_HasJava(self):
+    java_path = os.path.join(self.tempdir, 'java.sh')
+    self._create_fake_java_executable(java_path)
+    os.environ['PATH'] = '%s:%s'% (
+        self.tempdir, os.path.join(self.tempdir, 'foo'))
+    with mock.patch('platform.system', return_value='Linux'):
+      self.assertEqual(java_path, util._find_java_on_system_path())
+
+  def testNonWindows_NoJava(self):
+    java_path = os.path.join(self.tempdir, 'notjava')
+    self._create_fake_java_executable(java_path)
+    os.environ['PATH'] = '%s:%s'% (
+        self.tempdir, os.path.join(self.tempdir, 'foo'))
+    with mock.patch('platform.system', return_value='Darwin'):
+      self.assertEqual(None, util._find_java_on_system_path())
 
 
 if __name__ == '__main__':

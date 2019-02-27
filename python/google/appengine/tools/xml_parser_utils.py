@@ -14,7 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Contains some functions that come in handy with XML parsing."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 
 def GetTag(node):

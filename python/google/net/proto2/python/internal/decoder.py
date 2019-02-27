@@ -69,15 +69,17 @@ we repeatedly read a tag, look up the corresponding decoder, and invoke it.
 
 
 import struct
-
+import sys
 from google.appengine._internal import six
 
+_UCS2_MAXUNICODE = 65535
 if six.PY3:
   long = int
 else:
   import re
   _SURROGATE_PATTERN = re.compile(six.u(r'[\ud800-\udfff]'))
 
+from google.net.proto2.python.internal import containers
 from google.net.proto2.python.internal import encoder
 from google.net.proto2.python.internal import wire_format
 from google.net.proto2.python.public import message
@@ -537,7 +539,8 @@ def StringDecoder(field_number, is_repeated, is_packed, key, new_default,
       e.reason = '%s in field: %s' % (e, key.full_name)
       raise
 
-    if is_strict_utf8 and six.PY2:
+    if is_strict_utf8 and six.PY2 and sys.maxunicode > _UCS2_MAXUNICODE:
+
       if _SURROGATE_PATTERN.search(value):
         reason = ('String field %s contains invalid UTF-8 data when parsing'
                   'a protocol buffer: surrogates not allowed. Use'
@@ -871,6 +874,13 @@ def _SkipFixed64(buffer, pos, end):
     raise _DecodeError('Truncated message.')
   return pos
 
+
+def _DecodeFixed64(buffer, pos):
+  """Decode a fixed64."""
+  new_pos = pos + 8
+  return (struct.unpack('<Q', buffer[pos:new_pos])[0], new_pos)
+
+
 def _SkipLengthDelimited(buffer, pos, end):
   """Skip a length-delimited value.  Returns the new position."""
 
@@ -879,6 +889,7 @@ def _SkipLengthDelimited(buffer, pos, end):
   if pos > end:
     raise _DecodeError('Truncated message.')
   return pos
+
 
 def _SkipGroup(buffer, pos, end):
   """Skip sub-group.  Returns the new position."""
@@ -890,10 +901,52 @@ def _SkipGroup(buffer, pos, end):
       return pos
     pos = new_pos
 
+
+def _DecodeGroup(buffer, pos):
+  """Decode group.  Returns the UnknownFieldSet and new position."""
+
+  unknown_field_set = containers.UnknownFieldSet()
+  while 1:
+    (tag_bytes, pos) = ReadTag(buffer, pos)
+    (tag, _) = _DecodeVarint(tag_bytes, 0)
+    field_number, wire_type = wire_format.UnpackTag(tag)
+    if wire_type == wire_format.WIRETYPE_END_GROUP:
+      break
+    (data, pos) = _DecodeUnknownField(buffer, pos, wire_type)
+
+    unknown_field_set._add(field_number, wire_type, data)
+
+  return (unknown_field_set, pos)
+
+
+def _DecodeUnknownField(buffer, pos, wire_type):
+  """Decode a unknown field.  Returns the UnknownField and new position."""
+
+  if wire_type == wire_format.WIRETYPE_VARINT:
+    (data, pos) = _DecodeVarint(buffer, pos)
+  elif wire_type == wire_format.WIRETYPE_FIXED64:
+    (data, pos) = _DecodeFixed64(buffer, pos)
+  elif wire_type == wire_format.WIRETYPE_FIXED32:
+    (data, pos) = _DecodeFixed32(buffer, pos)
+  elif wire_type == wire_format.WIRETYPE_LENGTH_DELIMITED:
+    (size, pos) = _DecodeVarint(buffer, pos)
+    data = buffer[pos:pos+size]
+    pos += size
+  elif wire_type == wire_format.WIRETYPE_START_GROUP:
+    (data, pos) = _DecodeGroup(buffer, pos)
+  elif wire_type == wire_format.WIRETYPE_END_GROUP:
+    return (0, -1)
+  else:
+    raise _DecodeError('Wrong wire type in tag.')
+
+  return (data, pos)
+
+
 def _EndGroup(buffer, pos, end):
   """Skipping an END_GROUP tag returns -1 to tell the parent loop to break."""
 
   return -1
+
 
 def _SkipFixed32(buffer, pos, end):
   """Skip a fixed32 value.  Returns the new position."""
@@ -902,6 +955,14 @@ def _SkipFixed32(buffer, pos, end):
   if pos > end:
     raise _DecodeError('Truncated message.')
   return pos
+
+
+def _DecodeFixed32(buffer, pos):
+  """Decode a fixed32."""
+
+  new_pos = pos + 4
+  return (struct.unpack('<I', buffer[pos:new_pos])[0], new_pos)
+
 
 def _RaiseInvalidWireType(buffer, pos, end):
   """Skip function for unknown wire types.  Raises an exception."""

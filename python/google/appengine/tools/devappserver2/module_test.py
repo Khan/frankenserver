@@ -48,6 +48,7 @@ from google.appengine.tools.devappserver2 import util
 from google.appengine.tools.devappserver2 import wsgi_server
 from google.appengine.tools.devappserver2.custom import instance_factory as custom_factory
 from google.appengine.tools.devappserver2.go import application as go_application
+from google.appengine.tools.devappserver2.go import gaego as gaego_application
 from google.appengine.tools.devappserver2.go import instance_factory as go_factory
 from google.appengine.tools.devappserver2.java import instance_factory as java_factory
 from google.appengine.tools.devappserver2.python import instance_factory as python_factory
@@ -122,7 +123,6 @@ class ModuleFacade(module.Module):
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -169,7 +169,6 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -221,7 +220,6 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -271,7 +269,6 @@ class BasicScalingModuleFacade(module.BasicScalingModule):
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -321,7 +318,6 @@ class ExternalModuleFacade(module.ExternalModule):
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -2630,7 +2626,6 @@ class TestInteractiveCommandModule(googletest.TestCase):
         api_port=9000,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        node_config=None,
         php_config=None,
         python_config=None,
         java_config=None,
@@ -2865,6 +2860,12 @@ class InstanceFactoryTest(googletest.TestCase):
     go_application.GoApplication(
         mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
     self._run_test('go', go_factory.GoRuntimeInstanceFactory)
+
+  def test_gaego(self):
+    self.mox.StubOutWithMock(gaego_application, 'GaeGoApplication')
+    gaego_application.GaeGoApplication(
+        mox.IgnoreArg(), mox.IgnoreArg(), mox.IgnoreArg())
+    self._run_test('go111', go_factory.GoRuntimeInstanceFactory)
 
   def test_non_vm_java(self):
     self.mox.StubOutWithMock(

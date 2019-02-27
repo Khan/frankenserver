@@ -1,20 +1,23 @@
 # coding: utf-8
 
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 import warnings
 
 from google.appengine._internal.ruamel.yaml.error import MarkedYAMLError, ReusedAnchorWarning
-from google.appengine._internal.ruamel.yaml.compat import utf8
+from google.appengine._internal.ruamel.yaml.compat import utf8, nprint, nprintf  # NOQA
 
 from google.appengine._internal.ruamel.yaml.events import (
-    StreamStartEvent, StreamEndEvent, MappingStartEvent, MappingEndEvent,
-    SequenceStartEvent, SequenceEndEvent, AliasEvent, ScalarEvent,
+    StreamStartEvent,
+    StreamEndEvent,
+    MappingStartEvent,
+    MappingEndEvent,
+    SequenceStartEvent,
+    SequenceEndEvent,
+    AliasEvent,
+    ScalarEvent,
 )
-from google.appengine._internal.ruamel.yaml.nodes import (
-    MappingNode, ScalarNode, SequenceNode,
-)
+from google.appengine._internal.ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
 if False:  # MYPY
     from typing import Any, Dict, Optional, List  # NOQA
@@ -38,16 +41,16 @@ class Composer(object):
     def parser(self):
         # type: () -> Any
         if hasattr(self.loader, 'typ'):
-            self.loader.parser  # type: ignore
-        return self.loader._parser  # type: ignore
+            self.loader.parser
+        return self.loader._parser
 
     @property
     def resolver(self):
         # type: () -> Any
         # assert self.loader._resolver is not None
         if hasattr(self.loader, 'typ'):
-            self.loader.resolver  # type: ignore
-        return self.loader._resolver  # type: ignore
+            self.loader.resolver
+        return self.loader._resolver
 
     def check_node(self):
         # type: () -> Any
@@ -78,9 +81,11 @@ class Composer(object):
         if not self.parser.check_event(StreamEndEvent):
             event = self.parser.get_event()
             raise ComposerError(
-                "expected a single document in the stream",
-                document.start_mark, "but found another document",
-                event.start_mark)
+                'expected a single document in the stream',
+                document.start_mark,
+                'but found another document',
+                event.start_mark,
+            )
 
         # Drop the STREAM-END event.
         self.parser.get_event()
@@ -108,8 +113,8 @@ class Composer(object):
             alias = event.anchor
             if alias not in self.anchors:
                 raise ComposerError(
-                    None, None, "found undefined alias %r"
-                    % utf8(alias), event.start_mark)
+                    None, None, 'found undefined alias %r' % utf8(alias), event.start_mark
+                )
             return self.anchors[alias]
         event = self.parser.peek_event()
         anchor = event.anchor
@@ -119,8 +124,10 @@ class Composer(object):
                 #     "found duplicate anchor %r; first occurrence"
                 #     % utf8(anchor), self.anchors[anchor].start_mark,
                 #     "second occurrence", event.start_mark)
-                ws = "\nfound duplicate anchor {!r}\nfirst occurrence {}\nsecond occurrence " "{}".format(
-                         (anchor), self.anchors[anchor].start_mark, event.start_mark)
+                ws = (
+                    '\nfound duplicate anchor {!r}\nfirst occurrence {}\nsecond occurrence '
+                    '{}'.format((anchor), self.anchors[anchor].start_mark, event.start_mark)
+                )
                 warnings.warn(ws, ReusedAnchorWarning)
         self.resolver.descend_resolver(parent, index)
         if self.parser.check_event(ScalarEvent):
@@ -138,9 +145,14 @@ class Composer(object):
         tag = event.tag
         if tag is None or tag == u'!':
             tag = self.resolver.resolve(ScalarNode, event.value, event.implicit)
-        node = ScalarNode(tag, event.value,
-                          event.start_mark, event.end_mark, style=event.style,
-                          comment=event.comment)
+        node = ScalarNode(
+            tag,
+            event.value,
+            event.start_mark,
+            event.end_mark,
+            style=event.style,
+            comment=event.comment,
+        )
         if anchor is not None:
             self.anchors[anchor] = node
         return node
@@ -151,10 +163,15 @@ class Composer(object):
         tag = start_event.tag
         if tag is None or tag == u'!':
             tag = self.resolver.resolve(SequenceNode, None, start_event.implicit)
-        node = SequenceNode(tag, [],
-                            start_event.start_mark, None,
-                            flow_style=start_event.flow_style,
-                            comment=start_event.comment, anchor=anchor)
+        node = SequenceNode(
+            tag,
+            [],
+            start_event.start_mark,
+            None,
+            flow_style=start_event.flow_style,
+            comment=start_event.comment,
+            anchor=anchor,
+        )
         if anchor is not None:
             self.anchors[anchor] = node
         index = 0
@@ -164,8 +181,10 @@ class Composer(object):
         end_event = self.parser.get_event()
         if node.flow_style is True and end_event.comment is not None:
             if node.comment is not None:
-                print('Warning: unexpected end_event commment in sequence '
-                      'node {}'.format(node.flow_style))
+                nprint(
+                    'Warning: unexpected end_event commment in sequence '
+                    'node {}'.format(node.flow_style)
+                )
             node.comment = end_event.comment
         node.end_mark = end_event.end_mark
         self.check_end_doc_comment(end_event, node)
@@ -177,10 +196,15 @@ class Composer(object):
         tag = start_event.tag
         if tag is None or tag == u'!':
             tag = self.resolver.resolve(MappingNode, None, start_event.implicit)
-        node = MappingNode(tag, [],
-                           start_event.start_mark, None,
-                           flow_style=start_event.flow_style,
-                           comment=start_event.comment, anchor=anchor)
+        node = MappingNode(
+            tag,
+            [],
+            start_event.start_mark,
+            None,
+            flow_style=start_event.flow_style,
+            comment=start_event.comment,
+            anchor=anchor,
+        )
         if anchor is not None:
             self.anchors[anchor] = node
         while not self.parser.check_event(MappingEndEvent):

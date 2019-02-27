@@ -37,10 +37,10 @@ from __future__ import with_statement
 __all__ = [
     "GoogleCloudStorageConsistentOutputWriter",
     "GoogleCloudStorageConsistentRecordOutputWriter",
-    "GoogleCloudStorageConsistentRecordVerifiedRecordOutputWriter",
     "GoogleCloudStorageKeyValueOutputWriter", "GoogleCloudStorageOutputWriter",
     "GoogleCloudStorageRecordOutputWriter", "COUNTER_IO_WRITE_BYTES",
-    "COUNTER_IO_WRITE_MSEC", "OutputWriter", "GCSRecordsPool"
+    "COUNTER_IO_WRITE_MSEC", "OutputWriter", "GCSRecordsPool",
+    "OutputWriterRecordVerificationMixin"
 ]
 
 
@@ -872,6 +872,7 @@ class _ConsistentStatus(object):
     self.mainfile = None
     self.tmpfile = None
     self.tmpfile_1ago = None
+    self.app_id = None
 
 
 class GoogleCloudStorageConsistentOutputWriter(
@@ -910,6 +911,7 @@ class GoogleCloudStorageConsistentOutputWriter(
               and mainfile.
     """
 
+    super(GoogleCloudStorageConsistentOutputWriter, self).__init__()
     self.status = status
     self._data_written_to_slice = False
 
@@ -937,6 +939,7 @@ class GoogleCloudStorageConsistentOutputWriter(
     status.mainfile = cls._open_file(writer_spec, key)
     status.mapreduce_id = mr_spec.mapreduce_id
     status.shard = shard_number
+    status.app_id = mr_spec.params.get("_app")
 
     return cls(status)
 
@@ -960,10 +963,10 @@ class GoogleCloudStorageConsistentOutputWriter(
   def _rewrite_tmpfile(self, mainfile, tmpfile, writer_spec):
     """Copies contents of tmpfile (name) to mainfile (buffer)."""
 
-    account_id = self._get_tmp_account_id(writer_spec)
+    tmp_account_id = self._get_tmp_account_id(writer_spec)
     try:
 
-      f = cloudstorage_api.open(tmpfile, _account_id=account_id)
+      f = cloudstorage_api.open(tmpfile, _account_id=tmp_account_id)
     except cloud_errors.NotFoundError:
 
 
@@ -976,6 +979,7 @@ class GoogleCloudStorageConsistentOutputWriter(
 
 
 
+      account_id = self._get_account_id(writer_spec)
       if self._exists_in_gcs(mainfile.name, _account_id=account_id):
         return
       raise
@@ -1021,12 +1025,14 @@ class GoogleCloudStorageConsistentOutputWriter(
 
     files_to_keep = []
     if status.tmpfile:
-      self._rewrite_tmpfile(status.mainfile, status.tmpfile.name, writer_spec)
-      files_to_keep.append(status.tmpfile.name)
+      try:
+        self._rewrite_tmpfile(status.mainfile, status.tmpfile.name, writer_spec)
+        files_to_keep.append(status.tmpfile.name)
+      except errors.WriterValidationError:
+        raise errors.FailJobError("Unable to validate output data.")
 
 
-    self._try_to_clean_garbage(
-        writer_spec, exclude_list=files_to_keep)
+    self._try_to_clean_garbage(writer_spec, exclude_list=files_to_keep)
 
 
     status.tmpfile_1ago = status.tmpfile
@@ -1188,11 +1194,19 @@ class GoogleCloudStorageConsistentRecordOutputWriter(
   WRITER_CLS = GoogleCloudStorageConsistentOutputWriter
 
 
-class _GoogleCloudStorageConsistentRecordVerifiedOutputWriter(
-    GoogleCloudStorageConsistentOutputWriter):
-  """A record output writer that does strict data verification."""
+class OutputWriterRecordVerificationMixin(object):
+  """A mixin which provides additional record output verification.
+
+  This class may be used as a mixin with any class that is a subclass of
+  GoogleCloudStorageConsistentOutputWriter. It wil verify that output data
+  are in a valid record format.
+
+  This class should be used with output writers used by
+  GoogleCloudStorageRecordOutputWriter subclasses.
+  """
 
   def verify(self, block):
+    """Verifies the block being written is valid."""
     try:
       reader = records.RecordsReader(io.BytesIO(block), strict=True)
       while True:
@@ -1203,11 +1217,6 @@ class _GoogleCloudStorageConsistentRecordVerifiedOutputWriter(
 
       pass
     return True
-
-
-class GoogleCloudStorageConsistentRecordVerifiedRecordOutputWriter(
-    _GoogleCloudStorageRecordOutputWriterBase):
-  WRITER_CLS = _GoogleCloudStorageConsistentRecordVerifiedOutputWriter
 
 
 

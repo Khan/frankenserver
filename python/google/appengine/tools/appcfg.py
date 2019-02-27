@@ -52,6 +52,7 @@ import tempfile
 import time
 import urllib
 import urllib2
+import urlparse
 
 import google
 
@@ -154,6 +155,10 @@ DEFAULT_RESOURCE_LIMITS = {
     'max_file_count': 10000,
 }
 
+
+
+DEV_SERVER_HOSTNAMES = ('localhost', '127.0.0.1', '::1')
+
 # Client ID and secrets are managed in the Google API console.
 
 
@@ -178,7 +183,14 @@ SERVICE_ACCOUNT_BASE = (
 
 APP_YAML_FILENAME = 'app.yaml'
 
-GCLOUD_ONLY_RUNTIMES = set(['custom', 'nodejs', 'nodejs8', 'php72'])
+GCLOUD_ONLY_RUNTIMES = set([
+    'custom',
+    'go111',
+    'nodejs',
+    'nodejs8',
+    'php72',
+    'python37',
+])
 
 
 
@@ -244,6 +256,10 @@ def _PrintErrorAndExit(stream, msg, exit_code=2):
   """
   stream.write(msg)
   sys.exit(exit_code)
+
+
+def _IsDevAppserver(server):
+  return urlparse.urlparse('//' + server).hostname in DEV_SERVER_HOSTNAMES
 
 
 def JavaSupported():
@@ -2514,7 +2530,7 @@ class AppVersionUpload(object):
                         '(max %d bytes, file is %d bytes).%s',
                         path, max_size, file_length, extra_msg)
         else:
-          logging.debug('Processing file \'%s\'', path)
+          logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
       finally:
         file_handle.close()
@@ -2655,12 +2671,12 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
 
       if os.path.isfile(fullname):
         if skip_files.match(name):
-          logging.debug('Ignoring file \'%s\': File matches ignore regex.', name)
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
         else:
           yield name
       elif os.path.isdir(fullname):
         if skip_files.match(name):
-          logging.debug(
+          logging.info(
               'Ignoring directory \'%s\': Directory matches ignore regex.',
               name)
         else:
@@ -3200,9 +3216,7 @@ class AppCfgApp(object):
 
     source = GetSourceName()
 
-    dev_appserver = self.options.host in ['localhost', '127.0.0.1']
-
-    if dev_appserver:
+    if _IsDevAppserver(self.options.server):
       if not self.rpc_server_class:
         self.rpc_server_class = appengine_rpc.HttpRpcServer
         if hasattr(self, 'runtime'):
@@ -3455,7 +3469,7 @@ class AppCfgApp(object):
     msg = 'Application: %s' % appyaml.application
     if appyaml.application != orig_application:
       msg += ' (was: %s)' % orig_application
-    if self.action.function is 'Update':
+    if self.action.function == 'Update':
 
       if (appyaml.module is not None and
           appyaml.module != appinfo.DEFAULT_MODULE):
@@ -4837,6 +4851,14 @@ class AppCfgApp(object):
       logging.error('upload_data action requires SQLite3 and the python '
                     'sqlite3 module (included in python since 2.5).')
       sys.exit(1)
+
+    if _IsDevAppserver(self.options.server):
+
+
+
+
+
+      arg_dict['throttle_class'] = lambda *args, **kwargs: self._GetRpcServer()
 
     sys.exit(bulkloader.Run(arg_dict, self._GetOAuth2Parameters()))
 

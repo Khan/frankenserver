@@ -76,23 +76,136 @@ class CreateModuleToSettingTest(unittest.TestCase):
             {'m1': 3.5, 'm4': 2.7}, self.application_configuration, '--option'))
 
 
-class DatastoreEmulatorSupportcheckTest(unittest.TestCase):
+class CheckDatastoreEmulatorBinaryExistenceTest(unittest.TestCase):
+  """Tests for _fail_for_using_datastore_emulator_from_legacy_sdk."""
+
+  def setUp(self):
+    self.options = argparse.Namespace()
+    self.dev_server = devappserver2.DevelopmentServer()
 
   @mock.patch.object(os.path, 'exists', return_value=False)
-  @mock.patch.object(devappserver2.DevelopmentServer,
-                     '_correct_datastore_emulator_cmd', return_value=None)
-  def test_fail_missing_emulator(self, mock_correction, unused_mock):
-    options = argparse.Namespace()
+  def test_fail_missing_emulator(self, unused_mock):
     # Following flags simulate the scenario of invoking dev_appserver.py from
     # google-cloud-sdk/platform/google_appengine
-    options.support_datastore_emulator = True
-    options.datastore_emulator_cmd = None
+    self.options.support_datastore_emulator = True
+    self.options.datastore_emulator_cmd = None
     with self.assertRaises(devappserver2.MissingDatastoreEmulatorError) as ctx:
-      dev_server = devappserver2.DevelopmentServer()
-      dev_server._options = options
-      dev_server._check_datastore_emulator_support()
-      mock_correction.assert_called_once_with()
+      self.dev_server._options = self.options
+      self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
     self.assertIn('Cannot find Cloud Datastore Emulator', ctx.exception.message)
+
+  def test_succeed_not_using_emulator(self):
+    self.options.support_datastore_emulator = False
+    self.options.datastore_emulator_cmd = None
+    self.dev_server._options = self.options
+    self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
+
+  @mock.patch.object(os.path, 'exists', return_value=True)
+  def test_succeed_emulator_binary_exists(self, unused_mock):
+    self.options.support_datastore_emulator = True
+    self.options.datastore_emulator_cmd = ''
+    self.dev_server._options = self.options
+    self.dev_server._fail_for_using_datastore_emulator_from_legacy_sdk()
+
+
+@mock.patch(
+    'google.appengine.tools.devappserver2.devappserver2'
+    '._DatastoreEmulatorDepManager.error_hint', new_callable=mock.PropertyMock)
+class DecideUseDatastoreEmulatorTest(unittest.TestCase):
+  """Tests for DevelopmentServer._decide_use_datastore_emulator."""
+
+  def setUp(self):
+    self.options = argparse.Namespace()
+    self.options.datastore_emulator_cmd = ''
+    self.options.google_analytics_client_id = '123'
+    self.dev_server = devappserver2.DevelopmentServer()
+    devappserver2._EMULATOR_ENROLL_CID_SUFFIX = ['1', '2']
+
+  @mock.patch('logging.info')
+  def test_explicit_opt_in_succeed(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = True
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertTrue(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+
+  def test_explicit_opt_in_fail(self, mock_error_hint):
+    mock_error_hint.return_value = 'Some hint'
+    self.options.support_datastore_emulator = True
+    self.dev_server._options = self.options
+    self.assertRaises(
+        RuntimeError,
+        self.dev_server._decide_use_datastore_emulator)
+
+  @mock.patch('logging.info')
+  def test_selected_opt_in_succeed(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = None
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertTrue(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+    self.assertIn('Using Cloud Datastore Emulator',
+                  mock_logging.call_args_list[0][0][0])
+
+  @mock.patch('logging.debug')
+  def test_selected_opt_in_fail(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = 'Some hint'
+    self.options.support_datastore_emulator = None
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertFalse(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_called_once()
+    self.assertEqual('Some hint', mock_logging.call_args_list[0][0][0])
+
+  @mock.patch('logging.info')
+  def test_explicit_opt_out(self, mock_logging, mock_error_hint):
+    mock_error_hint.return_value = None
+    self.options.support_datastore_emulator = False
+    self.options.google_analytics_client_id = '1111'
+    self.dev_server._options = self.options
+    self.dev_server._decide_use_datastore_emulator()
+    self.assertFalse(self.dev_server._options.support_datastore_emulator)
+    mock_logging.assert_not_called()
+
+
+class _DatastoreEmulatorDepManagerTest(unittest.TestCase):
+  """Tests generating grpc import report."""
+
+  @mock.patch('__builtin__.__import__', side_effect=mock.Mock())
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=8)
+  def test_grpc_import_succeed_java_check_succeed(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertNotIn('ImportError', dep_manager.grpc_import_report)
+    self.assertTrue(dep_manager.satisfied)
+    self.assertIsNone(dep_manager.error_hint)
+
+  @mock.patch('__builtin__.__import__', side_effect=mock.Mock())
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=7)
+  def test_grpc_import_succeed_java_check_fail(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertNotIn('ImportError', dep_manager.grpc_import_report)
+    self.assertFalse(dep_manager.satisfied)
+    self.assertIn('make sure Java 8+ is installed', dep_manager.error_hint)
+
+  @mock.patch('__builtin__.__import__',
+              side_effect=ImportError('Cannot import cygrpc'))
+  @mock.patch(
+      'google.appengine.tools.devappserver2.util.get_java_major_version',
+      return_value=8)
+  def test_grpc_import_fail_java_check_succeed(self, unused_1, unused_2):
+    dep_manager = devappserver2._DatastoreEmulatorDepManager()
+    self.assertEqual(repr(ImportError('Cannot import cygrpc')),
+                     dep_manager.grpc_import_report['ImportError'])
+    self.assertFalse(dep_manager.satisfied)
+    self.assertIn('grpcio is incompatible', dep_manager.error_hint)
 
 
 class PlatformSupportCheckTest(unittest.TestCase):

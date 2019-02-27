@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Validation tools for generic object structures.
 
 This library is used for defining classes with constrained attributes.
@@ -42,14 +40,11 @@ builder.  See yaml_object.py.
 
 
 
-
-
-
-
+from __future__ import absolute_import
 import re
-
 import google
 from google.appengine._internal.ruamel import yaml
+from google.appengine._internal import six_subset
 
 
 class SortedDict(dict):
@@ -112,6 +107,10 @@ class ValidationError(Error):
 class MissingAttribute(ValidationError):
   """Raised when a required attribute is missing from object."""
 
+  def __init__(self, key):
+    msg = 'Missing required value [{}].'.format(key)
+    super(MissingAttribute, self).__init__(msg)
+
 
 def AsValidator(validator):
   """Wrap various types as instances of a validator.
@@ -134,7 +133,10 @@ def AsValidator(validator):
     AttributeDefinitionError: if validator is not one of the above described
       types.
   """
-  if isinstance(validator, (str, unicode)):
+  if (six_subset.is_basestring(validator)
+      or validator == six_subset.string_types):
+    return StringValidator()
+  if isinstance(validator, (str, six_subset.text_type)):
     return Regex(validator, type(validator))
   if isinstance(validator, type):
     return Type(validator)
@@ -204,7 +206,7 @@ class ValidatedBase(object):
     Raises:
       ValidationError: when no validated attribute exists on class.
     """
-    for key, value in attributes.iteritems():
+    for key, value in attributes.items():
       self.Set(key, value)
 
   def Set(self, key, value):
@@ -224,16 +226,14 @@ class ValidatedBase(object):
     raise NotImplementedError('Subclasses of ValidatedBase must override Set.')
 
   def CheckInitialized(self):
-    """Checks that all required fields are initialized.
-
-    This function is called after all attributes have been checked to
-    verify any higher level constraints, for example ensuring all required
-    attributes are present.
+    """Checks for missing or conflicting attributes.
 
     Subclasses should override this function and raise an exception for
-    any errors.
+    any errors. Always run this method when all assignments are complete.
+
+    Raises:
+      ValidationError: when there are missing or conflicting attributes.
     """
-    pass
 
   def ToDict(self):
     """Convert ValidatedBase object to a dictionary.
@@ -314,7 +314,7 @@ class Validated(ValidatedBase):
     self.SetMultiple(attributes)
 
   @classmethod
-  def GetValidator(self, key):
+  def GetValidator(cls, key):
     """Safely get the underlying attribute definition as a Validator.
 
     Args:
@@ -326,16 +326,16 @@ class Validated(ValidatedBase):
     Raises:
       ValidationError: if no such attribute exists.
     """
-    if key not in self.ATTRIBUTES:
+    if key not in cls.ATTRIBUTES:
       raise ValidationError(
           'Unexpected attribute \'%s\' for object of type %s.' %
-          (key, self.__name__))
+          (key, cls.__name__))
 
-    return AsValidator(self.ATTRIBUTES[key])
+    return AsValidator(cls.ATTRIBUTES[key])
 
   def GetWarnings(self):
     ret = []
-    for key in self.ATTRIBUTES:
+    for key in self.ATTRIBUTES.keys():
       ret.extend(self.GetValidator(key).GetWarnings(
           self.GetUnnormalized(key), key, self))
     return ret
@@ -392,25 +392,9 @@ class Validated(ValidatedBase):
     return ret
 
   def CheckInitialized(self):
-    """Checks that all required fields are initialized.
-
-    Since an instance of Validated starts off in an uninitialized state, it
-    is sometimes necessary to check that it has been fully initialized.
-    The main problem this solves is how to validate that an instance has
-    all of its required fields set.  By default, Validator classes do not
-    allow None, but all attributes are initialized to None when instantiated.
-
-    Raises:
-      Exception relevant to the kind of validation.  The type of the exception
-      is determined by the validator.  Typically this will be ValueError or
-      TypeError.
-    """
-    for key in self.ATTRIBUTES.iterkeys():
-      try:
-        self.GetValidator(key)(self.GetUnnormalized(key), key, self)
-      except MissingAttribute, e:
-        e.message = "Missing required value '%s'." % key
-        raise e
+    for key in self.ATTRIBUTES.keys():
+      value = self.GetUnnormalized(key)
+      self.GetValidator(key).CheckFieldInitialized(value, key, self)
 
   def __setattr__(self, key, value):
     """Set attribute.
@@ -425,13 +409,14 @@ class Validated(ValidatedBase):
 
     Args:
       key: Name of attribute to set.
-      value: Attributes new value.
+      value: The attribute's new value or None to unset.
 
     Raises:
       ValidationError: when trying to assign to an attribute
         that does not exist.
     """
-    value = self.GetValidator(key)(value, key, self)
+    if value is not None:
+      value = self.GetValidator(key)(value, key)
     object.__setattr__(self, key, value)
 
   def __str__(self):
@@ -440,7 +425,7 @@ class Validated(ValidatedBase):
 
   def __repr__(self):
     """Formatted view of validated object and nested values."""
-    values = [(attr, getattr(self, attr)) for attr in self.ATTRIBUTES]
+    values = [(attr, getattr(self, attr)) for attr in self.ATTRIBUTES.keys()]
     dent = '    '
     value_list = []
     for attr, value in values:
@@ -462,7 +447,7 @@ class Validated(ValidatedBase):
     """
     if type(self) != type(other):
       return False
-    for key in self.ATTRIBUTES.iterkeys():
+    for key in self.ATTRIBUTES.keys():
       if getattr(self, key) != getattr(other, key):
         return False
     return True
@@ -480,7 +465,7 @@ class Validated(ValidatedBase):
       Hash of validated object.
     """
     result = 0
-    for key in self.ATTRIBUTES.iterkeys():
+    for key in self.ATTRIBUTES.keys():
       value = getattr(self, key)
       if isinstance(value, list):
         value = tuple(value)
@@ -500,7 +485,7 @@ class Validated(ValidatedBase):
       dicts.
     """
     result = {}
-    for name, validator in self.ATTRIBUTES.iteritems():
+    for name, validator in self.ATTRIBUTES.items():
       value = self.GetUnnormalized(name)
 
       if not(isinstance(validator, Validator) and value == validator.default):
@@ -573,7 +558,7 @@ class ValidatedDict(ValidatedBase, dict):
     Raises:
       ValidationError: when trying to assign to a value that does not exist.
     """
-    dict.__setitem__(self, key, self.GetValidator(key)(value, key, self))
+    dict.__setitem__(self, key, self.GetValidator(key)(value, key))
 
   def setdefault(self, key, value=None):
     """Trap setdefaultss to ensure all key/value pairs are valid.
@@ -584,7 +569,7 @@ class ValidatedDict(ValidatedBase, dict):
       ValidationError: if the specified key is illegal or the
       value invalid.
     """
-    return dict.setdefault(self, key, self.GetValidator(key)(value, key, self))
+    return dict.setdefault(self, key, self.GetValidator(key)(value, key))
 
   def update(self, other, **kwds):
     """Trap updates to ensure all key/value pairs are valid.
@@ -598,13 +583,13 @@ class ValidatedDict(ValidatedBase, dict):
     if hasattr(other, 'keys') and callable(getattr(other, 'keys')):
       newother = {}
       for k in other:
-        newother[k] = self.GetValidator(k)(other[k], k, self)
+        newother[k] = self.GetValidator(k)(other[k], k)
     else:
-      newother = [(k, self.GetValidator(k)(v, k, self)) for (k, v) in other]
+      newother = [(k, self.GetValidator(k)(v, k)) for (k, v) in other]
 
     newkwds = {}
     for k in kwds:
-      newkwds[k] = self.GetValidator(k)(kwds[k], k, self)
+      newkwds[k] = self.GetValidator(k)(kwds[k], k)
 
     dict.update(self, newother, **newkwds)
 
@@ -641,7 +626,7 @@ class ValidatedDict(ValidatedBase, dict):
       A dictionary mapping all attributes to simple values or collections.
     """
     result = {}
-    for name, value in self.iteritems():
+    for name, value in self.items():
       validator = self.GetValidator(name)
       result[name] = _SimplifiedValue(validator, value)
     return result
@@ -675,9 +660,9 @@ class Validator(object):
     """
     self.default = default
 
-  def __call__(self, value, key='???', obj=None):
+  def __call__(self, value, key='???'):
     """Main interface to validator is call mechanism."""
-    return self.ValidateEntirely(value, key, obj)
+    return self.Validate(value, key)
 
   def Validate(self, value, key='???'):
     """Validate this field. Override to customize subclass behavior.
@@ -691,23 +676,23 @@ class Validator(object):
     """
     return value
 
-  def ValidateEntirely(self, value, key, obj):
-    """Validate this field against others. Override to customize in subclasses.
+  def CheckFieldInitialized(self, value, key, obj):
+    """Check for missing fields or conflicts between fields.
 
-    By default, calls Validate(value, key). Since ValidateEntirely uses the
-    entire object the relevant field is defined on, validators that use
-    ValidateEntirely may only work on particular subclasses of ValidatedBase,
-    like Validated or ValidatedDict.
+    Default behavior performs a simple None-check, but this can be overridden.
+    If the intent is to allow optional fields, then use the Optional validator
+    instead.
 
     Args:
       value: Value to validate.
       key: Name of the field being validated.
       obj: The object to validate against.
 
-    Returns:
-      Value if value is valid, or a valid representation of value.
+    Raises:
+      ValidationError: when there are missing or conflicting fields.
     """
-    return self.Validate(value, key)
+    if value is None:
+      raise MissingAttribute(key)
 
   def ToValue(self, value):
     """Convert 'value' to a simplified collection or basic type.
@@ -741,6 +726,21 @@ class Validator(object):
     """
     del value, key, obj
     return []
+
+
+class StringValidator(Validator):
+  """Verifies property is a valid text string.
+
+  In python 2: inherits from basestring
+  In python 3: inherits from str
+  """
+
+  def Validate(self, value, key='???'):
+    if not isinstance(value, six_subset.string_types):
+      raise ValidationError(
+          'Value %r for %s is not a valid text string.' % (
+              value, key))
+    return value
 
 
 class Type(Validator):
@@ -793,22 +793,19 @@ class Type(Validator):
       type if the Validator is configured to do so.
 
     Raises:
-      MissingAttribute: if value is None and the expected type is not NoneType.
       ValidationError: if value is not of the right type and the validator
         is either configured not to convert or cannot convert.
     """
     if not isinstance(value, self.expected_type):
-      if value is None:
-        raise MissingAttribute('Missing value is required.')
 
       if self.convert:
         try:
           return self.expected_type(value)
-        except ValueError, e:
+        except ValueError as e:
           raise ValidationError(
               'Value %r for %s could not be converted to type %s.' % (
                   value, key, self.expected_type.__name__), e)
-        except TypeError, e:
+        except TypeError as e:
           raise ValidationError(
               'Value %r for %s is not of the expected type %s' % (
                   value, key, self.expected_type.__name__), e)
@@ -829,9 +826,13 @@ class Type(Validator):
 
 TYPE_BOOL = Type(bool)
 TYPE_INT = Type(int)
-TYPE_LONG = Type(long)
+
+
+
+
+TYPE_LONG = Type(int)
 TYPE_STR = Type(str)
-TYPE_UNICODE = Type(unicode)
+TYPE_UNICODE = Type(six_subset.text_type)
 TYPE_FLOAT = Type(float)
 
 
@@ -947,8 +948,6 @@ class Options(Validator):
     Raises:
       ValidationError: when value is not one of predefined values.
     """
-    if value is None:
-      raise ValidationError('Value for options field must not be None.')
     value = str(value)
     if value not in self.options:
       raise ValidationError('Value \'%s\' for %s not in %s.'
@@ -1000,9 +999,12 @@ class Optional(Validator):
     Returns:
       None if value is None, else results of contained validation.
     """
-    if value is None:
-      return None
     return self.validator(value, key)
+
+  def CheckFieldInitialized(self, value, key, obj):
+    if value is None:
+      return
+    self.validator.CheckFieldInitialized(value, key, obj)
 
   def ToValue(self, value):
     """Convert 'value' to a simplified collection or basic type."""
@@ -1036,21 +1038,23 @@ class Regex(Validator):
     my_class(name='AName with space', parent=AnotherClass)
   """
 
-  def __init__(self, regex, string_type=unicode, default=None):
+  def __init__(self, regex, string_type=six_subset.text_type, default=None):
     """Initialized regex validator.
 
     Args:
       regex: Regular expression string to use for comparison.
+      string_type: Type to be considered a string.
+      default: Default value.
 
     Raises:
       AttributeDefinitionError: if string_type is not a kind of string.
     """
     super(Regex, self).__init__(default)
-    if (not issubclass(string_type, basestring) or
-        string_type is basestring):
+    if (not issubclass(string_type, six_subset.string_types) or
+        six_subset.is_basestring(string_type)):
       raise AttributeDefinitionError(
           'Regex fields must be a string type not %s.' % str(string_type))
-    if isinstance(regex, basestring):
+    if isinstance(regex, six_subset.string_types):
       self.re = re.compile('^(?:%s)$' % regex)
     else:
       raise AttributeDefinitionError(
@@ -1154,7 +1158,7 @@ class _RegexStrValue(object):
     regex = self.__BuildRegex()
     try:
       return re.compile(regex)
-    except re.error, e:
+    except re.error as e:
       raise ValidationError('Value \'%s\' for %s does not compile: %s' %
                             (regex, self.__key, e), e)
 
@@ -1198,8 +1202,12 @@ class RegexStr(Validator):
   The attribute will then be a compiled re object.
   """
 
-  def __init__(self, string_type=unicode, default=None):
+  def __init__(self, string_type=six_subset.text_type, default=None):
     """Initialized regex validator.
+
+    Args:
+      string_type: Type to be considered a string.
+      default: Default value.
 
     Raises:
       AttributeDefinitionError: if string_type is not a kind of string.
@@ -1208,8 +1216,11 @@ class RegexStr(Validator):
       default = _RegexStrValue(self, default, None)
       re.compile(str(default))
     super(RegexStr, self).__init__(default)
-    if (not issubclass(string_type, basestring) or
-        string_type is basestring):
+
+
+
+    if (not issubclass(string_type, six_subset.string_types) or
+        six_subset.is_basestring(string_type)):
       raise AttributeDefinitionError(
           'RegexStr fields must be a string type not %s.' % str(string_type))
 
@@ -1269,13 +1280,16 @@ class Range(Validator):
       AttributeDefinitionError: if the specified parameters are incorrect.
     """
     super(Range, self).__init__(default)
+    min_max_type = range_type
+    if range_type in six_subset.integer_types:
+      min_max_type = six_subset.integer_types
     if minimum is None and maximum is None:
       raise AttributeDefinitionError('Must specify minimum or maximum.')
-    if minimum is not None and not isinstance(minimum, range_type):
+    if minimum is not None and not isinstance(minimum, min_max_type):
       raise AttributeDefinitionError(
           'Minimum value must be of type %s, instead it is %s (%s).' %
           (str(range_type), str(type(minimum)), str(minimum)))
-    if maximum is not None and not isinstance(maximum, range_type):
+    if maximum is not None and not isinstance(maximum, min_max_type):
       raise AttributeDefinitionError(
           'Maximum value must be of type %s, instead it is %s (%s).' %
           (str(range_type), str(type(maximum)), str(maximum)))
@@ -1349,14 +1363,27 @@ class Repeated(Validator):
       raise ValidationError('Value \'%s\' for %s should be a sequence but '
                             'is not.' % (value, key))
 
-    for item in value:
+    for idx, item in enumerate(value):
       if isinstance(self.constructor, Validator):
-        item = self.constructor.Validate(item, key)
+        value[idx] = self.constructor.Validate(item, key)
       elif not isinstance(item, self.constructor):
         raise ValidationError('Value element \'%s\' for %s must be type %s.' % (
             str(item), key, self.constructor.__name__))
 
     return value
+
+  def CheckFieldInitialized(self, value, key, obj):
+    if value is None:
+      raise MissingAttribute(key)
+    for idx, item in enumerate(value):
+      if isinstance(self.constructor, Validator):
+        self.constructor.CheckFieldInitialized(item, key, self)
+
+
+        value[idx] = self.constructor.Validate(item, key)
+      elif not isinstance(item, self.constructor):
+        raise ValidationError('Value element \'%s\' for %s must be type %s.' % (
+            str(item), key, self.constructor.__name__))
 
 
 class TimeValue(Validator):
@@ -1379,7 +1406,7 @@ class TimeValue(Validator):
     Raises:
       ValidationError: if value is not a time value with the expected format.
     """
-    if not isinstance(value, basestring):
+    if not isinstance(value, six_subset.string_types):
       raise ValidationError("Value '%s' for %s is not a string (%s)"
                             % (value, key, TimeValue._EXPECTED_SYNTAX))
     if not value:
@@ -1405,6 +1432,9 @@ class Normalized(Validator):
 
   Only works with fields on Validated.
   """
+
+  def Validate(self, value, key):
+    return self.validator(value, key)
 
   def Get(self, value, key, obj):
     """Returns the normalized value. Subclasses must override."""
@@ -1435,21 +1465,23 @@ class Preferred(Normalized):
 
     self.synthetic_default = default
 
-  def ValidateEntirely(self, value, key, obj):
-    if value is not None and obj.GetUnnormalized(self.deprecated) is not None:
-      raise ValidationError('Only one of the two fields %s (preferred)'
-                            ' and %s (deprecated) may be set.'
-                            % (key, self.deprecated))
-    if value is None:
-      return None
-    return self.validator(value, key)
+  def CheckFieldInitialized(self, value, key, obj):
+    deprecated_value = obj.GetUnnormalized(self.deprecated)
+    if value is not None and deprecated_value is not None:
+      raise ValidationError('Only one of the two fields [{}] (preferred)'
+                            ' and [{}] (deprecated) may be set.'.format(
+                                key, self.deprecated))
+    if deprecated_value is not None:
+      return
+    if not self.synthetic_default:
+      self.validator.CheckFieldInitialized(value, key, obj)
 
   def Get(self, value, key, obj):
     if value is not None:
       return value
-    val = obj.GetUnnormalized(self.deprecated)
-    if val is not None:
-      return val
+    deprecated_value = obj.GetUnnormalized(self.deprecated)
+    if deprecated_value is not None:
+      return deprecated_value
     return self.synthetic_default
 
 
@@ -1471,7 +1503,7 @@ class Deprecated(Normalized):
       default: The default value for this field.
     """
     super(Deprecated, self).__init__(default=None)
-    self.validator = AsValidator(validator)
+    self.validator = Optional(validator)
     self.preferred = preferred
     self.synthetic_default = default
 
@@ -1483,20 +1515,14 @@ class Deprecated(Normalized):
           'Field %s is deprecated; use %s instead.' % (key, self.preferred))]
     return []
 
-  def ValidateEntirely(self, value, key, obj):
-    if value is not None and obj.GetUnnormalized(self.preferred) is not None:
-      raise ValidationError('Only one of the two fields %s (preferred)'
-                            ' and %s (deprecated) may be set.'
-                            % (self.preferred, key))
-    if value is None:
-      return None
-    return self.validator(value, key)
-
   def Get(self, value, key, obj):
-    pref_attr = obj.GetUnnormalized(self.preferred)
-    if pref_attr is not None:
-      return pref_attr
+    preferred_value = obj.GetUnnormalized(self.preferred)
+    if preferred_value is not None:
+      return preferred_value
     elif value is not None:
       return value
     else:
       return self.synthetic_default
+
+  def CheckFieldInitialized(self, value, key, obj):
+    pass

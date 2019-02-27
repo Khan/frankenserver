@@ -551,7 +551,11 @@ class DescriptorPool(object):
       KeyError: when no extension with the given number is known for the
         specified message.
     """
-    return self._extensions_by_number[message_descriptor][number]
+    try:
+      return self._extensions_by_number[message_descriptor][number]
+    except KeyError:
+      self._TryLoadExtensionFromDB(message_descriptor, number)
+      return self._extensions_by_number[message_descriptor][number]
 
   def FindAllExtensions(self, message_descriptor):
     """Gets all the known extension of a given message.
@@ -565,7 +569,56 @@ class DescriptorPool(object):
     Returns:
       A list of FieldDescriptor describing the extensions.
     """
+
+    if self._descriptor_db and hasattr(
+        self._descriptor_db, 'FindAllExtensionNumbers'):
+      full_name = message_descriptor.full_name
+      all_numbers = self._descriptor_db.FindAllExtensionNumbers(full_name)
+      for number in all_numbers:
+        if number in self._extensions_by_number[message_descriptor]:
+          continue
+        self._TryLoadExtensionFromDB(message_descriptor, number)
+
     return list(self._extensions_by_number[message_descriptor].values())
+
+  def _TryLoadExtensionFromDB(self, message_descriptor, number):
+    """Try to Load extensions from decriptor db.
+
+    Args:
+      message_descriptor: descriptor of the extended message.
+      number: the extension number that needs to be loaded.
+    """
+    if not self._descriptor_db:
+      return
+
+    if not hasattr(
+        self._descriptor_db, 'FindFileContainingExtension'):
+      return
+
+    full_name = message_descriptor.full_name
+    file_proto = self._descriptor_db.FindFileContainingExtension(
+        full_name, number)
+
+    if file_proto is None:
+      return
+
+    try:
+      file_desc = self._ConvertFileProtoToFileDescriptor(file_proto)
+      for extension in file_desc.extensions_by_name.values():
+        self._extensions_by_number[extension.containing_type][
+            extension.number] = extension
+        self._extensions_by_name[extension.containing_type][
+            extension.full_name] = extension
+      for message_type in file_desc.message_types_by_name.values():
+        for extension in message_type.extensions:
+          self._extensions_by_number[extension.containing_type][
+              extension.number] = extension
+          self._extensions_by_name[extension.containing_type][
+              extension.full_name] = extension
+    except:
+      warn_msg = ('Unable to load proto file %s for extension number %d.' %
+                  (file_proto.name, number))
+      warnings.warn(warn_msg, RuntimeWarning)
 
   def FindServiceByName(self, full_name):
     """Loads the named service descriptor from the pool.
@@ -636,7 +689,6 @@ class DescriptorPool(object):
     Returns:
       A FileDescriptor matching the passed in proto.
     """
-
     if file_proto.name not in self._file_descriptors:
       built_deps = list(self._GetDeps(file_proto.dependency))
       direct_deps = [self.FindFileByName(n) for n in file_proto.dependency]
@@ -968,6 +1020,8 @@ class DescriptorPool(object):
       elif field_proto.type == descriptor.FieldDescriptor.TYPE_BYTES:
         field_desc.default_value = text_encoding.CUnescape(
             field_proto.default_value)
+      elif field_proto.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
+        field_desc.default_value = None
       else:
 
         field_desc.default_value = int(field_proto.default_value)
@@ -984,6 +1038,8 @@ class DescriptorPool(object):
         field_desc.default_value = field_desc.enum_type.values[0].number
       elif field_proto.type == descriptor.FieldDescriptor.TYPE_BYTES:
         field_desc.default_value = b''
+      elif field_proto.type == descriptor.FieldDescriptor.TYPE_MESSAGE:
+        field_desc.default_value = None
       else:
 
         field_desc.default_value = 0

@@ -210,7 +210,7 @@ class PythonRuntimeInstanceFactory(instance.InstanceFactory,
         cmd_str = ' '.join(pip_cmd)
         logging.info('Running %s', cmd_str)
         pip_proc = subprocess.Popen(pip_cmd, stdout=pip_out)
-        if cls._WaitForProcWithLastLineStreamed(pip_proc, pip_out_r) is not 0:
+        if cls._WaitForProcWithLastLineStreamed(pip_proc, pip_out_r) != 0:
           sys.exit('Failed to run "{}"'.format(cmd_str))
 
   @classmethod

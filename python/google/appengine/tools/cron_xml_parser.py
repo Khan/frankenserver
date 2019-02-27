@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Directly processes text of cron.xml.
 
 CronXmlParser is called with an XML string to produce a CronXml object
@@ -23,12 +24,27 @@ CronXmlParser: converts XML to CronXml objct
 Cron: describes a single cron specified in cron.xml
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
 from xml.etree import ElementTree
 
-from google.appengine.cron import groc
-from google.appengine.cron import groctimespecification
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
+
+
+from google.appengine._internal import six_subset
+
+
+
+if six_subset.PY2:
+  from google.appengine.cron import groc
+  from google.appengine.cron import groctimespecification
+else:
+  groc = None
+  groctimespecification = None
+
 
 _RETRY_PARAMETER_TAGS = ('job-retry-limit',
                          'job-age-limit',
@@ -139,12 +155,15 @@ class CronXmlParser(object):
       return 'No URL for <cron> entry'
     if not cron.schedule:
       return "No schedule provided for <cron> entry with URL '%s'" % cron.url
-    try:
-      groctimespecification.GrocTimeSpecification(cron.schedule)
-    except groc.GrocException:
-      return ("Text '%s' in <schedule> node failed to parse,"
-              ' for <cron> entry with url %s.'
-              % (cron.schedule, cron.url))
+
+
+    if groc and groctimespecification:
+      try:
+        groctimespecification.GrocTimeSpecification(cron.schedule)
+      except groc.GrocException:
+        return ("Text '%s' in <schedule> node failed to parse,"
+                ' for <cron> entry with url %s.'
+                % (cron.schedule, cron.url))
 
 
 class _RetryParameters(object):

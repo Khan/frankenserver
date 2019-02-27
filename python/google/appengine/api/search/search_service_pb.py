@@ -3813,6 +3813,8 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
 class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
   has_source_ = 0
   source_ = 0
+  has_require_empty_index_ = 0
+  require_empty_index_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = []
@@ -3847,11 +3849,25 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
 
   def clear_index_spec(self):
     self.index_spec_ = []
+  def require_empty_index(self): return self.require_empty_index_
+
+  def set_require_empty_index(self, x):
+    self.has_require_empty_index_ = 1
+    self.require_empty_index_ = x
+
+  def clear_require_empty_index(self):
+    if self.has_require_empty_index_:
+      self.has_require_empty_index_ = 0
+      self.require_empty_index_ = 0
+
+  def has_require_empty_index(self): return self.has_require_empty_index_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_source()): self.set_source(x.source())
     for i in range(x.index_spec_size()): self.add_index_spec().CopyFrom(x.index_spec(i))
+    if (x.has_require_empty_index()): self.set_require_empty_index(x.require_empty_index())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3860,6 +3876,8 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
     if len(self.index_spec_) != len(x.index_spec_): return 0
     for e1, e2 in zip(self.index_spec_, x.index_spec_):
       if e1 != e2: return 0
+    if self.has_require_empty_index_ != x.has_require_empty_index_: return 0
+    if self.has_require_empty_index_ and self.require_empty_index_ != x.require_empty_index_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3873,6 +3891,7 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     n += 1 * len(self.index_spec_)
     for i in range(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSize())
+    if (self.has_require_empty_index_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -3880,11 +3899,13 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     n += 1 * len(self.index_spec_)
     for i in range(len(self.index_spec_)): n += self.lengthString(self.index_spec_[i].ByteSizePartial())
+    if (self.has_require_empty_index_): n += 2
     return n
 
   def Clear(self):
     self.clear_source()
     self.clear_index_spec()
+    self.clear_require_empty_index()
 
   def OutputUnchecked(self, out):
     if (self.has_source_):
@@ -3894,6 +3915,9 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.index_spec_[i].ByteSize())
       self.index_spec_[i].OutputUnchecked(out)
+    if (self.has_require_empty_index_):
+      out.putVarInt32(24)
+      out.putBoolean(self.require_empty_index_)
 
   def OutputPartial(self, out):
     if (self.has_source_):
@@ -3903,6 +3927,9 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.index_spec_[i].ByteSizePartial())
       self.index_spec_[i].OutputPartial(out)
+    if (self.has_require_empty_index_):
+      out.putVarInt32(24)
+      out.putBoolean(self.require_empty_index_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3915,6 +3942,9 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_index_spec().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.set_require_empty_index(d.getBoolean())
         continue
 
 
@@ -3933,6 +3963,7 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_require_empty_index_: res+=prefix+("require_empty_index: %s\n" % self.DebugFormatBool(self.require_empty_index_))
     return res
 
 
@@ -3941,18 +3972,21 @@ class DeleteSchemaParams(ProtocolBuffer.ProtocolMessage):
 
   ksource = 1
   kindex_spec = 2
+  krequire_empty_index = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "source",
     2: "index_spec",
-  }, 2)
+    3: "require_empty_index",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

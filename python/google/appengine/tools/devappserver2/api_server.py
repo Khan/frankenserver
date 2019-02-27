@@ -432,58 +432,11 @@ class APIServer(wsgi_server.WsgiServer):
 
     return json.dumps(status)
 
-  def _handle_RESET_STUB(self, environ, start_response):
-    """Reset a given stateful stub with a new one.
-
-    You might wish to swap out a currently running stub with another. For
-    example, in cases where you are running tests that use the devappserver and
-    you want to reset the stub in between test cases.
-
-    Currently the datastore is the only stub that can be reset, but others
-    could be added here if needed.
-
-    To reset the datastore stub, we expect this endpoint to be called with
-    a dictionary of the following shape, as a JSON string.
-    {
-        'service': 'datastore_v3',
-        'options': {
-          'app_id': 'dev~app-id',
-          'datastore_path': /path/to/new/sqlite.sql,
-          'db_consistency_probability': 1.0
-        }
-    }
-
-    Args:
-      environ: An environ dict for the request as defined in PEP-333.
-      start_response: A start_response function with semantics defined in
-        PEP-333.
-
-
-    Returns:
-        A JSON string if successful. Raises an error if not.
-    """
-    start_response('200 OK', [('Content-Type', 'text/plain')])
-    wsgi_input = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
-    params = json.loads(wsgi_input)
-
-    service = params['service']
-    stub_options = params['options']
-
-    stub_util.reset_stub(service, stub_options)
-
-    status = {
-        'success': True
-    }
-
-    return json.dumps(status)
-
   def __call__(self, environ, start_response):
     if environ.get('PATH_INFO') == '/clear':
       return self._handle_CLEAR(environ, start_response)
     elif environ.get('PATH_INFO') == '/_ah/status':
       return self._handle_STATUS(environ, start_response)
-    elif environ.get('PATH_INFO') == '/reset_stub':
-      return self._handle_RESET_STUB(environ, start_response)
     if environ['REQUEST_METHOD'] == 'GET':
       return self._handle_GET(environ, start_response)
     elif environ['REQUEST_METHOD'] == 'POST':
@@ -496,7 +449,7 @@ class APIServer(wsgi_server.WsgiServer):
 def _launch_gcd_emulator(
     app_id=None, emulator_port=0, silent=True, index_file='',
     require_indexes=False, datastore_path='', stub_type=None, cmd=None,
-    is_test=False):
+    is_test=False, auto_id_policy=datastore_stub_util.SEQUENTIAL):
   """Launch Cloud Datastore emulator asynchronously.
 
   If datastore_path is sqlite stub data, rename it and convert into emulator
@@ -518,6 +471,8 @@ def _launch_gcd_emulator(
       invokes the emulator.
     is_test: A boolean. If True, run emulator in --testing mode for unittests.
       Otherwise override some emulator flags for dev_appserver use cases.
+    auto_id_policy: A string specifying how the emualtor assigns auto id,
+      default to sequential.
 
   Returns:
     A threading.Thread object that asynchronously launch the emulator.
@@ -535,7 +490,9 @@ def _launch_gcd_emulator(
       need_conversion: A bool. If True convert sqlite data to emulator data.
     """
     emulator_manager.Launch(
-        emulator_port, silent, index_file, require_indexes, datastore_path)
+        emulator_port, silent, index_file, require_indexes, datastore_path,
+        ('SEQUENTIAL' if auto_id_policy == datastore_stub_util.SEQUENTIAL
+         else 'SCATTERED'))
     if need_conversion:
       logging.info(
           'Converting datastore_sqlite_stub data in %s to Cloud Datastore '
@@ -640,14 +597,15 @@ def create_api_server(
           app_id=app_id,
           emulator_port=(options.datastore_emulator_port
                          if options.datastore_emulator_port else
-                         portpicker.PickUnusedPort()),
+                         portpicker.pick_unused_port()),
           silent=options.dev_appserver_log_level != 'debug',
           index_file=os.path.join(app_root, 'index.yaml'),
           require_indexes=options.require_indexes,
           datastore_path=datastore_path,
           stub_type=stub_type,
           cmd=options.datastore_emulator_cmd,
-          is_test=options.datastore_emulator_is_test_mode)
+          is_test=options.datastore_emulator_is_test_mode,
+          auto_id_policy=options.auto_id_policy)
   else:
     # Use SQLite stub.
     # For historic reason we are still supporting conversion from file stub to

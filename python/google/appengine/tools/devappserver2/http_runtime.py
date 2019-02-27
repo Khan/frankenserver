@@ -81,6 +81,11 @@ START_PROCESS_REVERSE_NO_FILE = -4
 # User application has an entrypoint defined in app.yaml.
 START_PROCESS_WITH_ENTRYPOINT = -5
 
+# Runtimes which need
+_RUNTIMES_NEED_VM_ENV_VARS = [
+    'go111',
+]
+
 
 def _sleep_between_retries(attempt, max_attempts, sleep_base):
   """Sleep between retry attempts.
@@ -227,7 +232,8 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     # Java and Go. Python hacks os.environ to not really return the environment
     # variables, so Python needs to set these elsewhere.
     runtime_config = self._runtime_config_getter()
-    if runtime_config.vm:
+    if (runtime_config.vm or
+        self._module_configuration.runtime in _RUNTIMES_NEED_VM_ENV_VARS):
       self._env.update(get_vm_environment_variables(
           self._module_configuration, runtime_config))
 
@@ -348,7 +354,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       serialized_config = runtime_config.SerializeToString()
       with self._process_lock:
         assert not self._process, 'start() can only be called once'
-        port = portpicker.PickUnusedPort()
+        port = portpicker.pick_unused_port()
         self._env['PORT'] = str(port)
 
         # If any of the strings in args contain {port}, replace that substring
@@ -366,7 +372,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       serialized_config = runtime_config.SerializeToString()
       with self._process_lock:
         assert not self._process, 'start() can only be called once'
-        port = portpicker.PickUnusedPort()
+        port = portpicker.pick_unused_port()
         self._env['PORT'] = str(port)
 
         self._process = safe_subprocess.start_process(
@@ -380,7 +386,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       serialized_config = runtime_config.SerializeToString()
       with self._process_lock:
         assert not self._process, 'start() can only be called once'
-        port = portpicker.PickUnusedPort()
+        port = portpicker.pick_unused_port()
         if self._extra_args_getter:
           self._args.append(self._extra_args_getter(port))
 

@@ -28,6 +28,7 @@ This files defines well known classes which need extra maintenance including:
 
 
 
+import calendar
 import collections
 from datetime import datetime
 from datetime import timedelta
@@ -80,7 +81,7 @@ class Any(object):
 
   def Is(self, descriptor):
     """Checks if this Any represents the given protobuf type."""
-    return self.TypeName() == descriptor.full_name
+    return '/' in self.type_url and self.TypeName() == descriptor.full_name
 
 
 class Timestamp(object):
@@ -221,9 +222,15 @@ class Timestamp(object):
 
   def FromDatetime(self, dt):
     """Converts datetime to Timestamp."""
-    td = dt - datetime(1970, 1, 1)
-    self.seconds = td.seconds + td.days * _SECONDS_PER_DAY
-    self.nanos = td.microseconds * _NANOS_PER_MICROSECOND
+
+
+
+
+
+
+
+    self.seconds = calendar.timegm(dt.utctimetuple())
+    self.nanos = dt.microsecond * _NANOS_PER_MICROSECOND
 
 
 class Duration(object):
@@ -650,11 +657,7 @@ def _MergeMessage(
         destination.ClearField(_StrConvert(name))
       repeated_source = getattr(source, name)
       repeated_destination = getattr(destination, name)
-      if field.cpp_type == FieldDescriptor.CPPTYPE_MESSAGE:
-        for item in repeated_source:
-          repeated_destination.add().MergeFrom(item)
-      else:
-        repeated_destination.extend(repeated_source)
+      repeated_destination.MergeFrom(repeated_source)
     else:
       if field.cpp_type == FieldDescriptor.CPPTYPE_MESSAGE:
         if replace_message:

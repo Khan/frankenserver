@@ -2054,9 +2054,9 @@ class BoolType(DataType):
             selected[False], selected[True])
 
   def parse(self, value):
-    if value.lower() is 'true':
+    if value.lower() == 'true':
       return True
-    if value.lower() is 'false':
+    if value.lower() == 'false':
       return False
 
     return bool(int(value))

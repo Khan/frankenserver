@@ -299,9 +299,12 @@ class RecordsReader(object):
       return ('', _RECORD_TYPE_NONE)
 
     header = self.__reader.read(_HEADER_LENGTH)
+    if not header:
+      raise EOFError('No more data.')
+
     if len(header) != _HEADER_LENGTH:
-      raise EOFError('Read %s bytes instead of %s' %
-                     (len(header), _HEADER_LENGTH))
+      raise errors.InvalidRecordError(
+          'Read %s bytes instead of %s' % (len(header), _HEADER_LENGTH))
 
     (masked_crc, length, record_type) = struct.unpack(_HEADER_FORMAT, header)
     crc = _unmask_crc(masked_crc)
@@ -312,8 +315,8 @@ class RecordsReader(object):
 
     data = self.__reader.read(length)
     if len(data) != length:
-      raise EOFError('Not enough data read. Expected: %s but got %s' %
-                     (length, len(data)))
+      raise errors.InvalidRecordError(
+          'Not enough data read. Expected: %s but got %s' % (length, len(data)))
 
     if record_type == _RECORD_TYPE_NONE:
       return ('', record_type)

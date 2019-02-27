@@ -88,7 +88,6 @@
         <tr>
           <th><input id="allkeys" type="checkbox" /></th>
           <th>Key</th>
-          <th>Write Ops</th>
           <th>ID</th>
           <th>Key Name</th>
           {% for header in headers %}
@@ -105,9 +104,6 @@
             </td>
             <td>
               <a href="{{ entity.edit_uri }}">{{ entity.shortened_key }}</a>
-            </td>
-            <td>
-              {{entity.write_ops}}
             </td>
             <td>
               {% if entity.key_id %}

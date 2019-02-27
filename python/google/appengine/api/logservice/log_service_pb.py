@@ -32,9 +32,9 @@ except ImportError:
 import sys
 try:
   __import__('google.net.rpc.python.proto_python_api_1_stub')
-  __import__('google.net.rpc.python.pywraprpc_lite')
+  __import__('google.net.rpc.python.pywraprpc')
   proto_python_api_1_stub = sys.modules.get('google.net.rpc.python.proto_python_api_1_stub')
-  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
+  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc')
   _client_stub_base_class = proto_python_api_1_stub.Stub
 except ImportError:
   _client_stub_base_class = object
@@ -168,7 +168,7 @@ class LogServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.LogServiceError'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcnN6CUVycm9yQ29kZYsBkgECT0uYAQCMAYsBkgEPSU5WQUxJRF9SRVFVRVNUmAEBjAGLAZIBDVNUT1JBR0VfRVJST1KYAQKMAXS6AdsZCithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvEgphcHBob3N0aW5nGh1hcHBob3N0aW5nL2FwaS9hcGlfYmFzZS5wcm90bxobYXBwaG9zdGluZy9hcGkvc291cmNlLnByb3RvIk4KD0xvZ1NlcnZpY2VFcnJvciI7CglFcnJvckNvZGUSBgoCT0sQABITCg9JTlZBTElEX1JFUVVFU1QQARIRCg1TVE9SQUdFX0VSUk9SEAIifQoOVXNlckFwcExvZ0xpbmUSFgoOdGltZXN0YW1wX3VzZWMYASACKAMSDQoFbGV2ZWwYAiACKAMSDwoHbWVzc2FnZRgDIAIoCRIzCg9zb3VyY2VfbG9jYXRpb24YBCABKAsyGi5hcHBob3N0aW5nLlNvdXJjZUxvY2F0aW9uIj8KD1VzZXJBcHBMb2dHcm91cBIsCghsb2dfbGluZRgCIAMoCzIaLmFwcGhvc3RpbmcuVXNlckFwcExvZ0xpbmUiHAoMRmx1c2hSZXF1ZXN0EgwKBGxvZ3MYASABKAwiIgoQU2V0U3RhdHVzUmVxdWVzdBIOCgZzdGF0dXMYASACKAkiNwoJTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYASABKAwSFgoOcmVxdWVzdF9pZF9zZXQYZSABKAgicAoHTG9nTGluZRIMCgR0aW1lGAEgAigDEg0KBWxldmVsGAIgAigFEhMKC2xvZ19tZXNzYWdlGAMgAigJEjMKD3NvdXJjZV9sb2NhdGlvbhgEIAEoCzIaLmFwcGhvc3RpbmcuU291cmNlTG9jYXRpb24i4gYKClJlcXVlc3RMb2cSDgoGYXBwX2lkGAEgAigJEhoKCW1vZHVsZV9pZBglIAEoCToHZGVmYXVsdBISCgp2ZXJzaW9uX2lkGAIgAigJEhIKCnJlcXVlc3RfaWQYAyACKAwSJQoGb2Zmc2V0GCMgASgLMhUuYXBwaG9zdGluZy5Mb2dPZmZzZXQSCgoCaXAYBCACKAkSEAoIbmlja25hbWUYBSABKAkSEgoKc3RhcnRfdGltZRgGIAIoAxIQCghlbmRfdGltZRgHIAIoAxIPCgdsYXRlbmN5GAggAigDEg8KB21jeWNsZXMYCSACKAMSDgoGbWV0aG9kGAogAigJEhAKCHJlc291cmNlGAsgAigJEhQKDGh0dHBfdmVyc2lvbhgMIAIoCRIOCgZzdGF0dXMYDSACKAUSFQoNcmVzcG9uc2Vfc2l6ZRgOIAIoAxIQCghyZWZlcnJlchgPIAEoCRISCgp1c2VyX2FnZW50GBAgASgJEhUKDXVybF9tYXBfZW50cnkYESACKAkSEAoIY29tYmluZWQYEiACKAkSEwoLYXBpX21jeWNsZXMYEyABKAMSDAoEaG9zdBgUIAEoCRIMCgRjb3N0GBUgASgBEhcKD3Rhc2tfcXVldWVfbmFtZRgWIAEoCRIRCgl0YXNrX25hbWUYFyABKAkSGwoTd2FzX2xvYWRpbmdfcmVxdWVzdBgYIAEoCBIUCgxwZW5kaW5nX3RpbWUYGSABKAMSGQoNcmVwbGljYV9pbmRleBgaIAEoBToCLTESFgoIZmluaXNoZWQYGyABKAg6BHRydWUSEQoJY2xvbmVfa2V5GBwgASgMEiEKBGxpbmUYHSADKAsyEy5hcHBob3N0aW5nLkxvZ0xpbmUSGAoQbGluZXNfaW5jb21wbGV0ZRgkIAEoCBIaChJhcHBfZW5naW5lX3JlbGVhc2UYJiABKAwSEAoIdHJhY2VfaWQYJyABKAkSEwoLZXhpdF9yZWFzb24YHiABKAUSHgoWd2FzX3Rocm90dGxlZF9mb3JfdGltZRgfIAEoCBIiChp3YXNfdGhyb3R0bGVkX2Zvcl9yZXF1ZXN0cxggIAEoCBIWCg50aHJvdHRsZWRfdGltZRghIAEoAxITCgtzZXJ2ZXJfbmFtZRgiIAEoDCJxChBMb2dNb2R1bGVWZXJzaW9uEhoKCW1vZHVsZV9pZBgBIAEoCToHZGVmYXVsdBIVCg1tb2R1bGVfaWRfc2V0GGUgASgIEhIKCnZlcnNpb25faWQYAiABKAkSFgoOdmVyc2lvbl9pZF9zZXQYZiABKAgi1AUKDkxvZ1JlYWRSZXF1ZXN0Eg4KBmFwcF9pZBgBIAIoCRISCgp2ZXJzaW9uX2lkGAIgAygJEjQKDm1vZHVsZV92ZXJzaW9uGBMgAygLMhwuYXBwaG9zdGluZy5Mb2dNb2R1bGVWZXJzaW9uEhIKCnN0YXJ0X3RpbWUYAyABKAMSFgoOc3RhcnRfdGltZV9zZXQYZyABKAgSEAoIZW5kX3RpbWUYBCABKAMSFAoMZW5kX3RpbWVfc2V0GGggASgIEiUKBm9mZnNldBgFIAEoCzIVLmFwcGhvc3RpbmcuTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYBiADKAwSGQoRbWluaW11bV9sb2dfbGV2ZWwYByABKAUSHQoVbWluaW11bV9sb2dfbGV2ZWxfc2V0GGsgASgIEhoKEmluY2x1ZGVfaW5jb21wbGV0ZRgIIAEoCBINCgVjb3VudBgJIAEoAxIRCgljb3VudF9zZXQYbSABKAgSGgoSY29tYmluZWRfbG9nX3JlZ2V4GA4gASgJEh4KFmNvbWJpbmVkX2xvZ19yZWdleF9zZXQYciABKAgSEgoKaG9zdF9yZWdleBgPIAEoCRIWCg5ob3N0X3JlZ2V4X3NldBhzIAEoCBIVCg1yZXBsaWNhX2luZGV4GBAgASgFEhkKEXJlcGxpY2FfaW5kZXhfc2V0GHQgASgIEhgKEGluY2x1ZGVfYXBwX2xvZ3MYCiABKAgSHAoUYXBwX2xvZ3NfcGVyX3JlcXVlc3QYESABKAUSIAoYYXBwX2xvZ3NfcGVyX3JlcXVlc3Rfc2V0GHUgASgIEhQKDGluY2x1ZGVfaG9zdBgLIAEoCBITCgtpbmNsdWRlX2FsbBgMIAEoCBIWCg5jYWNoZV9pdGVyYXRvchgNIAEoCBISCgpudW1fc2hhcmRzGBIgASgFEhYKDm51bV9zaGFyZHNfc2V0GHYgASgIInQKD0xvZ1JlYWRSZXNwb25zZRIjCgNsb2cYASADKAsyFi5hcHBob3N0aW5nLlJlcXVlc3RMb2cSJQoGb2Zmc2V0GAIgASgLMhUuYXBwaG9zdGluZy5Mb2dPZmZzZXQSFQoNbGFzdF9lbmRfdGltZRgDIAEoAyJ+Cg5Mb2dVc2FnZVJlY29yZBISCgp2ZXJzaW9uX2lkGAEgASgJEhIKCnN0YXJ0X3RpbWUYAiABKAUSEAoIZW5kX3RpbWUYAyABKAUSDQoFY291bnQYBCABKAMSEgoKdG90YWxfc2l6ZRgFIAEoAxIPCgdyZWNvcmRzGAYgASgFIvkBCg9Mb2dVc2FnZVJlcXVlc3QSDgoGYXBwX2lkGAEgAigJEhIKCnZlcnNpb25faWQYAiADKAkSEgoKc3RhcnRfdGltZRgDIAEoBRIQCghlbmRfdGltZRgEIAEoBRIbChByZXNvbHV0aW9uX2hvdXJzGAUgASgNOgExEhwKFHJlc29sdXRpb25faG91cnNfc2V0GGkgASgIEhgKEGNvbWJpbmVfdmVyc2lvbnMYBiABKAgSFQoNdXNhZ2VfdmVyc2lvbhgHIAEoBRIZChF1c2FnZV92ZXJzaW9uX3NldBhrIAEoCBIVCg12ZXJzaW9uc19vbmx5GAggASgIImoKEExvZ1VzYWdlUmVzcG9uc2USKQoFdXNhZ2UYASADKAsyGi5hcHBob3N0aW5nLkxvZ1VzYWdlUmVjb3JkEisKB3N1bW1hcnkYAiABKAsyGi5hcHBob3N0aW5nLkxvZ1VzYWdlUmVjb3JkMp8CCgpMb2dTZXJ2aWNlEj8KBUZsdXNoEhguYXBwaG9zdGluZy5GbHVzaFJlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgASRwoJU2V0U3RhdHVzEhwuYXBwaG9zdGluZy5TZXRTdGF0dXNSZXF1ZXN0GhouYXBwaG9zdGluZy5iYXNlLlZvaWRQcm90byIAEkEKBFJlYWQSGi5hcHBob3N0aW5nLkxvZ1JlYWRSZXF1ZXN0GhsuYXBwaG9zdGluZy5Mb2dSZWFkUmVzcG9uc2UiABJECgVVc2FnZRIbLmFwcGhvc3RpbmcuTG9nVXNhZ2VSZXF1ZXN0GhwuYXBwaG9zdGluZy5Mb2dVc2FnZVJlc3BvbnNlIgBCOAokY29tLmdvb2dsZS5hcHBob3N0aW5nLmFwaS5sb2dzZXJ2aWNlEAIoAUIMTG9nU2VydmljZVBi"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcnN6CUVycm9yQ29kZYsBkgECT0uYAQCMAYsBkgEPSU5WQUxJRF9SRVFVRVNUmAEBjAGLAZIBDVNUT1JBR0VfRVJST1KYAQKMAXS6AfYaCithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvEgphcHBob3N0aW5nGh1hcHBob3N0aW5nL2FwaS9hcGlfYmFzZS5wcm90bxobYXBwaG9zdGluZy9hcGkvc291cmNlLnByb3RvIk4KD0xvZ1NlcnZpY2VFcnJvciI7CglFcnJvckNvZGUSBgoCT0sQABITCg9JTlZBTElEX1JFUVVFU1QQARIRCg1TVE9SQUdFX0VSUk9SEAIifQoOVXNlckFwcExvZ0xpbmUSFgoOdGltZXN0YW1wX3VzZWMYASACKAMSDQoFbGV2ZWwYAiACKAMSDwoHbWVzc2FnZRgDIAIoCRIzCg9zb3VyY2VfbG9jYXRpb24YBCABKAsyGi5hcHBob3N0aW5nLlNvdXJjZUxvY2F0aW9uIj8KD1VzZXJBcHBMb2dHcm91cBIsCghsb2dfbGluZRgCIAMoCzIaLmFwcGhvc3RpbmcuVXNlckFwcExvZ0xpbmUiHAoMRmx1c2hSZXF1ZXN0EgwKBGxvZ3MYASABKAwiIgoQU2V0U3RhdHVzUmVxdWVzdBIOCgZzdGF0dXMYASACKAkiQgoJTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYASABKAwSIQoZZGVwcmVjYXRlZF9yZXF1ZXN0X2lkX3NldBhlIAEoCCJwCgdMb2dMaW5lEgwKBHRpbWUYASACKAMSDQoFbGV2ZWwYAiACKAUSEwoLbG9nX21lc3NhZ2UYAyACKAkSMwoPc291cmNlX2xvY2F0aW9uGAQgASgLMhouYXBwaG9zdGluZy5Tb3VyY2VMb2NhdGlvbiLiBgoKUmVxdWVzdExvZxIOCgZhcHBfaWQYASACKAkSGgoJbW9kdWxlX2lkGCUgASgJOgdkZWZhdWx0EhIKCnZlcnNpb25faWQYAiACKAkSEgoKcmVxdWVzdF9pZBgDIAIoDBIlCgZvZmZzZXQYIyABKAsyFS5hcHBob3N0aW5nLkxvZ09mZnNldBIKCgJpcBgEIAIoCRIQCghuaWNrbmFtZRgFIAEoCRISCgpzdGFydF90aW1lGAYgAigDEhAKCGVuZF90aW1lGAcgAigDEg8KB2xhdGVuY3kYCCACKAMSDwoHbWN5Y2xlcxgJIAIoAxIOCgZtZXRob2QYCiACKAkSEAoIcmVzb3VyY2UYCyACKAkSFAoMaHR0cF92ZXJzaW9uGAwgAigJEg4KBnN0YXR1cxgNIAIoBRIVCg1yZXNwb25zZV9zaXplGA4gAigDEhAKCHJlZmVycmVyGA8gASgJEhIKCnVzZXJfYWdlbnQYECABKAkSFQoNdXJsX21hcF9lbnRyeRgRIAIoCRIQCghjb21iaW5lZBgSIAIoCRITCgthcGlfbWN5Y2xlcxgTIAEoAxIMCgRob3N0GBQgASgJEgwKBGNvc3QYFSABKAESFwoPdGFza19xdWV1ZV9uYW1lGBYgASgJEhEKCXRhc2tfbmFtZRgXIAEoCRIbChN3YXNfbG9hZGluZ19yZXF1ZXN0GBggASgIEhQKDHBlbmRpbmdfdGltZRgZIAEoAxIZCg1yZXBsaWNhX2luZGV4GBogASgFOgItMRIWCghmaW5pc2hlZBgbIAEoCDoEdHJ1ZRIRCgljbG9uZV9rZXkYHCABKAwSIQoEbGluZRgdIAMoCzITLmFwcGhvc3RpbmcuTG9nTGluZRIYChBsaW5lc19pbmNvbXBsZXRlGCQgASgIEhoKEmFwcF9lbmdpbmVfcmVsZWFzZRgmIAEoDBIQCgh0cmFjZV9pZBgnIAEoCRITCgtleGl0X3JlYXNvbhgeIAEoBRIeChZ3YXNfdGhyb3R0bGVkX2Zvcl90aW1lGB8gASgIEiIKGndhc190aHJvdHRsZWRfZm9yX3JlcXVlc3RzGCAgASgIEhYKDnRocm90dGxlZF90aW1lGCEgASgDEhMKC3NlcnZlcl9uYW1lGCIgASgMIocBChBMb2dNb2R1bGVWZXJzaW9uEhoKCW1vZHVsZV9pZBgBIAEoCToHZGVmYXVsdBISCgp2ZXJzaW9uX2lkGAIgASgJEiAKGGRlcHJlY2F0ZWRfbW9kdWxlX2lkX3NldBhlIAEoCBIhChlkZXByZWNhdGVkX3ZlcnNpb25faWRfc2V0GGYgASgIIrcGCg5Mb2dSZWFkUmVxdWVzdBIOCgZhcHBfaWQYASACKAkSEgoKdmVyc2lvbl9pZBgCIAMoCRI0Cg5tb2R1bGVfdmVyc2lvbhgTIAMoCzIcLmFwcGhvc3RpbmcuTG9nTW9kdWxlVmVyc2lvbhISCgpzdGFydF90aW1lGAMgASgDEhAKCGVuZF90aW1lGAQgASgDEiUKBm9mZnNldBgFIAEoCzIVLmFwcGhvc3RpbmcuTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYBiADKAwSGQoRbWluaW11bV9sb2dfbGV2ZWwYByABKAUSGgoSaW5jbHVkZV9pbmNvbXBsZXRlGAggASgIEg0KBWNvdW50GAkgASgDEhoKEmNvbWJpbmVkX2xvZ19yZWdleBgOIAEoCRISCgpob3N0X3JlZ2V4GA8gASgJEhUKDXJlcGxpY2FfaW5kZXgYECABKAUSGAoQaW5jbHVkZV9hcHBfbG9ncxgKIAEoCBIcChRhcHBfbG9nc19wZXJfcmVxdWVzdBgRIAEoBRIUCgxpbmNsdWRlX2hvc3QYCyABKAgSEwoLaW5jbHVkZV9hbGwYDCABKAgSFgoOY2FjaGVfaXRlcmF0b3IYDSABKAgSEgoKbnVtX3NoYXJkcxgSIAEoBRIhChlkZXByZWNhdGVkX3N0YXJ0X3RpbWVfc2V0GGcgASgIEh8KF2RlcHJlY2F0ZWRfZW5kX3RpbWVfc2V0GGggASgIEigKIGRlcHJlY2F0ZWRfbWluaW11bV9sb2dfbGV2ZWxfc2V0GGsgASgIEhwKFGRlcHJlY2F0ZWRfY291bnRfc2V0GG0gASgIEikKIWRlcHJlY2F0ZWRfY29tYmluZWRfbG9nX3JlZ2V4X3NldBhyIAEoCBIhChlkZXByZWNhdGVkX2hvc3RfcmVnZXhfc2V0GHMgASgIEiQKHGRlcHJlY2F0ZWRfcmVwbGljYV9pbmRleF9zZXQYdCABKAgSKwojZGVwcmVjYXRlZF9hcHBfbG9nc19wZXJfcmVxdWVzdF9zZXQYdSABKAgSIQoZZGVwcmVjYXRlZF9udW1fc2hhcmRzX3NldBh2IAEoCCJ0Cg9Mb2dSZWFkUmVzcG9uc2USIwoDbG9nGAEgAygLMhYuYXBwaG9zdGluZy5SZXF1ZXN0TG9nEiUKBm9mZnNldBgCIAEoCzIVLmFwcGhvc3RpbmcuTG9nT2Zmc2V0EhUKDWxhc3RfZW5kX3RpbWUYAyABKAMifgoOTG9nVXNhZ2VSZWNvcmQSEgoKdmVyc2lvbl9pZBgBIAEoCRISCgpzdGFydF90aW1lGAIgASgFEhAKCGVuZF90aW1lGAMgASgFEg0KBWNvdW50GAQgASgDEhIKCnRvdGFsX3NpemUYBSABKAMSDwoHcmVjb3JkcxgGIAEoBSKPAgoPTG9nVXNhZ2VSZXF1ZXN0Eg4KBmFwcF9pZBgBIAIoCRISCgp2ZXJzaW9uX2lkGAIgAygJEhIKCnN0YXJ0X3RpbWUYAyABKAUSEAoIZW5kX3RpbWUYBCABKAUSGwoQcmVzb2x1dGlvbl9ob3VycxgFIAEoDToBMRIYChBjb21iaW5lX3ZlcnNpb25zGAYgASgIEhUKDXVzYWdlX3ZlcnNpb24YByABKAUSFQoNdmVyc2lvbnNfb25seRgIIAEoCBInCh9kZXByZWNhdGVkX3Jlc29sdXRpb25faG91cnNfc2V0GGkgASgIEiQKHGRlcHJlY2F0ZWRfdXNhZ2VfdmVyc2lvbl9zZXQYayABKAgiagoQTG9nVXNhZ2VSZXNwb25zZRIpCgV1c2FnZRgBIAMoCzIaLmFwcGhvc3RpbmcuTG9nVXNhZ2VSZWNvcmQSKwoHc3VtbWFyeRgCIAEoCzIaLmFwcGhvc3RpbmcuTG9nVXNhZ2VSZWNvcmQynwIKCkxvZ1NlcnZpY2USPwoFRmx1c2gSGC5hcHBob3N0aW5nLkZsdXNoUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8iABJHCglTZXRTdGF0dXMSHC5hcHBob3N0aW5nLlNldFN0YXR1c1JlcXVlc3QaGi5hcHBob3N0aW5nLmJhc2UuVm9pZFByb3RvIgASQQoEUmVhZBIaLmFwcGhvc3RpbmcuTG9nUmVhZFJlcXVlc3QaGy5hcHBob3N0aW5nLkxvZ1JlYWRSZXNwb25zZSIAEkQKBVVzYWdlEhsuYXBwaG9zdGluZy5Mb2dVc2FnZVJlcXVlc3QaHC5hcHBob3N0aW5nLkxvZ1VzYWdlUmVzcG9uc2UiAEI4CiRjb20uZ29vZ2xlLmFwcGhvc3RpbmcuYXBpLmxvZ3NlcnZpY2UQAigBQgxMb2dTZXJ2aWNlUGI="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -845,8 +845,8 @@ class SetStatusRequest(ProtocolBuffer.ProtocolMessage):
 class LogOffset(ProtocolBuffer.ProtocolMessage):
   has_request_id_ = 0
   request_id_ = ""
-  has_request_id_set_ = 0
-  request_id_set_ = 0
+  has_deprecated_request_id_set_ = 0
+  deprecated_request_id_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -864,24 +864,24 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
 
   def has_request_id(self): return self.has_request_id_
 
-  def request_id_set(self): return self.request_id_set_
+  def deprecated_request_id_set(self): return self.deprecated_request_id_set_
 
-  def set_request_id_set(self, x):
-    self.has_request_id_set_ = 1
-    self.request_id_set_ = x
+  def set_deprecated_request_id_set(self, x):
+    self.has_deprecated_request_id_set_ = 1
+    self.deprecated_request_id_set_ = x
 
-  def clear_request_id_set(self):
-    if self.has_request_id_set_:
-      self.has_request_id_set_ = 0
-      self.request_id_set_ = 0
+  def clear_deprecated_request_id_set(self):
+    if self.has_deprecated_request_id_set_:
+      self.has_deprecated_request_id_set_ = 0
+      self.deprecated_request_id_set_ = 0
 
-  def has_request_id_set(self): return self.has_request_id_set_
+  def has_deprecated_request_id_set(self): return self.has_deprecated_request_id_set_
 
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_request_id()): self.set_request_id(x.request_id())
-    if (x.has_request_id_set()): self.set_request_id_set(x.request_id_set())
+    if (x.has_deprecated_request_id_set()): self.set_deprecated_request_id_set(x.deprecated_request_id_set())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -914,8 +914,8 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_request_id_ != x.has_request_id_: return 0
     if self.has_request_id_ and self.request_id_ != x.request_id_: return 0
-    if self.has_request_id_set_ != x.has_request_id_set_: return 0
-    if self.has_request_id_set_ and self.request_id_set_ != x.request_id_set_: return 0
+    if self.has_deprecated_request_id_set_ != x.has_deprecated_request_id_set_: return 0
+    if self.has_deprecated_request_id_set_ and self.deprecated_request_id_set_ != x.deprecated_request_id_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -925,34 +925,34 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
-    if (self.has_request_id_set_): n += 3
+    if (self.has_deprecated_request_id_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
-    if (self.has_request_id_set_): n += 3
+    if (self.has_deprecated_request_id_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_request_id()
-    self.clear_request_id_set()
+    self.clear_deprecated_request_id_set()
 
   def OutputUnchecked(self, out):
     if (self.has_request_id_):
       out.putVarInt32(10)
       out.putPrefixedString(self.request_id_)
-    if (self.has_request_id_set_):
+    if (self.has_deprecated_request_id_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.request_id_set_)
+      out.putBoolean(self.deprecated_request_id_set_)
 
   def OutputPartial(self, out):
     if (self.has_request_id_):
       out.putVarInt32(10)
       out.putPrefixedString(self.request_id_)
-    if (self.has_request_id_set_):
+    if (self.has_deprecated_request_id_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.request_id_set_)
+      out.putBoolean(self.deprecated_request_id_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -961,7 +961,7 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
         self.set_request_id(d.getPrefixedString())
         continue
       if tt == 808:
-        self.set_request_id_set(d.getBoolean())
+        self.set_deprecated_request_id_set(d.getBoolean())
         continue
 
 
@@ -972,7 +972,7 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_request_id_: res+=prefix+("request_id: %s\n" % self.DebugFormatString(self.request_id_))
-    if self.has_request_id_set_: res+=prefix+("request_id_set: %s\n" % self.DebugFormatBool(self.request_id_set_))
+    if self.has_deprecated_request_id_set_: res+=prefix+("deprecated_request_id_set: %s\n" % self.DebugFormatBool(self.deprecated_request_id_set_))
     return res
 
 
@@ -980,12 +980,12 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   krequest_id = 1
-  krequest_id_set = 101
+  kdeprecated_request_id_set = 101
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "request_id",
-    101: "request_id_set",
+    101: "deprecated_request_id_set",
   }, 101)
 
   _TYPES = _BuildTagLookupTable({
@@ -999,7 +999,7 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.LogOffset'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChRhcHBob3N0aW5nLkxvZ09mZnNldBMaCnJlcXVlc3RfaWQgASgCMAk4ARQTGg5yZXF1ZXN0X2lkX3NldCBlKAAwCDgBFMIBGmFwcGhvc3RpbmcuTG9nU2VydmljZUVycm9y"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChRhcHBob3N0aW5nLkxvZ09mZnNldBMaCnJlcXVlc3RfaWQgASgCMAk4ARQTGhlkZXByZWNhdGVkX3JlcXVlc3RfaWRfc2V0IGUoADAIOAEUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2798,12 +2798,12 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
 class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   has_module_id_ = 0
   module_id_ = "default"
-  has_module_id_set_ = 0
-  module_id_set_ = 0
   has_version_id_ = 0
   version_id_ = ""
-  has_version_id_set_ = 0
-  version_id_set_ = 0
+  has_deprecated_module_id_set_ = 0
+  deprecated_module_id_set_ = 0
+  has_deprecated_version_id_set_ = 0
+  deprecated_version_id_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -2821,19 +2821,6 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
 
   def has_module_id(self): return self.has_module_id_
 
-  def module_id_set(self): return self.module_id_set_
-
-  def set_module_id_set(self, x):
-    self.has_module_id_set_ = 1
-    self.module_id_set_ = x
-
-  def clear_module_id_set(self):
-    if self.has_module_id_set_:
-      self.has_module_id_set_ = 0
-      self.module_id_set_ = 0
-
-  def has_module_id_set(self): return self.has_module_id_set_
-
   def version_id(self): return self.version_id_
 
   def set_version_id(self, x):
@@ -2847,26 +2834,39 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
 
   def has_version_id(self): return self.has_version_id_
 
-  def version_id_set(self): return self.version_id_set_
+  def deprecated_module_id_set(self): return self.deprecated_module_id_set_
 
-  def set_version_id_set(self, x):
-    self.has_version_id_set_ = 1
-    self.version_id_set_ = x
+  def set_deprecated_module_id_set(self, x):
+    self.has_deprecated_module_id_set_ = 1
+    self.deprecated_module_id_set_ = x
 
-  def clear_version_id_set(self):
-    if self.has_version_id_set_:
-      self.has_version_id_set_ = 0
-      self.version_id_set_ = 0
+  def clear_deprecated_module_id_set(self):
+    if self.has_deprecated_module_id_set_:
+      self.has_deprecated_module_id_set_ = 0
+      self.deprecated_module_id_set_ = 0
 
-  def has_version_id_set(self): return self.has_version_id_set_
+  def has_deprecated_module_id_set(self): return self.has_deprecated_module_id_set_
+
+  def deprecated_version_id_set(self): return self.deprecated_version_id_set_
+
+  def set_deprecated_version_id_set(self, x):
+    self.has_deprecated_version_id_set_ = 1
+    self.deprecated_version_id_set_ = x
+
+  def clear_deprecated_version_id_set(self):
+    if self.has_deprecated_version_id_set_:
+      self.has_deprecated_version_id_set_ = 0
+      self.deprecated_version_id_set_ = 0
+
+  def has_deprecated_version_id_set(self): return self.has_deprecated_version_id_set_
 
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_module_id()): self.set_module_id(x.module_id())
-    if (x.has_module_id_set()): self.set_module_id_set(x.module_id_set())
     if (x.has_version_id()): self.set_version_id(x.version_id())
-    if (x.has_version_id_set()): self.set_version_id_set(x.version_id_set())
+    if (x.has_deprecated_module_id_set()): self.set_deprecated_module_id_set(x.deprecated_module_id_set())
+    if (x.has_deprecated_version_id_set()): self.set_deprecated_version_id_set(x.deprecated_version_id_set())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -2899,12 +2899,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_module_id_ != x.has_module_id_: return 0
     if self.has_module_id_ and self.module_id_ != x.module_id_: return 0
-    if self.has_module_id_set_ != x.has_module_id_set_: return 0
-    if self.has_module_id_set_ and self.module_id_set_ != x.module_id_set_: return 0
     if self.has_version_id_ != x.has_version_id_: return 0
     if self.has_version_id_ and self.version_id_ != x.version_id_: return 0
-    if self.has_version_id_set_ != x.has_version_id_set_: return 0
-    if self.has_version_id_set_ and self.version_id_set_ != x.version_id_set_: return 0
+    if self.has_deprecated_module_id_set_ != x.has_deprecated_module_id_set_: return 0
+    if self.has_deprecated_module_id_set_ and self.deprecated_module_id_set_ != x.deprecated_module_id_set_: return 0
+    if self.has_deprecated_version_id_set_ != x.has_deprecated_version_id_set_: return 0
+    if self.has_deprecated_version_id_set_ and self.deprecated_version_id_set_ != x.deprecated_version_id_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2914,24 +2914,24 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_module_id_): n += 1 + self.lengthString(len(self.module_id_))
-    if (self.has_module_id_set_): n += 3
     if (self.has_version_id_): n += 1 + self.lengthString(len(self.version_id_))
-    if (self.has_version_id_set_): n += 3
+    if (self.has_deprecated_module_id_set_): n += 3
+    if (self.has_deprecated_version_id_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_module_id_): n += 1 + self.lengthString(len(self.module_id_))
-    if (self.has_module_id_set_): n += 3
     if (self.has_version_id_): n += 1 + self.lengthString(len(self.version_id_))
-    if (self.has_version_id_set_): n += 3
+    if (self.has_deprecated_module_id_set_): n += 3
+    if (self.has_deprecated_version_id_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_module_id()
-    self.clear_module_id_set()
     self.clear_version_id()
-    self.clear_version_id_set()
+    self.clear_deprecated_module_id_set()
+    self.clear_deprecated_version_id_set()
 
   def OutputUnchecked(self, out):
     if (self.has_module_id_):
@@ -2940,12 +2940,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_id_):
       out.putVarInt32(18)
       out.putPrefixedString(self.version_id_)
-    if (self.has_module_id_set_):
+    if (self.has_deprecated_module_id_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.module_id_set_)
-    if (self.has_version_id_set_):
+      out.putBoolean(self.deprecated_module_id_set_)
+    if (self.has_deprecated_version_id_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.version_id_set_)
+      out.putBoolean(self.deprecated_version_id_set_)
 
   def OutputPartial(self, out):
     if (self.has_module_id_):
@@ -2954,12 +2954,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_id_):
       out.putVarInt32(18)
       out.putPrefixedString(self.version_id_)
-    if (self.has_module_id_set_):
+    if (self.has_deprecated_module_id_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.module_id_set_)
-    if (self.has_version_id_set_):
+      out.putBoolean(self.deprecated_module_id_set_)
+    if (self.has_deprecated_version_id_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.version_id_set_)
+      out.putBoolean(self.deprecated_version_id_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2971,10 +2971,10 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
         self.set_version_id(d.getPrefixedString())
         continue
       if tt == 808:
-        self.set_module_id_set(d.getBoolean())
+        self.set_deprecated_module_id_set(d.getBoolean())
         continue
       if tt == 816:
-        self.set_version_id_set(d.getBoolean())
+        self.set_deprecated_version_id_set(d.getBoolean())
         continue
 
 
@@ -2985,9 +2985,9 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_module_id_: res+=prefix+("module_id: %s\n" % self.DebugFormatString(self.module_id_))
-    if self.has_module_id_set_: res+=prefix+("module_id_set: %s\n" % self.DebugFormatBool(self.module_id_set_))
     if self.has_version_id_: res+=prefix+("version_id: %s\n" % self.DebugFormatString(self.version_id_))
-    if self.has_version_id_set_: res+=prefix+("version_id_set: %s\n" % self.DebugFormatBool(self.version_id_set_))
+    if self.has_deprecated_module_id_set_: res+=prefix+("deprecated_module_id_set: %s\n" % self.DebugFormatBool(self.deprecated_module_id_set_))
+    if self.has_deprecated_version_id_set_: res+=prefix+("deprecated_version_id_set: %s\n" % self.DebugFormatBool(self.deprecated_version_id_set_))
     return res
 
 
@@ -2995,16 +2995,16 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kmodule_id = 1
-  kmodule_id_set = 101
   kversion_id = 2
-  kversion_id_set = 102
+  kdeprecated_module_id_set = 101
+  kdeprecated_version_id_set = 102
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "module_id",
     2: "version_id",
-    101: "module_id_set",
-    102: "version_id_set",
+    101: "deprecated_module_id_set",
+    102: "deprecated_version_id_set",
   }, 102)
 
   _TYPES = _BuildTagLookupTable({
@@ -3020,7 +3020,7 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.LogModuleVersion'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChthcHBob3N0aW5nLkxvZ01vZHVsZVZlcnNpb24TGgltb2R1bGVfaWQgASgCMAk4AUIHZGVmYXVsdKMBqgEHZGVmYXVsdLIBCSJkZWZhdWx0IqQBFBMaDW1vZHVsZV9pZF9zZXQgZSgAMAg4ARQTGgp2ZXJzaW9uX2lkIAIoAjAJOAEUExoOdmVyc2lvbl9pZF9zZXQgZigAMAg4ARTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChthcHBob3N0aW5nLkxvZ01vZHVsZVZlcnNpb24TGgltb2R1bGVfaWQgASgCMAk4AUIHZGVmYXVsdKMBqgEHZGVmYXVsdLIBCSJkZWZhdWx0IqQBFBMaCnZlcnNpb25faWQgAigCMAk4ARQTGhhkZXByZWNhdGVkX21vZHVsZV9pZF9zZXQgZSgAMAg4ARQTGhlkZXByZWNhdGVkX3ZlcnNpb25faWRfc2V0IGYoADAIOAEUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -3030,42 +3030,26 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   app_id_ = ""
   has_start_time_ = 0
   start_time_ = 0
-  has_start_time_set_ = 0
-  start_time_set_ = 0
   has_end_time_ = 0
   end_time_ = 0
-  has_end_time_set_ = 0
-  end_time_set_ = 0
   has_offset_ = 0
   offset_ = None
   has_minimum_log_level_ = 0
   minimum_log_level_ = 0
-  has_minimum_log_level_set_ = 0
-  minimum_log_level_set_ = 0
   has_include_incomplete_ = 0
   include_incomplete_ = 0
   has_count_ = 0
   count_ = 0
-  has_count_set_ = 0
-  count_set_ = 0
   has_combined_log_regex_ = 0
   combined_log_regex_ = ""
-  has_combined_log_regex_set_ = 0
-  combined_log_regex_set_ = 0
   has_host_regex_ = 0
   host_regex_ = ""
-  has_host_regex_set_ = 0
-  host_regex_set_ = 0
   has_replica_index_ = 0
   replica_index_ = 0
-  has_replica_index_set_ = 0
-  replica_index_set_ = 0
   has_include_app_logs_ = 0
   include_app_logs_ = 0
   has_app_logs_per_request_ = 0
   app_logs_per_request_ = 0
-  has_app_logs_per_request_set_ = 0
-  app_logs_per_request_set_ = 0
   has_include_host_ = 0
   include_host_ = 0
   has_include_all_ = 0
@@ -3074,8 +3058,24 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   cache_iterator_ = 0
   has_num_shards_ = 0
   num_shards_ = 0
-  has_num_shards_set_ = 0
-  num_shards_set_ = 0
+  has_deprecated_start_time_set_ = 0
+  deprecated_start_time_set_ = 0
+  has_deprecated_end_time_set_ = 0
+  deprecated_end_time_set_ = 0
+  has_deprecated_minimum_log_level_set_ = 0
+  deprecated_minimum_log_level_set_ = 0
+  has_deprecated_count_set_ = 0
+  deprecated_count_set_ = 0
+  has_deprecated_combined_log_regex_set_ = 0
+  deprecated_combined_log_regex_set_ = 0
+  has_deprecated_host_regex_set_ = 0
+  deprecated_host_regex_set_ = 0
+  has_deprecated_replica_index_set_ = 0
+  deprecated_replica_index_set_ = 0
+  has_deprecated_app_logs_per_request_set_ = 0
+  deprecated_app_logs_per_request_set_ = 0
+  has_deprecated_num_shards_set_ = 0
+  deprecated_num_shards_set_ = 0
 
   def __init__(self, contents=None):
     self.version_id_ = []
@@ -3141,19 +3141,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_start_time(self): return self.has_start_time_
 
-  def start_time_set(self): return self.start_time_set_
-
-  def set_start_time_set(self, x):
-    self.has_start_time_set_ = 1
-    self.start_time_set_ = x
-
-  def clear_start_time_set(self):
-    if self.has_start_time_set_:
-      self.has_start_time_set_ = 0
-      self.start_time_set_ = 0
-
-  def has_start_time_set(self): return self.has_start_time_set_
-
   def end_time(self): return self.end_time_
 
   def set_end_time(self, x):
@@ -3166,19 +3153,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.end_time_ = 0
 
   def has_end_time(self): return self.has_end_time_
-
-  def end_time_set(self): return self.end_time_set_
-
-  def set_end_time_set(self, x):
-    self.has_end_time_set_ = 1
-    self.end_time_set_ = x
-
-  def clear_end_time_set(self):
-    if self.has_end_time_set_:
-      self.has_end_time_set_ = 0
-      self.end_time_set_ = 0
-
-  def has_end_time_set(self): return self.has_end_time_set_
 
   def offset(self):
     if self.offset_ is None:
@@ -3227,19 +3201,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_minimum_log_level(self): return self.has_minimum_log_level_
 
-  def minimum_log_level_set(self): return self.minimum_log_level_set_
-
-  def set_minimum_log_level_set(self, x):
-    self.has_minimum_log_level_set_ = 1
-    self.minimum_log_level_set_ = x
-
-  def clear_minimum_log_level_set(self):
-    if self.has_minimum_log_level_set_:
-      self.has_minimum_log_level_set_ = 0
-      self.minimum_log_level_set_ = 0
-
-  def has_minimum_log_level_set(self): return self.has_minimum_log_level_set_
-
   def include_incomplete(self): return self.include_incomplete_
 
   def set_include_incomplete(self, x):
@@ -3266,19 +3227,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_count(self): return self.has_count_
 
-  def count_set(self): return self.count_set_
-
-  def set_count_set(self, x):
-    self.has_count_set_ = 1
-    self.count_set_ = x
-
-  def clear_count_set(self):
-    if self.has_count_set_:
-      self.has_count_set_ = 0
-      self.count_set_ = 0
-
-  def has_count_set(self): return self.has_count_set_
-
   def combined_log_regex(self): return self.combined_log_regex_
 
   def set_combined_log_regex(self, x):
@@ -3291,19 +3239,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.combined_log_regex_ = ""
 
   def has_combined_log_regex(self): return self.has_combined_log_regex_
-
-  def combined_log_regex_set(self): return self.combined_log_regex_set_
-
-  def set_combined_log_regex_set(self, x):
-    self.has_combined_log_regex_set_ = 1
-    self.combined_log_regex_set_ = x
-
-  def clear_combined_log_regex_set(self):
-    if self.has_combined_log_regex_set_:
-      self.has_combined_log_regex_set_ = 0
-      self.combined_log_regex_set_ = 0
-
-  def has_combined_log_regex_set(self): return self.has_combined_log_regex_set_
 
   def host_regex(self): return self.host_regex_
 
@@ -3318,19 +3253,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_host_regex(self): return self.has_host_regex_
 
-  def host_regex_set(self): return self.host_regex_set_
-
-  def set_host_regex_set(self, x):
-    self.has_host_regex_set_ = 1
-    self.host_regex_set_ = x
-
-  def clear_host_regex_set(self):
-    if self.has_host_regex_set_:
-      self.has_host_regex_set_ = 0
-      self.host_regex_set_ = 0
-
-  def has_host_regex_set(self): return self.has_host_regex_set_
-
   def replica_index(self): return self.replica_index_
 
   def set_replica_index(self, x):
@@ -3343,19 +3265,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.replica_index_ = 0
 
   def has_replica_index(self): return self.has_replica_index_
-
-  def replica_index_set(self): return self.replica_index_set_
-
-  def set_replica_index_set(self, x):
-    self.has_replica_index_set_ = 1
-    self.replica_index_set_ = x
-
-  def clear_replica_index_set(self):
-    if self.has_replica_index_set_:
-      self.has_replica_index_set_ = 0
-      self.replica_index_set_ = 0
-
-  def has_replica_index_set(self): return self.has_replica_index_set_
 
   def include_app_logs(self): return self.include_app_logs_
 
@@ -3382,19 +3291,6 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.app_logs_per_request_ = 0
 
   def has_app_logs_per_request(self): return self.has_app_logs_per_request_
-
-  def app_logs_per_request_set(self): return self.app_logs_per_request_set_
-
-  def set_app_logs_per_request_set(self, x):
-    self.has_app_logs_per_request_set_ = 1
-    self.app_logs_per_request_set_ = x
-
-  def clear_app_logs_per_request_set(self):
-    if self.has_app_logs_per_request_set_:
-      self.has_app_logs_per_request_set_ = 0
-      self.app_logs_per_request_set_ = 0
-
-  def has_app_logs_per_request_set(self): return self.has_app_logs_per_request_set_
 
   def include_host(self): return self.include_host_
 
@@ -3448,18 +3344,122 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_num_shards(self): return self.has_num_shards_
 
-  def num_shards_set(self): return self.num_shards_set_
+  def deprecated_start_time_set(self): return self.deprecated_start_time_set_
 
-  def set_num_shards_set(self, x):
-    self.has_num_shards_set_ = 1
-    self.num_shards_set_ = x
+  def set_deprecated_start_time_set(self, x):
+    self.has_deprecated_start_time_set_ = 1
+    self.deprecated_start_time_set_ = x
 
-  def clear_num_shards_set(self):
-    if self.has_num_shards_set_:
-      self.has_num_shards_set_ = 0
-      self.num_shards_set_ = 0
+  def clear_deprecated_start_time_set(self):
+    if self.has_deprecated_start_time_set_:
+      self.has_deprecated_start_time_set_ = 0
+      self.deprecated_start_time_set_ = 0
 
-  def has_num_shards_set(self): return self.has_num_shards_set_
+  def has_deprecated_start_time_set(self): return self.has_deprecated_start_time_set_
+
+  def deprecated_end_time_set(self): return self.deprecated_end_time_set_
+
+  def set_deprecated_end_time_set(self, x):
+    self.has_deprecated_end_time_set_ = 1
+    self.deprecated_end_time_set_ = x
+
+  def clear_deprecated_end_time_set(self):
+    if self.has_deprecated_end_time_set_:
+      self.has_deprecated_end_time_set_ = 0
+      self.deprecated_end_time_set_ = 0
+
+  def has_deprecated_end_time_set(self): return self.has_deprecated_end_time_set_
+
+  def deprecated_minimum_log_level_set(self): return self.deprecated_minimum_log_level_set_
+
+  def set_deprecated_minimum_log_level_set(self, x):
+    self.has_deprecated_minimum_log_level_set_ = 1
+    self.deprecated_minimum_log_level_set_ = x
+
+  def clear_deprecated_minimum_log_level_set(self):
+    if self.has_deprecated_minimum_log_level_set_:
+      self.has_deprecated_minimum_log_level_set_ = 0
+      self.deprecated_minimum_log_level_set_ = 0
+
+  def has_deprecated_minimum_log_level_set(self): return self.has_deprecated_minimum_log_level_set_
+
+  def deprecated_count_set(self): return self.deprecated_count_set_
+
+  def set_deprecated_count_set(self, x):
+    self.has_deprecated_count_set_ = 1
+    self.deprecated_count_set_ = x
+
+  def clear_deprecated_count_set(self):
+    if self.has_deprecated_count_set_:
+      self.has_deprecated_count_set_ = 0
+      self.deprecated_count_set_ = 0
+
+  def has_deprecated_count_set(self): return self.has_deprecated_count_set_
+
+  def deprecated_combined_log_regex_set(self): return self.deprecated_combined_log_regex_set_
+
+  def set_deprecated_combined_log_regex_set(self, x):
+    self.has_deprecated_combined_log_regex_set_ = 1
+    self.deprecated_combined_log_regex_set_ = x
+
+  def clear_deprecated_combined_log_regex_set(self):
+    if self.has_deprecated_combined_log_regex_set_:
+      self.has_deprecated_combined_log_regex_set_ = 0
+      self.deprecated_combined_log_regex_set_ = 0
+
+  def has_deprecated_combined_log_regex_set(self): return self.has_deprecated_combined_log_regex_set_
+
+  def deprecated_host_regex_set(self): return self.deprecated_host_regex_set_
+
+  def set_deprecated_host_regex_set(self, x):
+    self.has_deprecated_host_regex_set_ = 1
+    self.deprecated_host_regex_set_ = x
+
+  def clear_deprecated_host_regex_set(self):
+    if self.has_deprecated_host_regex_set_:
+      self.has_deprecated_host_regex_set_ = 0
+      self.deprecated_host_regex_set_ = 0
+
+  def has_deprecated_host_regex_set(self): return self.has_deprecated_host_regex_set_
+
+  def deprecated_replica_index_set(self): return self.deprecated_replica_index_set_
+
+  def set_deprecated_replica_index_set(self, x):
+    self.has_deprecated_replica_index_set_ = 1
+    self.deprecated_replica_index_set_ = x
+
+  def clear_deprecated_replica_index_set(self):
+    if self.has_deprecated_replica_index_set_:
+      self.has_deprecated_replica_index_set_ = 0
+      self.deprecated_replica_index_set_ = 0
+
+  def has_deprecated_replica_index_set(self): return self.has_deprecated_replica_index_set_
+
+  def deprecated_app_logs_per_request_set(self): return self.deprecated_app_logs_per_request_set_
+
+  def set_deprecated_app_logs_per_request_set(self, x):
+    self.has_deprecated_app_logs_per_request_set_ = 1
+    self.deprecated_app_logs_per_request_set_ = x
+
+  def clear_deprecated_app_logs_per_request_set(self):
+    if self.has_deprecated_app_logs_per_request_set_:
+      self.has_deprecated_app_logs_per_request_set_ = 0
+      self.deprecated_app_logs_per_request_set_ = 0
+
+  def has_deprecated_app_logs_per_request_set(self): return self.has_deprecated_app_logs_per_request_set_
+
+  def deprecated_num_shards_set(self): return self.deprecated_num_shards_set_
+
+  def set_deprecated_num_shards_set(self, x):
+    self.has_deprecated_num_shards_set_ = 1
+    self.deprecated_num_shards_set_ = x
+
+  def clear_deprecated_num_shards_set(self):
+    if self.has_deprecated_num_shards_set_:
+      self.has_deprecated_num_shards_set_ = 0
+      self.deprecated_num_shards_set_ = 0
+
+  def has_deprecated_num_shards_set(self): return self.has_deprecated_num_shards_set_
 
 
   def MergeFrom(self, x):
@@ -3468,30 +3468,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     for i in range(x.version_id_size()): self.add_version_id(x.version_id(i))
     for i in range(x.module_version_size()): self.add_module_version().CopyFrom(x.module_version(i))
     if (x.has_start_time()): self.set_start_time(x.start_time())
-    if (x.has_start_time_set()): self.set_start_time_set(x.start_time_set())
     if (x.has_end_time()): self.set_end_time(x.end_time())
-    if (x.has_end_time_set()): self.set_end_time_set(x.end_time_set())
     if (x.has_offset()): self.mutable_offset().MergeFrom(x.offset())
     for i in range(x.request_id_size()): self.add_request_id(x.request_id(i))
     if (x.has_minimum_log_level()): self.set_minimum_log_level(x.minimum_log_level())
-    if (x.has_minimum_log_level_set()): self.set_minimum_log_level_set(x.minimum_log_level_set())
     if (x.has_include_incomplete()): self.set_include_incomplete(x.include_incomplete())
     if (x.has_count()): self.set_count(x.count())
-    if (x.has_count_set()): self.set_count_set(x.count_set())
     if (x.has_combined_log_regex()): self.set_combined_log_regex(x.combined_log_regex())
-    if (x.has_combined_log_regex_set()): self.set_combined_log_regex_set(x.combined_log_regex_set())
     if (x.has_host_regex()): self.set_host_regex(x.host_regex())
-    if (x.has_host_regex_set()): self.set_host_regex_set(x.host_regex_set())
     if (x.has_replica_index()): self.set_replica_index(x.replica_index())
-    if (x.has_replica_index_set()): self.set_replica_index_set(x.replica_index_set())
     if (x.has_include_app_logs()): self.set_include_app_logs(x.include_app_logs())
     if (x.has_app_logs_per_request()): self.set_app_logs_per_request(x.app_logs_per_request())
-    if (x.has_app_logs_per_request_set()): self.set_app_logs_per_request_set(x.app_logs_per_request_set())
     if (x.has_include_host()): self.set_include_host(x.include_host())
     if (x.has_include_all()): self.set_include_all(x.include_all())
     if (x.has_cache_iterator()): self.set_cache_iterator(x.cache_iterator())
     if (x.has_num_shards()): self.set_num_shards(x.num_shards())
-    if (x.has_num_shards_set()): self.set_num_shards_set(x.num_shards_set())
+    if (x.has_deprecated_start_time_set()): self.set_deprecated_start_time_set(x.deprecated_start_time_set())
+    if (x.has_deprecated_end_time_set()): self.set_deprecated_end_time_set(x.deprecated_end_time_set())
+    if (x.has_deprecated_minimum_log_level_set()): self.set_deprecated_minimum_log_level_set(x.deprecated_minimum_log_level_set())
+    if (x.has_deprecated_count_set()): self.set_deprecated_count_set(x.deprecated_count_set())
+    if (x.has_deprecated_combined_log_regex_set()): self.set_deprecated_combined_log_regex_set(x.deprecated_combined_log_regex_set())
+    if (x.has_deprecated_host_regex_set()): self.set_deprecated_host_regex_set(x.deprecated_host_regex_set())
+    if (x.has_deprecated_replica_index_set()): self.set_deprecated_replica_index_set(x.deprecated_replica_index_set())
+    if (x.has_deprecated_app_logs_per_request_set()): self.set_deprecated_app_logs_per_request_set(x.deprecated_app_logs_per_request_set())
+    if (x.has_deprecated_num_shards_set()): self.set_deprecated_num_shards_set(x.deprecated_num_shards_set())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -3532,12 +3532,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_start_time_ != x.has_start_time_: return 0
     if self.has_start_time_ and self.start_time_ != x.start_time_: return 0
-    if self.has_start_time_set_ != x.has_start_time_set_: return 0
-    if self.has_start_time_set_ and self.start_time_set_ != x.start_time_set_: return 0
     if self.has_end_time_ != x.has_end_time_: return 0
     if self.has_end_time_ and self.end_time_ != x.end_time_: return 0
-    if self.has_end_time_set_ != x.has_end_time_set_: return 0
-    if self.has_end_time_set_ and self.end_time_set_ != x.end_time_set_: return 0
     if self.has_offset_ != x.has_offset_: return 0
     if self.has_offset_ and self.offset_ != x.offset_: return 0
     if len(self.request_id_) != len(x.request_id_): return 0
@@ -3545,32 +3541,20 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_minimum_log_level_ != x.has_minimum_log_level_: return 0
     if self.has_minimum_log_level_ and self.minimum_log_level_ != x.minimum_log_level_: return 0
-    if self.has_minimum_log_level_set_ != x.has_minimum_log_level_set_: return 0
-    if self.has_minimum_log_level_set_ and self.minimum_log_level_set_ != x.minimum_log_level_set_: return 0
     if self.has_include_incomplete_ != x.has_include_incomplete_: return 0
     if self.has_include_incomplete_ and self.include_incomplete_ != x.include_incomplete_: return 0
     if self.has_count_ != x.has_count_: return 0
     if self.has_count_ and self.count_ != x.count_: return 0
-    if self.has_count_set_ != x.has_count_set_: return 0
-    if self.has_count_set_ and self.count_set_ != x.count_set_: return 0
     if self.has_combined_log_regex_ != x.has_combined_log_regex_: return 0
     if self.has_combined_log_regex_ and self.combined_log_regex_ != x.combined_log_regex_: return 0
-    if self.has_combined_log_regex_set_ != x.has_combined_log_regex_set_: return 0
-    if self.has_combined_log_regex_set_ and self.combined_log_regex_set_ != x.combined_log_regex_set_: return 0
     if self.has_host_regex_ != x.has_host_regex_: return 0
     if self.has_host_regex_ and self.host_regex_ != x.host_regex_: return 0
-    if self.has_host_regex_set_ != x.has_host_regex_set_: return 0
-    if self.has_host_regex_set_ and self.host_regex_set_ != x.host_regex_set_: return 0
     if self.has_replica_index_ != x.has_replica_index_: return 0
     if self.has_replica_index_ and self.replica_index_ != x.replica_index_: return 0
-    if self.has_replica_index_set_ != x.has_replica_index_set_: return 0
-    if self.has_replica_index_set_ and self.replica_index_set_ != x.replica_index_set_: return 0
     if self.has_include_app_logs_ != x.has_include_app_logs_: return 0
     if self.has_include_app_logs_ and self.include_app_logs_ != x.include_app_logs_: return 0
     if self.has_app_logs_per_request_ != x.has_app_logs_per_request_: return 0
     if self.has_app_logs_per_request_ and self.app_logs_per_request_ != x.app_logs_per_request_: return 0
-    if self.has_app_logs_per_request_set_ != x.has_app_logs_per_request_set_: return 0
-    if self.has_app_logs_per_request_set_ and self.app_logs_per_request_set_ != x.app_logs_per_request_set_: return 0
     if self.has_include_host_ != x.has_include_host_: return 0
     if self.has_include_host_ and self.include_host_ != x.include_host_: return 0
     if self.has_include_all_ != x.has_include_all_: return 0
@@ -3579,8 +3563,24 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_cache_iterator_ and self.cache_iterator_ != x.cache_iterator_: return 0
     if self.has_num_shards_ != x.has_num_shards_: return 0
     if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
-    if self.has_num_shards_set_ != x.has_num_shards_set_: return 0
-    if self.has_num_shards_set_ and self.num_shards_set_ != x.num_shards_set_: return 0
+    if self.has_deprecated_start_time_set_ != x.has_deprecated_start_time_set_: return 0
+    if self.has_deprecated_start_time_set_ and self.deprecated_start_time_set_ != x.deprecated_start_time_set_: return 0
+    if self.has_deprecated_end_time_set_ != x.has_deprecated_end_time_set_: return 0
+    if self.has_deprecated_end_time_set_ and self.deprecated_end_time_set_ != x.deprecated_end_time_set_: return 0
+    if self.has_deprecated_minimum_log_level_set_ != x.has_deprecated_minimum_log_level_set_: return 0
+    if self.has_deprecated_minimum_log_level_set_ and self.deprecated_minimum_log_level_set_ != x.deprecated_minimum_log_level_set_: return 0
+    if self.has_deprecated_count_set_ != x.has_deprecated_count_set_: return 0
+    if self.has_deprecated_count_set_ and self.deprecated_count_set_ != x.deprecated_count_set_: return 0
+    if self.has_deprecated_combined_log_regex_set_ != x.has_deprecated_combined_log_regex_set_: return 0
+    if self.has_deprecated_combined_log_regex_set_ and self.deprecated_combined_log_regex_set_ != x.deprecated_combined_log_regex_set_: return 0
+    if self.has_deprecated_host_regex_set_ != x.has_deprecated_host_regex_set_: return 0
+    if self.has_deprecated_host_regex_set_ and self.deprecated_host_regex_set_ != x.deprecated_host_regex_set_: return 0
+    if self.has_deprecated_replica_index_set_ != x.has_deprecated_replica_index_set_: return 0
+    if self.has_deprecated_replica_index_set_ and self.deprecated_replica_index_set_ != x.deprecated_replica_index_set_: return 0
+    if self.has_deprecated_app_logs_per_request_set_ != x.has_deprecated_app_logs_per_request_set_: return 0
+    if self.has_deprecated_app_logs_per_request_set_ and self.deprecated_app_logs_per_request_set_ != x.deprecated_app_logs_per_request_set_: return 0
+    if self.has_deprecated_num_shards_set_ != x.has_deprecated_num_shards_set_: return 0
+    if self.has_deprecated_num_shards_set_ and self.deprecated_num_shards_set_ != x.deprecated_num_shards_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3602,31 +3602,31 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.module_version_)
     for i in range(len(self.module_version_)): n += self.lengthString(self.module_version_[i].ByteSize())
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
-    if (self.has_start_time_set_): n += 3
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
-    if (self.has_end_time_set_): n += 3
     if (self.has_offset_): n += 1 + self.lengthString(self.offset_.ByteSize())
     n += 1 * len(self.request_id_)
     for i in range(len(self.request_id_)): n += self.lengthString(len(self.request_id_[i]))
     if (self.has_minimum_log_level_): n += 1 + self.lengthVarInt64(self.minimum_log_level_)
-    if (self.has_minimum_log_level_set_): n += 3
     if (self.has_include_incomplete_): n += 2
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
-    if (self.has_count_set_): n += 3
     if (self.has_combined_log_regex_): n += 1 + self.lengthString(len(self.combined_log_regex_))
-    if (self.has_combined_log_regex_set_): n += 3
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
-    if (self.has_host_regex_set_): n += 3
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
-    if (self.has_replica_index_set_): n += 3
     if (self.has_include_app_logs_): n += 2
     if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
-    if (self.has_app_logs_per_request_set_): n += 3
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
     if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
-    if (self.has_num_shards_set_): n += 3
+    if (self.has_deprecated_start_time_set_): n += 3
+    if (self.has_deprecated_end_time_set_): n += 3
+    if (self.has_deprecated_minimum_log_level_set_): n += 3
+    if (self.has_deprecated_count_set_): n += 3
+    if (self.has_deprecated_combined_log_regex_set_): n += 3
+    if (self.has_deprecated_host_regex_set_): n += 3
+    if (self.has_deprecated_replica_index_set_): n += 3
+    if (self.has_deprecated_app_logs_per_request_set_): n += 3
+    if (self.has_deprecated_num_shards_set_): n += 3
     return n + 1
 
   def ByteSizePartial(self):
@@ -3639,31 +3639,31 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.module_version_)
     for i in range(len(self.module_version_)): n += self.lengthString(self.module_version_[i].ByteSizePartial())
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
-    if (self.has_start_time_set_): n += 3
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
-    if (self.has_end_time_set_): n += 3
     if (self.has_offset_): n += 1 + self.lengthString(self.offset_.ByteSizePartial())
     n += 1 * len(self.request_id_)
     for i in range(len(self.request_id_)): n += self.lengthString(len(self.request_id_[i]))
     if (self.has_minimum_log_level_): n += 1 + self.lengthVarInt64(self.minimum_log_level_)
-    if (self.has_minimum_log_level_set_): n += 3
     if (self.has_include_incomplete_): n += 2
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
-    if (self.has_count_set_): n += 3
     if (self.has_combined_log_regex_): n += 1 + self.lengthString(len(self.combined_log_regex_))
-    if (self.has_combined_log_regex_set_): n += 3
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
-    if (self.has_host_regex_set_): n += 3
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
-    if (self.has_replica_index_set_): n += 3
     if (self.has_include_app_logs_): n += 2
     if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
-    if (self.has_app_logs_per_request_set_): n += 3
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
     if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
-    if (self.has_num_shards_set_): n += 3
+    if (self.has_deprecated_start_time_set_): n += 3
+    if (self.has_deprecated_end_time_set_): n += 3
+    if (self.has_deprecated_minimum_log_level_set_): n += 3
+    if (self.has_deprecated_count_set_): n += 3
+    if (self.has_deprecated_combined_log_regex_set_): n += 3
+    if (self.has_deprecated_host_regex_set_): n += 3
+    if (self.has_deprecated_replica_index_set_): n += 3
+    if (self.has_deprecated_app_logs_per_request_set_): n += 3
+    if (self.has_deprecated_num_shards_set_): n += 3
     return n
 
   def Clear(self):
@@ -3671,30 +3671,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_version_id()
     self.clear_module_version()
     self.clear_start_time()
-    self.clear_start_time_set()
     self.clear_end_time()
-    self.clear_end_time_set()
     self.clear_offset()
     self.clear_request_id()
     self.clear_minimum_log_level()
-    self.clear_minimum_log_level_set()
     self.clear_include_incomplete()
     self.clear_count()
-    self.clear_count_set()
     self.clear_combined_log_regex()
-    self.clear_combined_log_regex_set()
     self.clear_host_regex()
-    self.clear_host_regex_set()
     self.clear_replica_index()
-    self.clear_replica_index_set()
     self.clear_include_app_logs()
     self.clear_app_logs_per_request()
-    self.clear_app_logs_per_request_set()
     self.clear_include_host()
     self.clear_include_all()
     self.clear_cache_iterator()
     self.clear_num_shards()
-    self.clear_num_shards_set()
+    self.clear_deprecated_start_time_set()
+    self.clear_deprecated_end_time_set()
+    self.clear_deprecated_minimum_log_level_set()
+    self.clear_deprecated_count_set()
+    self.clear_deprecated_combined_log_regex_set()
+    self.clear_deprecated_host_regex_set()
+    self.clear_deprecated_replica_index_set()
+    self.clear_deprecated_app_logs_per_request_set()
+    self.clear_deprecated_num_shards_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -3755,33 +3755,33 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(154)
       out.putVarInt32(self.module_version_[i].ByteSize())
       self.module_version_[i].OutputUnchecked(out)
-    if (self.has_start_time_set_):
+    if (self.has_deprecated_start_time_set_):
       out.putVarInt32(824)
-      out.putBoolean(self.start_time_set_)
-    if (self.has_end_time_set_):
+      out.putBoolean(self.deprecated_start_time_set_)
+    if (self.has_deprecated_end_time_set_):
       out.putVarInt32(832)
-      out.putBoolean(self.end_time_set_)
-    if (self.has_minimum_log_level_set_):
+      out.putBoolean(self.deprecated_end_time_set_)
+    if (self.has_deprecated_minimum_log_level_set_):
       out.putVarInt32(856)
-      out.putBoolean(self.minimum_log_level_set_)
-    if (self.has_count_set_):
+      out.putBoolean(self.deprecated_minimum_log_level_set_)
+    if (self.has_deprecated_count_set_):
       out.putVarInt32(872)
-      out.putBoolean(self.count_set_)
-    if (self.has_combined_log_regex_set_):
+      out.putBoolean(self.deprecated_count_set_)
+    if (self.has_deprecated_combined_log_regex_set_):
       out.putVarInt32(912)
-      out.putBoolean(self.combined_log_regex_set_)
-    if (self.has_host_regex_set_):
+      out.putBoolean(self.deprecated_combined_log_regex_set_)
+    if (self.has_deprecated_host_regex_set_):
       out.putVarInt32(920)
-      out.putBoolean(self.host_regex_set_)
-    if (self.has_replica_index_set_):
+      out.putBoolean(self.deprecated_host_regex_set_)
+    if (self.has_deprecated_replica_index_set_):
       out.putVarInt32(928)
-      out.putBoolean(self.replica_index_set_)
-    if (self.has_app_logs_per_request_set_):
+      out.putBoolean(self.deprecated_replica_index_set_)
+    if (self.has_deprecated_app_logs_per_request_set_):
       out.putVarInt32(936)
-      out.putBoolean(self.app_logs_per_request_set_)
-    if (self.has_num_shards_set_):
+      out.putBoolean(self.deprecated_app_logs_per_request_set_)
+    if (self.has_deprecated_num_shards_set_):
       out.putVarInt32(944)
-      out.putBoolean(self.num_shards_set_)
+      out.putBoolean(self.deprecated_num_shards_set_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -3843,33 +3843,33 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(154)
       out.putVarInt32(self.module_version_[i].ByteSizePartial())
       self.module_version_[i].OutputPartial(out)
-    if (self.has_start_time_set_):
+    if (self.has_deprecated_start_time_set_):
       out.putVarInt32(824)
-      out.putBoolean(self.start_time_set_)
-    if (self.has_end_time_set_):
+      out.putBoolean(self.deprecated_start_time_set_)
+    if (self.has_deprecated_end_time_set_):
       out.putVarInt32(832)
-      out.putBoolean(self.end_time_set_)
-    if (self.has_minimum_log_level_set_):
+      out.putBoolean(self.deprecated_end_time_set_)
+    if (self.has_deprecated_minimum_log_level_set_):
       out.putVarInt32(856)
-      out.putBoolean(self.minimum_log_level_set_)
-    if (self.has_count_set_):
+      out.putBoolean(self.deprecated_minimum_log_level_set_)
+    if (self.has_deprecated_count_set_):
       out.putVarInt32(872)
-      out.putBoolean(self.count_set_)
-    if (self.has_combined_log_regex_set_):
+      out.putBoolean(self.deprecated_count_set_)
+    if (self.has_deprecated_combined_log_regex_set_):
       out.putVarInt32(912)
-      out.putBoolean(self.combined_log_regex_set_)
-    if (self.has_host_regex_set_):
+      out.putBoolean(self.deprecated_combined_log_regex_set_)
+    if (self.has_deprecated_host_regex_set_):
       out.putVarInt32(920)
-      out.putBoolean(self.host_regex_set_)
-    if (self.has_replica_index_set_):
+      out.putBoolean(self.deprecated_host_regex_set_)
+    if (self.has_deprecated_replica_index_set_):
       out.putVarInt32(928)
-      out.putBoolean(self.replica_index_set_)
-    if (self.has_app_logs_per_request_set_):
+      out.putBoolean(self.deprecated_replica_index_set_)
+    if (self.has_deprecated_app_logs_per_request_set_):
       out.putVarInt32(936)
-      out.putBoolean(self.app_logs_per_request_set_)
-    if (self.has_num_shards_set_):
+      out.putBoolean(self.deprecated_app_logs_per_request_set_)
+    if (self.has_deprecated_num_shards_set_):
       out.putVarInt32(944)
-      out.putBoolean(self.num_shards_set_)
+      out.putBoolean(self.deprecated_num_shards_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3938,31 +3938,31 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
         self.add_module_version().TryMerge(tmp)
         continue
       if tt == 824:
-        self.set_start_time_set(d.getBoolean())
+        self.set_deprecated_start_time_set(d.getBoolean())
         continue
       if tt == 832:
-        self.set_end_time_set(d.getBoolean())
+        self.set_deprecated_end_time_set(d.getBoolean())
         continue
       if tt == 856:
-        self.set_minimum_log_level_set(d.getBoolean())
+        self.set_deprecated_minimum_log_level_set(d.getBoolean())
         continue
       if tt == 872:
-        self.set_count_set(d.getBoolean())
+        self.set_deprecated_count_set(d.getBoolean())
         continue
       if tt == 912:
-        self.set_combined_log_regex_set(d.getBoolean())
+        self.set_deprecated_combined_log_regex_set(d.getBoolean())
         continue
       if tt == 920:
-        self.set_host_regex_set(d.getBoolean())
+        self.set_deprecated_host_regex_set(d.getBoolean())
         continue
       if tt == 928:
-        self.set_replica_index_set(d.getBoolean())
+        self.set_deprecated_replica_index_set(d.getBoolean())
         continue
       if tt == 936:
-        self.set_app_logs_per_request_set(d.getBoolean())
+        self.set_deprecated_app_logs_per_request_set(d.getBoolean())
         continue
       if tt == 944:
-        self.set_num_shards_set(d.getBoolean())
+        self.set_deprecated_num_shards_set(d.getBoolean())
         continue
 
 
@@ -3988,9 +3988,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
       cnt+=1
     if self.has_start_time_: res+=prefix+("start_time: %s\n" % self.DebugFormatInt64(self.start_time_))
-    if self.has_start_time_set_: res+=prefix+("start_time_set: %s\n" % self.DebugFormatBool(self.start_time_set_))
     if self.has_end_time_: res+=prefix+("end_time: %s\n" % self.DebugFormatInt64(self.end_time_))
-    if self.has_end_time_set_: res+=prefix+("end_time_set: %s\n" % self.DebugFormatBool(self.end_time_set_))
     if self.has_offset_:
       res+=prefix+"offset <\n"
       res+=self.offset_.__str__(prefix + "  ", printElemNumber)
@@ -4002,24 +4000,26 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+("request_id%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     if self.has_minimum_log_level_: res+=prefix+("minimum_log_level: %s\n" % self.DebugFormatInt32(self.minimum_log_level_))
-    if self.has_minimum_log_level_set_: res+=prefix+("minimum_log_level_set: %s\n" % self.DebugFormatBool(self.minimum_log_level_set_))
     if self.has_include_incomplete_: res+=prefix+("include_incomplete: %s\n" % self.DebugFormatBool(self.include_incomplete_))
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt64(self.count_))
-    if self.has_count_set_: res+=prefix+("count_set: %s\n" % self.DebugFormatBool(self.count_set_))
     if self.has_combined_log_regex_: res+=prefix+("combined_log_regex: %s\n" % self.DebugFormatString(self.combined_log_regex_))
-    if self.has_combined_log_regex_set_: res+=prefix+("combined_log_regex_set: %s\n" % self.DebugFormatBool(self.combined_log_regex_set_))
     if self.has_host_regex_: res+=prefix+("host_regex: %s\n" % self.DebugFormatString(self.host_regex_))
-    if self.has_host_regex_set_: res+=prefix+("host_regex_set: %s\n" % self.DebugFormatBool(self.host_regex_set_))
     if self.has_replica_index_: res+=prefix+("replica_index: %s\n" % self.DebugFormatInt32(self.replica_index_))
-    if self.has_replica_index_set_: res+=prefix+("replica_index_set: %s\n" % self.DebugFormatBool(self.replica_index_set_))
     if self.has_include_app_logs_: res+=prefix+("include_app_logs: %s\n" % self.DebugFormatBool(self.include_app_logs_))
     if self.has_app_logs_per_request_: res+=prefix+("app_logs_per_request: %s\n" % self.DebugFormatInt32(self.app_logs_per_request_))
-    if self.has_app_logs_per_request_set_: res+=prefix+("app_logs_per_request_set: %s\n" % self.DebugFormatBool(self.app_logs_per_request_set_))
     if self.has_include_host_: res+=prefix+("include_host: %s\n" % self.DebugFormatBool(self.include_host_))
     if self.has_include_all_: res+=prefix+("include_all: %s\n" % self.DebugFormatBool(self.include_all_))
     if self.has_cache_iterator_: res+=prefix+("cache_iterator: %s\n" % self.DebugFormatBool(self.cache_iterator_))
     if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
-    if self.has_num_shards_set_: res+=prefix+("num_shards_set: %s\n" % self.DebugFormatBool(self.num_shards_set_))
+    if self.has_deprecated_start_time_set_: res+=prefix+("deprecated_start_time_set: %s\n" % self.DebugFormatBool(self.deprecated_start_time_set_))
+    if self.has_deprecated_end_time_set_: res+=prefix+("deprecated_end_time_set: %s\n" % self.DebugFormatBool(self.deprecated_end_time_set_))
+    if self.has_deprecated_minimum_log_level_set_: res+=prefix+("deprecated_minimum_log_level_set: %s\n" % self.DebugFormatBool(self.deprecated_minimum_log_level_set_))
+    if self.has_deprecated_count_set_: res+=prefix+("deprecated_count_set: %s\n" % self.DebugFormatBool(self.deprecated_count_set_))
+    if self.has_deprecated_combined_log_regex_set_: res+=prefix+("deprecated_combined_log_regex_set: %s\n" % self.DebugFormatBool(self.deprecated_combined_log_regex_set_))
+    if self.has_deprecated_host_regex_set_: res+=prefix+("deprecated_host_regex_set: %s\n" % self.DebugFormatBool(self.deprecated_host_regex_set_))
+    if self.has_deprecated_replica_index_set_: res+=prefix+("deprecated_replica_index_set: %s\n" % self.DebugFormatBool(self.deprecated_replica_index_set_))
+    if self.has_deprecated_app_logs_per_request_set_: res+=prefix+("deprecated_app_logs_per_request_set: %s\n" % self.DebugFormatBool(self.deprecated_app_logs_per_request_set_))
+    if self.has_deprecated_num_shards_set_: res+=prefix+("deprecated_num_shards_set: %s\n" % self.DebugFormatBool(self.deprecated_num_shards_set_))
     return res
 
 
@@ -4030,30 +4030,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   kversion_id = 2
   kmodule_version = 19
   kstart_time = 3
-  kstart_time_set = 103
   kend_time = 4
-  kend_time_set = 104
   koffset = 5
   krequest_id = 6
   kminimum_log_level = 7
-  kminimum_log_level_set = 107
   kinclude_incomplete = 8
   kcount = 9
-  kcount_set = 109
   kcombined_log_regex = 14
-  kcombined_log_regex_set = 114
   khost_regex = 15
-  khost_regex_set = 115
   kreplica_index = 16
-  kreplica_index_set = 116
   kinclude_app_logs = 10
   kapp_logs_per_request = 17
-  kapp_logs_per_request_set = 117
   kinclude_host = 11
   kinclude_all = 12
   kcache_iterator = 13
   knum_shards = 18
-  knum_shards_set = 118
+  kdeprecated_start_time_set = 103
+  kdeprecated_end_time_set = 104
+  kdeprecated_minimum_log_level_set = 107
+  kdeprecated_count_set = 109
+  kdeprecated_combined_log_regex_set = 114
+  kdeprecated_host_regex_set = 115
+  kdeprecated_replica_index_set = 116
+  kdeprecated_app_logs_per_request_set = 117
+  kdeprecated_num_shards_set = 118
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -4076,15 +4076,15 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     17: "app_logs_per_request",
     18: "num_shards",
     19: "module_version",
-    103: "start_time_set",
-    104: "end_time_set",
-    107: "minimum_log_level_set",
-    109: "count_set",
-    114: "combined_log_regex_set",
-    115: "host_regex_set",
-    116: "replica_index_set",
-    117: "app_logs_per_request_set",
-    118: "num_shards_set",
+    103: "deprecated_start_time_set",
+    104: "deprecated_end_time_set",
+    107: "deprecated_minimum_log_level_set",
+    109: "deprecated_count_set",
+    114: "deprecated_combined_log_regex_set",
+    115: "deprecated_host_regex_set",
+    116: "deprecated_replica_index_set",
+    117: "deprecated_app_logs_per_request_set",
+    118: "deprecated_num_shards_set",
   }, 118)
 
   _TYPES = _BuildTagLookupTable({
@@ -4124,7 +4124,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.LogReadRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChlhcHBob3N0aW5nLkxvZ1JlYWRSZXF1ZXN0ExoGYXBwX2lkIAEoAjAJOAIUExoKdmVyc2lvbl9pZCACKAIwCTgDFBMaDm1vZHVsZV92ZXJzaW9uIBMoAjALOANKG2FwcGhvc3RpbmcuTG9nTW9kdWxlVmVyc2lvbqMBqgEFY3R5cGWyAQZwcm90bzKkARQTGgpzdGFydF90aW1lIAMoADADOAEUExoOc3RhcnRfdGltZV9zZXQgZygAMAg4ARQTGghlbmRfdGltZSAEKAAwAzgBFBMaDGVuZF90aW1lX3NldCBoKAAwCDgBFBMaBm9mZnNldCAFKAIwCzgBShRhcHBob3N0aW5nLkxvZ09mZnNldKMBqgEFY3R5cGWyAQZwcm90bzKkARQTGgpyZXF1ZXN0X2lkIAYoAjAJOAMUExoRbWluaW11bV9sb2dfbGV2ZWwgBygAMAU4ARQTGhVtaW5pbXVtX2xvZ19sZXZlbF9zZXQgaygAMAg4ARQTGhJpbmNsdWRlX2luY29tcGxldGUgCCgAMAg4ARQTGgVjb3VudCAJKAAwAzgBFBMaCWNvdW50X3NldCBtKAAwCDgBFBMaEmNvbWJpbmVkX2xvZ19yZWdleCAOKAIwCTgBFBMaFmNvbWJpbmVkX2xvZ19yZWdleF9zZXQgcigAMAg4ARQTGgpob3N0X3JlZ2V4IA8oAjAJOAEUExoOaG9zdF9yZWdleF9zZXQgcygAMAg4ARQTGg1yZXBsaWNhX2luZGV4IBAoADAFOAEUExoRcmVwbGljYV9pbmRleF9zZXQgdCgAMAg4ARQTGhBpbmNsdWRlX2FwcF9sb2dzIAooADAIOAEUExoUYXBwX2xvZ3NfcGVyX3JlcXVlc3QgESgAMAU4ARQTGhhhcHBfbG9nc19wZXJfcmVxdWVzdF9zZXQgdSgAMAg4ARQTGgxpbmNsdWRlX2hvc3QgCygAMAg4ARQTGgtpbmNsdWRlX2FsbCAMKAAwCDgBFBMaDmNhY2hlX2l0ZXJhdG9yIA0oADAIOAEUExoKbnVtX3NoYXJkcyASKAAwBTgBFBMaDm51bV9zaGFyZHNfc2V0IHYoADAIOAEUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChlhcHBob3N0aW5nLkxvZ1JlYWRSZXF1ZXN0ExoGYXBwX2lkIAEoAjAJOAIUExoKdmVyc2lvbl9pZCACKAIwCTgDFBMaDm1vZHVsZV92ZXJzaW9uIBMoAjALOANKG2FwcGhvc3RpbmcuTG9nTW9kdWxlVmVyc2lvbqMBqgEFY3R5cGWyAQZwcm90bzKkARQTGgpzdGFydF90aW1lIAMoADADOAEUExoIZW5kX3RpbWUgBCgAMAM4ARQTGgZvZmZzZXQgBSgCMAs4AUoUYXBwaG9zdGluZy5Mb2dPZmZzZXSjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoKcmVxdWVzdF9pZCAGKAIwCTgDFBMaEW1pbmltdW1fbG9nX2xldmVsIAcoADAFOAEUExoSaW5jbHVkZV9pbmNvbXBsZXRlIAgoADAIOAEUExoFY291bnQgCSgAMAM4ARQTGhJjb21iaW5lZF9sb2dfcmVnZXggDigCMAk4ARQTGgpob3N0X3JlZ2V4IA8oAjAJOAEUExoNcmVwbGljYV9pbmRleCAQKAAwBTgBFBMaEGluY2x1ZGVfYXBwX2xvZ3MgCigAMAg4ARQTGhRhcHBfbG9nc19wZXJfcmVxdWVzdCARKAAwBTgBFBMaDGluY2x1ZGVfaG9zdCALKAAwCDgBFBMaC2luY2x1ZGVfYWxsIAwoADAIOAEUExoOY2FjaGVfaXRlcmF0b3IgDSgAMAg4ARQTGgpudW1fc2hhcmRzIBIoADAFOAEUExoZZGVwcmVjYXRlZF9zdGFydF90aW1lX3NldCBnKAAwCDgBFBMaF2RlcHJlY2F0ZWRfZW5kX3RpbWVfc2V0IGgoADAIOAEUExogZGVwcmVjYXRlZF9taW5pbXVtX2xvZ19sZXZlbF9zZXQgaygAMAg4ARQTGhRkZXByZWNhdGVkX2NvdW50X3NldCBtKAAwCDgBFBMaIWRlcHJlY2F0ZWRfY29tYmluZWRfbG9nX3JlZ2V4X3NldCByKAAwCDgBFBMaGWRlcHJlY2F0ZWRfaG9zdF9yZWdleF9zZXQgcygAMAg4ARQTGhxkZXByZWNhdGVkX3JlcGxpY2FfaW5kZXhfc2V0IHQoADAIOAEUExojZGVwcmVjYXRlZF9hcHBfbG9nc19wZXJfcmVxdWVzdF9zZXQgdSgAMAg4ARQTGhlkZXByZWNhdGVkX251bV9zaGFyZHNfc2V0IHYoADAIOAEUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -4667,16 +4667,16 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
   end_time_ = 0
   has_resolution_hours_ = 0
   resolution_hours_ = 1
-  has_resolution_hours_set_ = 0
-  resolution_hours_set_ = 0
   has_combine_versions_ = 0
   combine_versions_ = 0
   has_usage_version_ = 0
   usage_version_ = 0
-  has_usage_version_set_ = 0
-  usage_version_set_ = 0
   has_versions_only_ = 0
   versions_only_ = 0
+  has_deprecated_resolution_hours_set_ = 0
+  deprecated_resolution_hours_set_ = 0
+  has_deprecated_usage_version_set_ = 0
+  deprecated_usage_version_set_ = 0
 
   def __init__(self, contents=None):
     self.version_id_ = []
@@ -4749,19 +4749,6 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_resolution_hours(self): return self.has_resolution_hours_
 
-  def resolution_hours_set(self): return self.resolution_hours_set_
-
-  def set_resolution_hours_set(self, x):
-    self.has_resolution_hours_set_ = 1
-    self.resolution_hours_set_ = x
-
-  def clear_resolution_hours_set(self):
-    if self.has_resolution_hours_set_:
-      self.has_resolution_hours_set_ = 0
-      self.resolution_hours_set_ = 0
-
-  def has_resolution_hours_set(self): return self.has_resolution_hours_set_
-
   def combine_versions(self): return self.combine_versions_
 
   def set_combine_versions(self, x):
@@ -4788,19 +4775,6 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_usage_version(self): return self.has_usage_version_
 
-  def usage_version_set(self): return self.usage_version_set_
-
-  def set_usage_version_set(self, x):
-    self.has_usage_version_set_ = 1
-    self.usage_version_set_ = x
-
-  def clear_usage_version_set(self):
-    if self.has_usage_version_set_:
-      self.has_usage_version_set_ = 0
-      self.usage_version_set_ = 0
-
-  def has_usage_version_set(self): return self.has_usage_version_set_
-
   def versions_only(self): return self.versions_only_
 
   def set_versions_only(self, x):
@@ -4814,6 +4788,32 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_versions_only(self): return self.has_versions_only_
 
+  def deprecated_resolution_hours_set(self): return self.deprecated_resolution_hours_set_
+
+  def set_deprecated_resolution_hours_set(self, x):
+    self.has_deprecated_resolution_hours_set_ = 1
+    self.deprecated_resolution_hours_set_ = x
+
+  def clear_deprecated_resolution_hours_set(self):
+    if self.has_deprecated_resolution_hours_set_:
+      self.has_deprecated_resolution_hours_set_ = 0
+      self.deprecated_resolution_hours_set_ = 0
+
+  def has_deprecated_resolution_hours_set(self): return self.has_deprecated_resolution_hours_set_
+
+  def deprecated_usage_version_set(self): return self.deprecated_usage_version_set_
+
+  def set_deprecated_usage_version_set(self, x):
+    self.has_deprecated_usage_version_set_ = 1
+    self.deprecated_usage_version_set_ = x
+
+  def clear_deprecated_usage_version_set(self):
+    if self.has_deprecated_usage_version_set_:
+      self.has_deprecated_usage_version_set_ = 0
+      self.deprecated_usage_version_set_ = 0
+
+  def has_deprecated_usage_version_set(self): return self.has_deprecated_usage_version_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -4822,11 +4822,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_start_time()): self.set_start_time(x.start_time())
     if (x.has_end_time()): self.set_end_time(x.end_time())
     if (x.has_resolution_hours()): self.set_resolution_hours(x.resolution_hours())
-    if (x.has_resolution_hours_set()): self.set_resolution_hours_set(x.resolution_hours_set())
     if (x.has_combine_versions()): self.set_combine_versions(x.combine_versions())
     if (x.has_usage_version()): self.set_usage_version(x.usage_version())
-    if (x.has_usage_version_set()): self.set_usage_version_set(x.usage_version_set())
     if (x.has_versions_only()): self.set_versions_only(x.versions_only())
+    if (x.has_deprecated_resolution_hours_set()): self.set_deprecated_resolution_hours_set(x.deprecated_resolution_hours_set())
+    if (x.has_deprecated_usage_version_set()): self.set_deprecated_usage_version_set(x.deprecated_usage_version_set())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -4868,16 +4868,16 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_end_time_ and self.end_time_ != x.end_time_: return 0
     if self.has_resolution_hours_ != x.has_resolution_hours_: return 0
     if self.has_resolution_hours_ and self.resolution_hours_ != x.resolution_hours_: return 0
-    if self.has_resolution_hours_set_ != x.has_resolution_hours_set_: return 0
-    if self.has_resolution_hours_set_ and self.resolution_hours_set_ != x.resolution_hours_set_: return 0
     if self.has_combine_versions_ != x.has_combine_versions_: return 0
     if self.has_combine_versions_ and self.combine_versions_ != x.combine_versions_: return 0
     if self.has_usage_version_ != x.has_usage_version_: return 0
     if self.has_usage_version_ and self.usage_version_ != x.usage_version_: return 0
-    if self.has_usage_version_set_ != x.has_usage_version_set_: return 0
-    if self.has_usage_version_set_ and self.usage_version_set_ != x.usage_version_set_: return 0
     if self.has_versions_only_ != x.has_versions_only_: return 0
     if self.has_versions_only_ and self.versions_only_ != x.versions_only_: return 0
+    if self.has_deprecated_resolution_hours_set_ != x.has_deprecated_resolution_hours_set_: return 0
+    if self.has_deprecated_resolution_hours_set_ and self.deprecated_resolution_hours_set_ != x.deprecated_resolution_hours_set_: return 0
+    if self.has_deprecated_usage_version_set_ != x.has_deprecated_usage_version_set_: return 0
+    if self.has_deprecated_usage_version_set_ and self.deprecated_usage_version_set_ != x.deprecated_usage_version_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4896,11 +4896,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_resolution_hours_): n += 1 + self.lengthVarInt64(self.resolution_hours_)
-    if (self.has_resolution_hours_set_): n += 3
     if (self.has_combine_versions_): n += 2
     if (self.has_usage_version_): n += 1 + self.lengthVarInt64(self.usage_version_)
-    if (self.has_usage_version_set_): n += 3
     if (self.has_versions_only_): n += 2
+    if (self.has_deprecated_resolution_hours_set_): n += 3
+    if (self.has_deprecated_usage_version_set_): n += 3
     return n + 1
 
   def ByteSizePartial(self):
@@ -4913,11 +4913,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_resolution_hours_): n += 1 + self.lengthVarInt64(self.resolution_hours_)
-    if (self.has_resolution_hours_set_): n += 3
     if (self.has_combine_versions_): n += 2
     if (self.has_usage_version_): n += 1 + self.lengthVarInt64(self.usage_version_)
-    if (self.has_usage_version_set_): n += 3
     if (self.has_versions_only_): n += 2
+    if (self.has_deprecated_resolution_hours_set_): n += 3
+    if (self.has_deprecated_usage_version_set_): n += 3
     return n
 
   def Clear(self):
@@ -4926,11 +4926,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_start_time()
     self.clear_end_time()
     self.clear_resolution_hours()
-    self.clear_resolution_hours_set()
     self.clear_combine_versions()
     self.clear_usage_version()
-    self.clear_usage_version_set()
     self.clear_versions_only()
+    self.clear_deprecated_resolution_hours_set()
+    self.clear_deprecated_usage_version_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -4956,12 +4956,12 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_versions_only_):
       out.putVarInt32(64)
       out.putBoolean(self.versions_only_)
-    if (self.has_resolution_hours_set_):
+    if (self.has_deprecated_resolution_hours_set_):
       out.putVarInt32(840)
-      out.putBoolean(self.resolution_hours_set_)
-    if (self.has_usage_version_set_):
+      out.putBoolean(self.deprecated_resolution_hours_set_)
+    if (self.has_deprecated_usage_version_set_):
       out.putVarInt32(856)
-      out.putBoolean(self.usage_version_set_)
+      out.putBoolean(self.deprecated_usage_version_set_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -4988,12 +4988,12 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_versions_only_):
       out.putVarInt32(64)
       out.putBoolean(self.versions_only_)
-    if (self.has_resolution_hours_set_):
+    if (self.has_deprecated_resolution_hours_set_):
       out.putVarInt32(840)
-      out.putBoolean(self.resolution_hours_set_)
-    if (self.has_usage_version_set_):
+      out.putBoolean(self.deprecated_resolution_hours_set_)
+    if (self.has_deprecated_usage_version_set_):
       out.putVarInt32(856)
-      out.putBoolean(self.usage_version_set_)
+      out.putBoolean(self.deprecated_usage_version_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5023,10 +5023,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
         self.set_versions_only(d.getBoolean())
         continue
       if tt == 840:
-        self.set_resolution_hours_set(d.getBoolean())
+        self.set_deprecated_resolution_hours_set(d.getBoolean())
         continue
       if tt == 856:
-        self.set_usage_version_set(d.getBoolean())
+        self.set_deprecated_usage_version_set(d.getBoolean())
         continue
 
 
@@ -5046,11 +5046,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_start_time_: res+=prefix+("start_time: %s\n" % self.DebugFormatInt32(self.start_time_))
     if self.has_end_time_: res+=prefix+("end_time: %s\n" % self.DebugFormatInt32(self.end_time_))
     if self.has_resolution_hours_: res+=prefix+("resolution_hours: %s\n" % self.DebugFormatInt64(self.resolution_hours_))
-    if self.has_resolution_hours_set_: res+=prefix+("resolution_hours_set: %s\n" % self.DebugFormatBool(self.resolution_hours_set_))
     if self.has_combine_versions_: res+=prefix+("combine_versions: %s\n" % self.DebugFormatBool(self.combine_versions_))
     if self.has_usage_version_: res+=prefix+("usage_version: %s\n" % self.DebugFormatInt32(self.usage_version_))
-    if self.has_usage_version_set_: res+=prefix+("usage_version_set: %s\n" % self.DebugFormatBool(self.usage_version_set_))
     if self.has_versions_only_: res+=prefix+("versions_only: %s\n" % self.DebugFormatBool(self.versions_only_))
+    if self.has_deprecated_resolution_hours_set_: res+=prefix+("deprecated_resolution_hours_set: %s\n" % self.DebugFormatBool(self.deprecated_resolution_hours_set_))
+    if self.has_deprecated_usage_version_set_: res+=prefix+("deprecated_usage_version_set: %s\n" % self.DebugFormatBool(self.deprecated_usage_version_set_))
     return res
 
 
@@ -5062,11 +5062,11 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
   kstart_time = 3
   kend_time = 4
   kresolution_hours = 5
-  kresolution_hours_set = 105
   kcombine_versions = 6
   kusage_version = 7
-  kusage_version_set = 107
   kversions_only = 8
+  kdeprecated_resolution_hours_set = 105
+  kdeprecated_usage_version_set = 107
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -5078,8 +5078,8 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     6: "combine_versions",
     7: "usage_version",
     8: "versions_only",
-    105: "resolution_hours_set",
-    107: "usage_version_set",
+    105: "deprecated_resolution_hours_set",
+    107: "deprecated_usage_version_set",
   }, 107)
 
   _TYPES = _BuildTagLookupTable({
@@ -5101,7 +5101,7 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.LogUsageRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1VzYWdlUmVxdWVzdBMaBmFwcF9pZCABKAIwCTgCFBMaCnZlcnNpb25faWQgAigCMAk4AxQTGgpzdGFydF90aW1lIAMoADAFOAEUExoIZW5kX3RpbWUgBCgAMAU4ARQTGhByZXNvbHV0aW9uX2hvdXJzIAUoADAEOAFCATGjAaoBB2RlZmF1bHSyAQExpAEUExoUcmVzb2x1dGlvbl9ob3Vyc19zZXQgaSgAMAg4ARQTGhBjb21iaW5lX3ZlcnNpb25zIAYoADAIOAEUExoNdXNhZ2VfdmVyc2lvbiAHKAAwBTgBFBMaEXVzYWdlX3ZlcnNpb25fc2V0IGsoADAIOAEUExoNdmVyc2lvbnNfb25seSAIKAAwCDgBFMIBGmFwcGhvc3RpbmcuTG9nU2VydmljZUVycm9y"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1VzYWdlUmVxdWVzdBMaBmFwcF9pZCABKAIwCTgCFBMaCnZlcnNpb25faWQgAigCMAk4AxQTGgpzdGFydF90aW1lIAMoADAFOAEUExoIZW5kX3RpbWUgBCgAMAU4ARQTGhByZXNvbHV0aW9uX2hvdXJzIAUoADAEOAFCATGjAaoBB2RlZmF1bHSyAQExpAEUExoQY29tYmluZV92ZXJzaW9ucyAGKAAwCDgBFBMaDXVzYWdlX3ZlcnNpb24gBygAMAU4ARQTGg12ZXJzaW9uc19vbmx5IAgoADAIOAEUExofZGVwcmVjYXRlZF9yZXNvbHV0aW9uX2hvdXJzX3NldCBpKAAwCDgBFBMaHGRlcHJlY2F0ZWRfdXNhZ2VfdmVyc2lvbl9zZXQgaygAMAg4ARTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())

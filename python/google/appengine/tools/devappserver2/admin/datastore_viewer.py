@@ -561,41 +561,6 @@ class DatastoreRequestHandler(admin_request_handler.AdminRequestHandler):
     return writes
 
   @staticmethod
-  def _calculate_writes_for_composite_index(entity, index):
-    composite_index_value_count = 1
-    for prop_name, _ in index.Properties():
-      if not prop_name in entity.keys() or (
-          prop_name in entity.unindexed_properties()):
-        return 0
-      prop_vals = entity[prop_name]
-      if isinstance(prop_vals, (list)):
-        composite_index_value_count *= len(prop_vals)
-
-    # If this is an ancestor index we're going to duplicate all these index
-    # writes for every key in the hierarchy.  So if the entity key has no
-    # parent we write the index values once, if the entity key has a depth of
-    # 2 then we write the index values twice, and so on.
-    ancestor_count = 1  # A key is its own ancestor.
-    if index.HasAncestor():
-      key = entity.key().parent()
-      while key is not None:
-        ancestor_count += 1
-        key = key.parent()
-    return composite_index_value_count * ancestor_count
-
-  @classmethod
-  def _get_write_ops(cls, entity):
-    # Minimum 2 writes, one for the entity and one for the EntitiesByKind index.
-    writes = 2 + cls._calculate_writes_for_built_in_indices(entity)
-
-    # Account for composite indices.
-    for index, _ in datastore.GetIndexes():
-      if index.Kind() != entity.kind():
-        continue
-      writes += cls._calculate_writes_for_composite_index(entity, index)
-    return writes
-
-  @staticmethod
   def _get_kinds(namespace):
     """Return a sorted list of kind names present in the given namespace."""
     assert namespace is not None
@@ -645,8 +610,7 @@ class DatastoreRequestHandler(admin_request_handler.AdminRequestHandler):
            'key': entity.key(),
            'key_id': entity.key().id(),
            'key_name': entity.key().name(),
-           'shortened_key': str(entity.key())[:8] + '...',
-           'write_ops': cls._get_write_ops(entity)})
+           'shortened_key': str(entity.key())[:8] + '...'})
     return headers, template_entities, total_entities
 
   def get(self):

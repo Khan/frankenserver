@@ -360,107 +360,107 @@ namespace google\appengine {
     public function hasAllowStretch() {
       return isset($this->allow_stretch);
     }
-    public function getWidthSet() {
-      if (!isset($this->width_set)) {
+    public function getDeprecatedWidthSet() {
+      if (!isset($this->deprecated_width_set)) {
         return false;
       }
-      return $this->width_set;
+      return $this->deprecated_width_set;
     }
-    public function setWidthSet($val) {
-      $this->width_set = $val;
+    public function setDeprecatedWidthSet($val) {
+      $this->deprecated_width_set = $val;
       return $this;
     }
-    public function clearWidthSet() {
-      unset($this->width_set);
+    public function clearDeprecatedWidthSet() {
+      unset($this->deprecated_width_set);
       return $this;
     }
-    public function hasWidthSet() {
-      return isset($this->width_set);
+    public function hasDeprecatedWidthSet() {
+      return isset($this->deprecated_width_set);
     }
-    public function getHeightSet() {
-      if (!isset($this->height_set)) {
+    public function getDeprecatedHeightSet() {
+      if (!isset($this->deprecated_height_set)) {
         return false;
       }
-      return $this->height_set;
+      return $this->deprecated_height_set;
     }
-    public function setHeightSet($val) {
-      $this->height_set = $val;
+    public function setDeprecatedHeightSet($val) {
+      $this->deprecated_height_set = $val;
       return $this;
     }
-    public function clearHeightSet() {
-      unset($this->height_set);
+    public function clearDeprecatedHeightSet() {
+      unset($this->deprecated_height_set);
       return $this;
     }
-    public function hasHeightSet() {
-      return isset($this->height_set);
+    public function hasDeprecatedHeightSet() {
+      return isset($this->deprecated_height_set);
     }
-    public function getCropRightXSet() {
-      if (!isset($this->crop_right_x_set)) {
+    public function getDeprecatedCropRightXSet() {
+      if (!isset($this->deprecated_crop_right_x_set)) {
         return false;
       }
-      return $this->crop_right_x_set;
+      return $this->deprecated_crop_right_x_set;
     }
-    public function setCropRightXSet($val) {
-      $this->crop_right_x_set = $val;
+    public function setDeprecatedCropRightXSet($val) {
+      $this->deprecated_crop_right_x_set = $val;
       return $this;
     }
-    public function clearCropRightXSet() {
-      unset($this->crop_right_x_set);
+    public function clearDeprecatedCropRightXSet() {
+      unset($this->deprecated_crop_right_x_set);
       return $this;
     }
-    public function hasCropRightXSet() {
-      return isset($this->crop_right_x_set);
+    public function hasDeprecatedCropRightXSet() {
+      return isset($this->deprecated_crop_right_x_set);
     }
-    public function getCropBottomYSet() {
-      if (!isset($this->crop_bottom_y_set)) {
+    public function getDeprecatedCropBottomYSet() {
+      if (!isset($this->deprecated_crop_bottom_y_set)) {
         return false;
       }
-      return $this->crop_bottom_y_set;
+      return $this->deprecated_crop_bottom_y_set;
     }
-    public function setCropBottomYSet($val) {
-      $this->crop_bottom_y_set = $val;
+    public function setDeprecatedCropBottomYSet($val) {
+      $this->deprecated_crop_bottom_y_set = $val;
       return $this;
     }
-    public function clearCropBottomYSet() {
-      unset($this->crop_bottom_y_set);
+    public function clearDeprecatedCropBottomYSet() {
+      unset($this->deprecated_crop_bottom_y_set);
       return $this;
     }
-    public function hasCropBottomYSet() {
-      return isset($this->crop_bottom_y_set);
+    public function hasDeprecatedCropBottomYSet() {
+      return isset($this->deprecated_crop_bottom_y_set);
     }
-    public function getCropOffsetXSet() {
-      if (!isset($this->crop_offset_x_set)) {
+    public function getDeprecatedCropOffsetXSet() {
+      if (!isset($this->deprecated_crop_offset_x_set)) {
         return false;
       }
-      return $this->crop_offset_x_set;
+      return $this->deprecated_crop_offset_x_set;
     }
-    public function setCropOffsetXSet($val) {
-      $this->crop_offset_x_set = $val;
+    public function setDeprecatedCropOffsetXSet($val) {
+      $this->deprecated_crop_offset_x_set = $val;
       return $this;
     }
-    public function clearCropOffsetXSet() {
-      unset($this->crop_offset_x_set);
+    public function clearDeprecatedCropOffsetXSet() {
+      unset($this->deprecated_crop_offset_x_set);
       return $this;
     }
-    public function hasCropOffsetXSet() {
-      return isset($this->crop_offset_x_set);
+    public function hasDeprecatedCropOffsetXSet() {
+      return isset($this->deprecated_crop_offset_x_set);
     }
-    public function getCropOffsetYSet() {
-      if (!isset($this->crop_offset_y_set)) {
+    public function getDeprecatedCropOffsetYSet() {
+      if (!isset($this->deprecated_crop_offset_y_set)) {
         return false;
       }
-      return $this->crop_offset_y_set;
+      return $this->deprecated_crop_offset_y_set;
     }
-    public function setCropOffsetYSet($val) {
-      $this->crop_offset_y_set = $val;
+    public function setDeprecatedCropOffsetYSet($val) {
+      $this->deprecated_crop_offset_y_set = $val;
       return $this;
     }
-    public function clearCropOffsetYSet() {
-      unset($this->crop_offset_y_set);
+    public function clearDeprecatedCropOffsetYSet() {
+      unset($this->deprecated_crop_offset_y_set);
       return $this;
     }
-    public function hasCropOffsetYSet() {
-      return isset($this->crop_offset_y_set);
+    public function hasDeprecatedCropOffsetYSet() {
+      return isset($this->deprecated_crop_offset_y_set);
     }
     public function clear() {
       $this->clearWidth();
@@ -477,12 +477,12 @@ namespace google\appengine {
       $this->clearCropOffsetX();
       $this->clearCropOffsetY();
       $this->clearAllowStretch();
-      $this->clearWidthSet();
-      $this->clearHeightSet();
-      $this->clearCropRightXSet();
-      $this->clearCropBottomYSet();
-      $this->clearCropOffsetXSet();
-      $this->clearCropOffsetYSet();
+      $this->clearDeprecatedWidthSet();
+      $this->clearDeprecatedHeightSet();
+      $this->clearDeprecatedCropRightXSet();
+      $this->clearDeprecatedCropBottomYSet();
+      $this->clearDeprecatedCropOffsetXSet();
+      $this->clearDeprecatedCropOffsetYSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -531,22 +531,22 @@ namespace google\appengine {
       if (isset($this->allow_stretch)) {
         $res += 2;
       }
-      if (isset($this->width_set)) {
+      if (isset($this->deprecated_width_set)) {
         $res += 3;
       }
-      if (isset($this->height_set)) {
+      if (isset($this->deprecated_height_set)) {
         $res += 3;
       }
-      if (isset($this->crop_right_x_set)) {
+      if (isset($this->deprecated_crop_right_x_set)) {
         $res += 3;
       }
-      if (isset($this->crop_bottom_y_set)) {
+      if (isset($this->deprecated_crop_bottom_y_set)) {
         $res += 3;
       }
-      if (isset($this->crop_offset_x_set)) {
+      if (isset($this->deprecated_crop_offset_x_set)) {
         $res += 3;
       }
-      if (isset($this->crop_offset_y_set)) {
+      if (isset($this->deprecated_crop_offset_y_set)) {
         $res += 3;
       }
       return $res;
@@ -608,29 +608,29 @@ namespace google\appengine {
         $out->putVarInt32(112);
         $out->putBoolean($this->allow_stretch);
       }
-      if (isset($this->width_set)) {
+      if (isset($this->deprecated_width_set)) {
         $out->putVarInt32(808);
-        $out->putBoolean($this->width_set);
+        $out->putBoolean($this->deprecated_width_set);
       }
-      if (isset($this->height_set)) {
+      if (isset($this->deprecated_height_set)) {
         $out->putVarInt32(816);
-        $out->putBoolean($this->height_set);
+        $out->putBoolean($this->deprecated_height_set);
       }
-      if (isset($this->crop_right_x_set)) {
+      if (isset($this->deprecated_crop_right_x_set)) {
         $out->putVarInt32(864);
-        $out->putBoolean($this->crop_right_x_set);
+        $out->putBoolean($this->deprecated_crop_right_x_set);
       }
-      if (isset($this->crop_bottom_y_set)) {
+      if (isset($this->deprecated_crop_bottom_y_set)) {
         $out->putVarInt32(872);
-        $out->putBoolean($this->crop_bottom_y_set);
+        $out->putBoolean($this->deprecated_crop_bottom_y_set);
       }
-      if (isset($this->crop_offset_x_set)) {
+      if (isset($this->deprecated_crop_offset_x_set)) {
         $out->putVarInt32(896);
-        $out->putBoolean($this->crop_offset_x_set);
+        $out->putBoolean($this->deprecated_crop_offset_x_set);
       }
-      if (isset($this->crop_offset_y_set)) {
+      if (isset($this->deprecated_crop_offset_y_set)) {
         $out->putVarInt32(904);
-        $out->putBoolean($this->crop_offset_y_set);
+        $out->putBoolean($this->deprecated_crop_offset_y_set);
       }
     }
     public function tryMerge($d) {
@@ -680,22 +680,22 @@ namespace google\appengine {
             $this->setAllowStretch($d->getBoolean());
             break;
           case 808:
-            $this->setWidthSet($d->getBoolean());
+            $this->setDeprecatedWidthSet($d->getBoolean());
             break;
           case 816:
-            $this->setHeightSet($d->getBoolean());
+            $this->setDeprecatedHeightSet($d->getBoolean());
             break;
           case 864:
-            $this->setCropRightXSet($d->getBoolean());
+            $this->setDeprecatedCropRightXSet($d->getBoolean());
             break;
           case 872:
-            $this->setCropBottomYSet($d->getBoolean());
+            $this->setDeprecatedCropBottomYSet($d->getBoolean());
             break;
           case 896:
-            $this->setCropOffsetXSet($d->getBoolean());
+            $this->setDeprecatedCropOffsetXSet($d->getBoolean());
             break;
           case 904:
-            $this->setCropOffsetYSet($d->getBoolean());
+            $this->setDeprecatedCropOffsetYSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -752,23 +752,23 @@ namespace google\appengine {
       if ($x->hasAllowStretch()) {
         $this->setAllowStretch($x->getAllowStretch());
       }
-      if ($x->hasWidthSet()) {
-        $this->setWidthSet($x->getWidthSet());
+      if ($x->hasDeprecatedWidthSet()) {
+        $this->setDeprecatedWidthSet($x->getDeprecatedWidthSet());
       }
-      if ($x->hasHeightSet()) {
-        $this->setHeightSet($x->getHeightSet());
+      if ($x->hasDeprecatedHeightSet()) {
+        $this->setDeprecatedHeightSet($x->getDeprecatedHeightSet());
       }
-      if ($x->hasCropRightXSet()) {
-        $this->setCropRightXSet($x->getCropRightXSet());
+      if ($x->hasDeprecatedCropRightXSet()) {
+        $this->setDeprecatedCropRightXSet($x->getDeprecatedCropRightXSet());
       }
-      if ($x->hasCropBottomYSet()) {
-        $this->setCropBottomYSet($x->getCropBottomYSet());
+      if ($x->hasDeprecatedCropBottomYSet()) {
+        $this->setDeprecatedCropBottomYSet($x->getDeprecatedCropBottomYSet());
       }
-      if ($x->hasCropOffsetXSet()) {
-        $this->setCropOffsetXSet($x->getCropOffsetXSet());
+      if ($x->hasDeprecatedCropOffsetXSet()) {
+        $this->setDeprecatedCropOffsetXSet($x->getDeprecatedCropOffsetXSet());
       }
-      if ($x->hasCropOffsetYSet()) {
-        $this->setCropOffsetYSet($x->getCropOffsetYSet());
+      if ($x->hasDeprecatedCropOffsetYSet()) {
+        $this->setDeprecatedCropOffsetYSet($x->getDeprecatedCropOffsetYSet());
       }
     }
     public function equals($x) {
@@ -801,18 +801,18 @@ namespace google\appengine {
       if (isset($this->crop_offset_y) && $this->crop_offset_y !== $x->crop_offset_y) return false;
       if (isset($this->allow_stretch) !== isset($x->allow_stretch)) return false;
       if (isset($this->allow_stretch) && $this->allow_stretch !== $x->allow_stretch) return false;
-      if (isset($this->width_set) !== isset($x->width_set)) return false;
-      if (isset($this->width_set) && $this->width_set !== $x->width_set) return false;
-      if (isset($this->height_set) !== isset($x->height_set)) return false;
-      if (isset($this->height_set) && $this->height_set !== $x->height_set) return false;
-      if (isset($this->crop_right_x_set) !== isset($x->crop_right_x_set)) return false;
-      if (isset($this->crop_right_x_set) && $this->crop_right_x_set !== $x->crop_right_x_set) return false;
-      if (isset($this->crop_bottom_y_set) !== isset($x->crop_bottom_y_set)) return false;
-      if (isset($this->crop_bottom_y_set) && $this->crop_bottom_y_set !== $x->crop_bottom_y_set) return false;
-      if (isset($this->crop_offset_x_set) !== isset($x->crop_offset_x_set)) return false;
-      if (isset($this->crop_offset_x_set) && $this->crop_offset_x_set !== $x->crop_offset_x_set) return false;
-      if (isset($this->crop_offset_y_set) !== isset($x->crop_offset_y_set)) return false;
-      if (isset($this->crop_offset_y_set) && $this->crop_offset_y_set !== $x->crop_offset_y_set) return false;
+      if (isset($this->deprecated_width_set) !== isset($x->deprecated_width_set)) return false;
+      if (isset($this->deprecated_width_set) && $this->deprecated_width_set !== $x->deprecated_width_set) return false;
+      if (isset($this->deprecated_height_set) !== isset($x->deprecated_height_set)) return false;
+      if (isset($this->deprecated_height_set) && $this->deprecated_height_set !== $x->deprecated_height_set) return false;
+      if (isset($this->deprecated_crop_right_x_set) !== isset($x->deprecated_crop_right_x_set)) return false;
+      if (isset($this->deprecated_crop_right_x_set) && $this->deprecated_crop_right_x_set !== $x->deprecated_crop_right_x_set) return false;
+      if (isset($this->deprecated_crop_bottom_y_set) !== isset($x->deprecated_crop_bottom_y_set)) return false;
+      if (isset($this->deprecated_crop_bottom_y_set) && $this->deprecated_crop_bottom_y_set !== $x->deprecated_crop_bottom_y_set) return false;
+      if (isset($this->deprecated_crop_offset_x_set) !== isset($x->deprecated_crop_offset_x_set)) return false;
+      if (isset($this->deprecated_crop_offset_x_set) && $this->deprecated_crop_offset_x_set !== $x->deprecated_crop_offset_x_set) return false;
+      if (isset($this->deprecated_crop_offset_y_set) !== isset($x->deprecated_crop_offset_y_set)) return false;
+      if (isset($this->deprecated_crop_offset_y_set) && $this->deprecated_crop_offset_y_set !== $x->deprecated_crop_offset_y_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -859,23 +859,23 @@ namespace google\appengine {
       if (isset($this->allow_stretch)) {
         $res .= $prefix . "allow_stretch: " . $this->debugFormatBool($this->allow_stretch) . "\n";
       }
-      if (isset($this->width_set)) {
-        $res .= $prefix . "width_set: " . $this->debugFormatBool($this->width_set) . "\n";
+      if (isset($this->deprecated_width_set)) {
+        $res .= $prefix . "deprecated_width_set: " . $this->debugFormatBool($this->deprecated_width_set) . "\n";
       }
-      if (isset($this->height_set)) {
-        $res .= $prefix . "height_set: " . $this->debugFormatBool($this->height_set) . "\n";
+      if (isset($this->deprecated_height_set)) {
+        $res .= $prefix . "deprecated_height_set: " . $this->debugFormatBool($this->deprecated_height_set) . "\n";
       }
-      if (isset($this->crop_right_x_set)) {
-        $res .= $prefix . "crop_right_x_set: " . $this->debugFormatBool($this->crop_right_x_set) . "\n";
+      if (isset($this->deprecated_crop_right_x_set)) {
+        $res .= $prefix . "deprecated_crop_right_x_set: " . $this->debugFormatBool($this->deprecated_crop_right_x_set) . "\n";
       }
-      if (isset($this->crop_bottom_y_set)) {
-        $res .= $prefix . "crop_bottom_y_set: " . $this->debugFormatBool($this->crop_bottom_y_set) . "\n";
+      if (isset($this->deprecated_crop_bottom_y_set)) {
+        $res .= $prefix . "deprecated_crop_bottom_y_set: " . $this->debugFormatBool($this->deprecated_crop_bottom_y_set) . "\n";
       }
-      if (isset($this->crop_offset_x_set)) {
-        $res .= $prefix . "crop_offset_x_set: " . $this->debugFormatBool($this->crop_offset_x_set) . "\n";
+      if (isset($this->deprecated_crop_offset_x_set)) {
+        $res .= $prefix . "deprecated_crop_offset_x_set: " . $this->debugFormatBool($this->deprecated_crop_offset_x_set) . "\n";
       }
-      if (isset($this->crop_offset_y_set)) {
-        $res .= $prefix . "crop_offset_y_set: " . $this->debugFormatBool($this->crop_offset_y_set) . "\n";
+      if (isset($this->deprecated_crop_offset_y_set)) {
+        $res .= $prefix . "deprecated_crop_offset_y_set: " . $this->debugFormatBool($this->deprecated_crop_offset_y_set) . "\n";
       }
       return $res;
     }
@@ -951,29 +951,29 @@ namespace google\appengine {
     public function hasHeight() {
       return isset($this->height);
     }
-    public function getBlobKeySet() {
-      if (!isset($this->blob_key_set)) {
+    public function getDeprecatedBlobKeySet() {
+      if (!isset($this->deprecated_blob_key_set)) {
         return false;
       }
-      return $this->blob_key_set;
+      return $this->deprecated_blob_key_set;
     }
-    public function setBlobKeySet($val) {
-      $this->blob_key_set = $val;
+    public function setDeprecatedBlobKeySet($val) {
+      $this->deprecated_blob_key_set = $val;
       return $this;
     }
-    public function clearBlobKeySet() {
-      unset($this->blob_key_set);
+    public function clearDeprecatedBlobKeySet() {
+      unset($this->deprecated_blob_key_set);
       return $this;
     }
-    public function hasBlobKeySet() {
-      return isset($this->blob_key_set);
+    public function hasDeprecatedBlobKeySet() {
+      return isset($this->deprecated_blob_key_set);
     }
     public function clear() {
       $this->clearContent();
       $this->clearBlobKey();
       $this->clearWidth();
       $this->clearHeight();
-      $this->clearBlobKeySet();
+      $this->clearDeprecatedBlobKeySet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -993,7 +993,7 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthVarInt64($this->height);
       }
-      if (isset($this->blob_key_set)) {
+      if (isset($this->deprecated_blob_key_set)) {
         $res += 3;
       }
       return $res;
@@ -1015,9 +1015,9 @@ namespace google\appengine {
         $out->putVarInt32(32);
         $out->putVarInt32($this->height);
       }
-      if (isset($this->blob_key_set)) {
+      if (isset($this->deprecated_blob_key_set)) {
         $out->putVarInt32(816);
-        $out->putBoolean($this->blob_key_set);
+        $out->putBoolean($this->deprecated_blob_key_set);
       }
     }
     public function tryMerge($d) {
@@ -1041,7 +1041,7 @@ namespace google\appengine {
             $this->setHeight($d->getVarInt32());
             break;
           case 816:
-            $this->setBlobKeySet($d->getBoolean());
+            $this->setDeprecatedBlobKeySet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -1069,8 +1069,8 @@ namespace google\appengine {
       if ($x->hasHeight()) {
         $this->setHeight($x->getHeight());
       }
-      if ($x->hasBlobKeySet()) {
-        $this->setBlobKeySet($x->getBlobKeySet());
+      if ($x->hasDeprecatedBlobKeySet()) {
+        $this->setDeprecatedBlobKeySet($x->getDeprecatedBlobKeySet());
       }
     }
     public function equals($x) {
@@ -1083,8 +1083,8 @@ namespace google\appengine {
       if (isset($this->width) && !$this->integerEquals($this->width, $x->width)) return false;
       if (isset($this->height) !== isset($x->height)) return false;
       if (isset($this->height) && !$this->integerEquals($this->height, $x->height)) return false;
-      if (isset($this->blob_key_set) !== isset($x->blob_key_set)) return false;
-      if (isset($this->blob_key_set) && $this->blob_key_set !== $x->blob_key_set) return false;
+      if (isset($this->deprecated_blob_key_set) !== isset($x->deprecated_blob_key_set)) return false;
+      if (isset($this->deprecated_blob_key_set) && $this->deprecated_blob_key_set !== $x->deprecated_blob_key_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1101,8 +1101,8 @@ namespace google\appengine {
       if (isset($this->height)) {
         $res .= $prefix . "height: " . $this->debugFormatInt32($this->height) . "\n";
       }
-      if (isset($this->blob_key_set)) {
-        $res .= $prefix . "blob_key_set: " . $this->debugFormatBool($this->blob_key_set) . "\n";
+      if (isset($this->deprecated_blob_key_set)) {
+        $res .= $prefix . "deprecated_blob_key_set: " . $this->debugFormatBool($this->deprecated_blob_key_set) . "\n";
       }
       return $res;
     }
@@ -1167,46 +1167,46 @@ namespace google\appengine {
     public function hasTransparentSubstitutionRgb() {
       return isset($this->transparent_substitution_rgb);
     }
-    public function getCorrectExifOrientationSet() {
-      if (!isset($this->correct_exif_orientation_set)) {
+    public function getDeprecatedCorrectExifOrientationSet() {
+      if (!isset($this->deprecated_correct_exif_orientation_set)) {
         return false;
       }
-      return $this->correct_exif_orientation_set;
+      return $this->deprecated_correct_exif_orientation_set;
     }
-    public function setCorrectExifOrientationSet($val) {
-      $this->correct_exif_orientation_set = $val;
+    public function setDeprecatedCorrectExifOrientationSet($val) {
+      $this->deprecated_correct_exif_orientation_set = $val;
       return $this;
     }
-    public function clearCorrectExifOrientationSet() {
-      unset($this->correct_exif_orientation_set);
+    public function clearDeprecatedCorrectExifOrientationSet() {
+      unset($this->deprecated_correct_exif_orientation_set);
       return $this;
     }
-    public function hasCorrectExifOrientationSet() {
-      return isset($this->correct_exif_orientation_set);
+    public function hasDeprecatedCorrectExifOrientationSet() {
+      return isset($this->deprecated_correct_exif_orientation_set);
     }
-    public function getTransparentSubstitutionRgbSet() {
-      if (!isset($this->transparent_substitution_rgb_set)) {
+    public function getDeprecatedTransparentSubstitutionRgbSet() {
+      if (!isset($this->deprecated_transparent_substitution_rgb_set)) {
         return false;
       }
-      return $this->transparent_substitution_rgb_set;
+      return $this->deprecated_transparent_substitution_rgb_set;
     }
-    public function setTransparentSubstitutionRgbSet($val) {
-      $this->transparent_substitution_rgb_set = $val;
+    public function setDeprecatedTransparentSubstitutionRgbSet($val) {
+      $this->deprecated_transparent_substitution_rgb_set = $val;
       return $this;
     }
-    public function clearTransparentSubstitutionRgbSet() {
-      unset($this->transparent_substitution_rgb_set);
+    public function clearDeprecatedTransparentSubstitutionRgbSet() {
+      unset($this->deprecated_transparent_substitution_rgb_set);
       return $this;
     }
-    public function hasTransparentSubstitutionRgbSet() {
-      return isset($this->transparent_substitution_rgb_set);
+    public function hasDeprecatedTransparentSubstitutionRgbSet() {
+      return isset($this->deprecated_transparent_substitution_rgb_set);
     }
     public function clear() {
       $this->clearCorrectExifOrientation();
       $this->clearParseMetadata();
       $this->clearTransparentSubstitutionRgb();
-      $this->clearCorrectExifOrientationSet();
-      $this->clearTransparentSubstitutionRgbSet();
+      $this->clearDeprecatedCorrectExifOrientationSet();
+      $this->clearDeprecatedTransparentSubstitutionRgbSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1221,10 +1221,10 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthVarInt64($this->transparent_substitution_rgb);
       }
-      if (isset($this->correct_exif_orientation_set)) {
+      if (isset($this->deprecated_correct_exif_orientation_set)) {
         $res += 3;
       }
-      if (isset($this->transparent_substitution_rgb_set)) {
+      if (isset($this->deprecated_transparent_substitution_rgb_set)) {
         $res += 3;
       }
       return $res;
@@ -1242,13 +1242,13 @@ namespace google\appengine {
         $out->putVarInt32(24);
         $out->putVarInt32($this->transparent_substitution_rgb);
       }
-      if (isset($this->correct_exif_orientation_set)) {
+      if (isset($this->deprecated_correct_exif_orientation_set)) {
         $out->putVarInt32(808);
-        $out->putBoolean($this->correct_exif_orientation_set);
+        $out->putBoolean($this->deprecated_correct_exif_orientation_set);
       }
-      if (isset($this->transparent_substitution_rgb_set)) {
+      if (isset($this->deprecated_transparent_substitution_rgb_set)) {
         $out->putVarInt32(824);
-        $out->putBoolean($this->transparent_substitution_rgb_set);
+        $out->putBoolean($this->deprecated_transparent_substitution_rgb_set);
       }
     }
     public function tryMerge($d) {
@@ -1265,10 +1265,10 @@ namespace google\appengine {
             $this->setTransparentSubstitutionRgb($d->getVarInt32());
             break;
           case 808:
-            $this->setCorrectExifOrientationSet($d->getBoolean());
+            $this->setDeprecatedCorrectExifOrientationSet($d->getBoolean());
             break;
           case 824:
-            $this->setTransparentSubstitutionRgbSet($d->getBoolean());
+            $this->setDeprecatedTransparentSubstitutionRgbSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -1292,11 +1292,11 @@ namespace google\appengine {
       if ($x->hasTransparentSubstitutionRgb()) {
         $this->setTransparentSubstitutionRgb($x->getTransparentSubstitutionRgb());
       }
-      if ($x->hasCorrectExifOrientationSet()) {
-        $this->setCorrectExifOrientationSet($x->getCorrectExifOrientationSet());
+      if ($x->hasDeprecatedCorrectExifOrientationSet()) {
+        $this->setDeprecatedCorrectExifOrientationSet($x->getDeprecatedCorrectExifOrientationSet());
       }
-      if ($x->hasTransparentSubstitutionRgbSet()) {
-        $this->setTransparentSubstitutionRgbSet($x->getTransparentSubstitutionRgbSet());
+      if ($x->hasDeprecatedTransparentSubstitutionRgbSet()) {
+        $this->setDeprecatedTransparentSubstitutionRgbSet($x->getDeprecatedTransparentSubstitutionRgbSet());
       }
     }
     public function equals($x) {
@@ -1307,10 +1307,10 @@ namespace google\appengine {
       if (isset($this->parse_metadata) && $this->parse_metadata !== $x->parse_metadata) return false;
       if (isset($this->transparent_substitution_rgb) !== isset($x->transparent_substitution_rgb)) return false;
       if (isset($this->transparent_substitution_rgb) && !$this->integerEquals($this->transparent_substitution_rgb, $x->transparent_substitution_rgb)) return false;
-      if (isset($this->correct_exif_orientation_set) !== isset($x->correct_exif_orientation_set)) return false;
-      if (isset($this->correct_exif_orientation_set) && $this->correct_exif_orientation_set !== $x->correct_exif_orientation_set) return false;
-      if (isset($this->transparent_substitution_rgb_set) !== isset($x->transparent_substitution_rgb_set)) return false;
-      if (isset($this->transparent_substitution_rgb_set) && $this->transparent_substitution_rgb_set !== $x->transparent_substitution_rgb_set) return false;
+      if (isset($this->deprecated_correct_exif_orientation_set) !== isset($x->deprecated_correct_exif_orientation_set)) return false;
+      if (isset($this->deprecated_correct_exif_orientation_set) && $this->deprecated_correct_exif_orientation_set !== $x->deprecated_correct_exif_orientation_set) return false;
+      if (isset($this->deprecated_transparent_substitution_rgb_set) !== isset($x->deprecated_transparent_substitution_rgb_set)) return false;
+      if (isset($this->deprecated_transparent_substitution_rgb_set) && $this->deprecated_transparent_substitution_rgb_set !== $x->deprecated_transparent_substitution_rgb_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1324,11 +1324,11 @@ namespace google\appengine {
       if (isset($this->transparent_substitution_rgb)) {
         $res .= $prefix . "transparent_substitution_rgb: " . $this->debugFormatInt32($this->transparent_substitution_rgb) . "\n";
       }
-      if (isset($this->correct_exif_orientation_set)) {
-        $res .= $prefix . "correct_exif_orientation_set: " . $this->debugFormatBool($this->correct_exif_orientation_set) . "\n";
+      if (isset($this->deprecated_correct_exif_orientation_set)) {
+        $res .= $prefix . "deprecated_correct_exif_orientation_set: " . $this->debugFormatBool($this->deprecated_correct_exif_orientation_set) . "\n";
       }
-      if (isset($this->transparent_substitution_rgb_set)) {
-        $res .= $prefix . "transparent_substitution_rgb_set: " . $this->debugFormatBool($this->transparent_substitution_rgb_set) . "\n";
+      if (isset($this->deprecated_transparent_substitution_rgb_set)) {
+        $res .= $prefix . "deprecated_transparent_substitution_rgb_set: " . $this->debugFormatBool($this->deprecated_transparent_substitution_rgb_set) . "\n";
       }
       return $res;
     }
@@ -2134,29 +2134,29 @@ namespace google\appengine {
     public function hasColor() {
       return isset($this->color);
     }
-    public function getColorSet() {
-      if (!isset($this->color_set)) {
+    public function getDeprecatedColorSet() {
+      if (!isset($this->deprecated_color_set)) {
         return false;
       }
-      return $this->color_set;
+      return $this->deprecated_color_set;
     }
-    public function setColorSet($val) {
-      $this->color_set = $val;
+    public function setDeprecatedColorSet($val) {
+      $this->deprecated_color_set = $val;
       return $this;
     }
-    public function clearColorSet() {
-      unset($this->color_set);
+    public function clearDeprecatedColorSet() {
+      unset($this->deprecated_color_set);
       return $this;
     }
-    public function hasColorSet() {
-      return isset($this->color_set);
+    public function hasDeprecatedColorSet() {
+      return isset($this->deprecated_color_set);
     }
     public function clear() {
       $this->clearWidth();
       $this->clearHeight();
       $this->clearOutput();
       $this->clearColor();
-      $this->clearColorSet();
+      $this->clearDeprecatedColorSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2176,7 +2176,7 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthVarInt64($this->color);
       }
-      if (isset($this->color_set)) {
+      if (isset($this->deprecated_color_set)) {
         $res += 3;
       }
       return $res;
@@ -2199,9 +2199,9 @@ namespace google\appengine {
         $out->putVarInt32(32);
         $out->putVarInt32($this->color);
       }
-      if (isset($this->color_set)) {
+      if (isset($this->deprecated_color_set)) {
         $out->putVarInt32(832);
-        $out->putBoolean($this->color_set);
+        $out->putBoolean($this->deprecated_color_set);
       }
     }
     public function tryMerge($d) {
@@ -2224,7 +2224,7 @@ namespace google\appengine {
             $this->setColor($d->getVarInt32());
             break;
           case 832:
-            $this->setColorSet($d->getBoolean());
+            $this->setDeprecatedColorSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -2254,8 +2254,8 @@ namespace google\appengine {
       if ($x->hasColor()) {
         $this->setColor($x->getColor());
       }
-      if ($x->hasColorSet()) {
-        $this->setColorSet($x->getColorSet());
+      if ($x->hasDeprecatedColorSet()) {
+        $this->setDeprecatedColorSet($x->getDeprecatedColorSet());
       }
     }
     public function equals($x) {
@@ -2268,8 +2268,8 @@ namespace google\appengine {
       if (isset($this->output) && !$this->output->equals($x->output)) return false;
       if (isset($this->color) !== isset($x->color)) return false;
       if (isset($this->color) && !$this->integerEquals($this->color, $x->color)) return false;
-      if (isset($this->color_set) !== isset($x->color_set)) return false;
-      if (isset($this->color_set) && $this->color_set !== $x->color_set) return false;
+      if (isset($this->deprecated_color_set) !== isset($x->deprecated_color_set)) return false;
+      if (isset($this->deprecated_color_set) && $this->deprecated_color_set !== $x->deprecated_color_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2286,8 +2286,8 @@ namespace google\appengine {
       if (isset($this->color)) {
         $res .= $prefix . "color: " . $this->debugFormatInt32($this->color) . "\n";
       }
-      if (isset($this->color_set)) {
-        $res .= $prefix . "color_set: " . $this->debugFormatBool($this->color_set) . "\n";
+      if (isset($this->deprecated_color_set)) {
+        $res .= $prefix . "deprecated_color_set: " . $this->debugFormatBool($this->deprecated_color_set) . "\n";
       }
       return $res;
     }

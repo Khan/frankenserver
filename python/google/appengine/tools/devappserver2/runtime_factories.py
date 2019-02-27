@@ -20,10 +20,6 @@
 
 from google.appengine.tools.devappserver2.custom import instance_factory as custom_factory
 from google.appengine.tools.devappserver2.go import instance_factory as go_factory
-
-
-
-
 from google.appengine.tools.devappserver2.php import instance_factory as php_factory
 from google.appengine.tools.devappserver2.python import instance_factory as python_factory
 
@@ -38,16 +34,12 @@ except ImportError:
 PYTHON27_PROD_VERSION = (2, 7, 12)
 
 
-MODERN_RUNTIMES = set(['python37'])
+MODERN_RUNTIMES = set(['python37', 'go111'])
 
 
 FACTORIES = {
     'go': go_factory.GoRuntimeInstanceFactory,
-
-
-
-
-
+    'go111': go_factory.GoRuntimeInstanceFactory,
     'php55': php_factory.PHPRuntimeInstanceFactory,
     'php72': php_factory.PHPRuntimeInstanceFactory,
     'python': python_factory.PythonRuntimeInstanceFactory,

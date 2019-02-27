@@ -123,6 +123,12 @@ class GoApplication(object):
     """The path to the Go executable. None if it has not been built."""
     return self._go_executable
 
+  def _get_gab_env(self):
+    return {
+        'GOPATH': os.getenv('GOPATH', ''),
+        'HOME': os.getenv('HOME', ''),
+    }
+
   def _run_gab(self, gab_extra_args, env):
     """Run go-app-builder.
 
@@ -265,7 +271,8 @@ class GoApplication(object):
     """
     gab_args = ['-print_extras_hash']
     gab_args.extend(self._go_file_to_mtime)
-    gab_stdout, _ = self._run_gab(gab_args, env={})
+    gab_stdout, _ = self._run_gab(
+        gab_args, env=self._get_gab_env())
     return gab_stdout
 
   def _build(self):
@@ -283,7 +290,8 @@ class GoApplication(object):
         '-ldflags', _escape_tool_flags('-L', self._pkg_path),
     ]
     gab_args.extend(self._go_file_to_mtime)
-    gab_stdout, gab_stderr = self._run_gab(gab_args, env={})
+    gab_stdout, gab_stderr = self._run_gab(
+        gab_args, env=self._get_gab_env())
     logging.debug('Build succeeded:\n%s\n%s', gab_stdout, gab_stderr)
     self._go_executable = os.path.join(self._work_dir, '_go_app')
 

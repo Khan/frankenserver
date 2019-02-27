@@ -1171,8 +1171,8 @@ namespace storage_onestore_v3\Property {
     const GD_RATING = 13;
     const BLOBKEY = 17;
     const ENTITY_PROTO = 19;
-    const INDEX_VALUE = 18;
     const EMPTY_LIST = 24;
+    const INDEX_VALUE = 18;
   }
 }
 namespace storage_onestore_v3 {

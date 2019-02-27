@@ -32,9 +32,9 @@ except ImportError:
 import sys
 try:
   __import__('google.net.rpc.python.proto_python_api_1_stub')
-  __import__('google.net.rpc.python.pywraprpc_lite')
+  __import__('google.net.rpc.python.pywraprpc')
   proto_python_api_1_stub = sys.modules.get('google.net.rpc.python.proto_python_api_1_stub')
-  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
+  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc')
   _client_stub_base_class = proto_python_api_1_stub.Stub
 except ImportError:
   _client_stub_base_class = object

@@ -17,6 +17,7 @@
 """Finds the directory and target script name for App Engine SDK scripts."""
 
 import os
+import subprocess
 import sys
 
 
@@ -114,7 +115,15 @@ class Paths(object):
 
 
 
-    self.grpc_path = os.path.join(dir_path, 'lib', 'grpcio-1.9.1')
+
+    grpc_importable = False
+    grpc_path = os.path.join(dir_path, 'lib', 'grpcio-1.9.1')
+    if os.path.exists(grpc_path):
+
+
+      grpc_importable = not subprocess.call(
+          [sys.executable, '-c', 'import grpc'],
+          cwd=grpc_path, stderr=subprocess.PIPE)
 
 
     self.v1_extra_paths = [
@@ -149,8 +158,9 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'portpicker'),
-        self.grpc_path,
     ]
+    if grpc_importable:
+      self.api_server_extra_paths.append(grpc_path)
 
 
 
@@ -191,9 +201,6 @@ class Paths(object):
 
     devappserver2_dir = os.path.join(
         dir_path, 'google', 'appengine', 'tools', 'devappserver2')
-
-
-
 
     php_runtime_dir = os.path.join(devappserver2_dir, 'php', 'runtime')
     python_runtime_dir = os.path.join(devappserver2_dir, 'python', 'runtime')
@@ -243,15 +250,9 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.1'),
-        self.grpc_path,
     ]
-
-
-
-
-
-
-
+    if grpc_importable:
+      devappserver2_paths.append(grpc_path)
 
     php_runtime_paths = [
         dir_path,
@@ -286,11 +287,6 @@ class Paths(object):
         'php_cli.py': devappserver2_paths,
         'remote_api_shell.py': self.v1_extra_paths,
         'vmboot.py': self.v1_extra_paths,
-
-
-
-
-
         '_php_runtime.py': php_runtime_paths,
         '_python_runtime.py': python_runtime_paths,
     }
@@ -298,11 +294,6 @@ class Paths(object):
     self._wrapper_name_to_real_name = {
         'api_server.py': 'api_server.py',
         'dev_appserver.py': 'devappserver2.py',
-
-
-
-
-
         '_php_runtime.py': 'runtime.py',
         '_python_runtime.py': 'runtime.py',
     }
@@ -316,11 +307,6 @@ class Paths(object):
     self._script_to_dir = {
         'api_server.py': devappserver2_dir,
         'dev_appserver.py': devappserver2_dir,
-
-
-
-
-
         '_php_runtime.py': php_runtime_dir,
         '_python_runtime.py': python_runtime_dir,
     }

@@ -40,7 +40,6 @@ from google.appengine.tools.devappserver2.admin import search_handler
 from google.appengine.tools.devappserver2.admin import static_file_handler
 from google.appengine.tools.devappserver2.admin import taskqueue_queues_handler
 from google.appengine.tools.devappserver2.admin import taskqueue_tasks_handler
-from google.appengine.tools.devappserver2.admin import xmpp_request_handler
 
 
 class AdminApplication(webapp2.WSGIApplication):
@@ -75,7 +74,6 @@ class AdminApplication(webapp2.WSGIApplication):
          ('/taskqueue/queue/(.+)',
           taskqueue_tasks_handler.TaskQueueTasksHandler),
          ('/cron', cron_handler.CronHandler),
-         ('/xmpp', xmpp_request_handler.XmppRequestHandler),
          ('/mail', mail_request_handler.MailRequestHandler),
          ('/quit', quit_handler.QuitHandler),
          ('/search', search_handler.SearchIndexesListHandler),

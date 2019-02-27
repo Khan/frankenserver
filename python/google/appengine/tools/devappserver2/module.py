@@ -371,12 +371,6 @@ class Module(object):
     if (self._php_config and
         self._module_configuration.runtime.startswith('php')):
       runtime_config.php_config.CopyFrom(self._php_config)
-
-
-
-
-
-
     if (self._python_config and
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
@@ -472,11 +466,7 @@ class Module(object):
       api_port,
       auth_domain,
       runtime_stderr_loglevel,
-
-
-
-
-
+      # </scrub>
       php_config,
       python_config,
       java_config,
@@ -512,11 +502,6 @@ class Module(object):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
-
-
-
-
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
@@ -576,10 +561,6 @@ class Module(object):
     self._auth_domain = auth_domain
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._balanced_port = balanced_port
-
-
-
-
     self._php_config = php_config
     self._python_config = python_config
     self._java_config = java_config
@@ -1178,11 +1159,6 @@ class Module(object):
                                       self._api_port,
                                       self._auth_domain,
                                       self._runtime_stderr_loglevel,
-
-
-
-
-
                                       self._php_config,
                                       self._python_config,
                                       self._java_config,
@@ -2885,11 +2861,6 @@ class InteractiveCommandModule(Module):
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-
-
-
-
-
                php_config,
                python_config,
                java_config,
@@ -2923,11 +2894,6 @@ class InteractiveCommandModule(Module):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
-
-
-
-
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
@@ -2970,11 +2936,6 @@ class InteractiveCommandModule(Module):
         api_port,
         auth_domain,
         runtime_stderr_loglevel,
-
-
-
-
-
         php_config,
         python_config,
         java_config,

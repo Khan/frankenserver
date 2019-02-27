@@ -18,13 +18,9 @@
 
 
 
-import google
-
-import cookielib
-import cStringIO
-import fancy_urllib
 import gzip
 import hashlib
+import io
 import logging
 import os
 import re
@@ -32,7 +28,70 @@ import socket
 import sys
 import time
 import urllib
-import urllib2
+
+import google
+
+from google.appengine._internal import six_subset
+
+
+
+
+
+
+if six_subset.PY3:
+  import http.cookiejar
+  import urllib.error
+  import urllib.request
+
+  BaseHandler = urllib.request.BaseHandler
+  HTTPError = urllib.error.HTTPError
+  HTTPHandler = urllib.request.HTTPHandler
+  HTTPDefaultErrorHandler = urllib.request.HTTPDefaultErrorHandler
+  HTTPCookieProcessor = urllib.request.HTTPCookieProcessor
+  HTTPSHandler = urllib.request.HTTPSHandler
+  HTTPErrorProcessor = urllib.request.HTTPErrorProcessor
+  MozillaCookieJar = http.cookiejar.MozillaCookieJar
+  ProxyHandler = urllib.request.ProxyHandler
+  LoadError = http.cookiejar.LoadError
+  OpenerDirector = urllib.request.OpenerDirector
+  Request = urllib.request.Request
+  UnknownHandler = urllib.request.UnknownHandler
+  addinfourl_fn = urllib.response.addinfourl
+  urlencode_fn = urllib.parse.urlencode
+else:
+  import cookielib
+  import fancy_urllib
+  import urllib2
+
+  BaseHandler = urllib2.BaseHandler
+  HTTPError = urllib2.HTTPError
+  HTTPHandler = urllib2.HTTPHandler
+  HTTPSHandler = fancy_urllib.FancyHTTPSHandler
+  HTTPDefaultErrorHandler = urllib2.HTTPDefaultErrorHandler
+  HTTPCookieProcessor = urllib2.HTTPCookieProcessor
+  HTTPErrorProcessor = urllib2.HTTPErrorProcessor
+  ProxyHandler = fancy_urllib.FancyProxyHandler
+  MozillaCookieJar = cookielib.MozillaCookieJar
+  LoadError = cookielib.LoadError
+  OpenerDirector = urllib2.OpenerDirector
+  UnknownHandler = urllib2.UnknownHandler
+  Request = fancy_urllib.FancyRequest
+  addinfourl_fn = urllib2.addinfourl
+  urlencode_fn = urllib.urlencode
+
+
+try:
+  import ssl
+  _CAN_VALIDATE_CERTS = True
+except ImportError:
+  _CAN_VALIDATE_CERTS = False
+
+
+def can_validate_certs():
+  """Return True if we have the SSL package and can validate certificates."""
+  return _CAN_VALIDATE_CERTS
+
+
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
@@ -74,20 +133,37 @@ def HttpRequestToString(req, include_data=True):
   if include_data:
     template = template + "\n%(data)s"
 
-  return template % {
-      'method': req.get_method(),
-      'selector': req.get_selector(),
-      'type': req.get_type().upper(),
-      'host': req.get_host(),
-      'headers': headers,
-      'data': req.get_data(),
-      }
+  req_selector = req.selector if hasattr(req, "selector") else req.get_selector
+  if req_selector is None:
+    req_selector = ""
 
-class ClientLoginError(urllib2.HTTPError):
+  req_type = req.type if hasattr(req, "type") else req.get_type()
+  if req_type is None:
+    req_type = ""
+
+  req_host = req.host if hasattr(req, "host") else req.get_host()
+  if req_host is None:
+    req_host = ""
+
+  req_data = req.data if hasattr(req, "data") else req.get_data()
+  if req_data is None:
+    req_data = ""
+
+  return template % {
+      "method": req.get_method(),
+      "selector": req_selector,
+      "type": req_type.upper(),
+      "host": req_host,
+      "headers": headers,
+      "data": req_data,
+  }
+
+
+class ClientLoginError(HTTPError):
   """Raised to indicate there was an error authenticating with ClientLogin."""
 
   def __init__(self, url, code, msg, headers, args):
-    urllib2.HTTPError.__init__(self, url, code, msg, headers, None)
+    HTTPError.__init__(self, url, code, msg, headers, None)
     self.args = args
     self._reason = args.get("Error")
     self.info = args.get("Info")
@@ -162,7 +238,7 @@ class AbstractRpcServer(object):
 
     self.save_cookies = save_cookies
 
-    self.cookie_jar = cookielib.MozillaCookieJar()
+    self.cookie_jar = MozillaCookieJar()
     self.opener = self._GetOpener()
     if self.host_override:
       logger.debug("Server: %s; Host: %s", self.host, self.host_override)
@@ -184,10 +260,10 @@ class AbstractRpcServer(object):
 
   def _CreateRequest(self, url, data=None):
     """Creates a new urllib request."""
-    req = fancy_urllib.FancyRequest(url, data=data)
+    req = Request(url, data=data)
     if self.host_override:
       req.add_header("Host", self.host_override)
-    for key, value in self.extra_headers.iteritems():
+    for key, value in self.extra_headers.items():
       req.add_header(key, value)
     return req
 
@@ -227,7 +303,7 @@ class AbstractRpcServer(object):
     req = self._CreateRequest(
         url=("https://%s/accounts/ClientLogin" %
              os.getenv("APPENGINE_AUTH_SERVER", "www.google.com")),
-        data=urllib.urlencode(data))
+        data=urlencode_fn(data))
     try:
       response = self.opener.open(req)
       response_body = response.read()
@@ -237,7 +313,7 @@ class AbstractRpcServer(object):
         self.extra_headers["Cookie"] = (
             'SID=%s; Path=/;' % response_dict["SID"])
       return response_dict["Auth"]
-    except urllib2.HTTPError, e:
+    except HTTPError as e:
       if e.code == 403:
         body = e.read()
         response_dict = dict(x.split("=", 1) for x in body.split("\n") if x)
@@ -261,15 +337,15 @@ class AbstractRpcServer(object):
     login_path = os.environ.get("APPCFG_LOGIN_PATH", "/_ah")
     req = self._CreateRequest("%s://%s%s/login?%s" %
                               (self.scheme, self.host, login_path,
-                               urllib.urlencode(args)))
+                               urlencode_fn(args)))
     try:
       response = self.opener.open(req)
-    except urllib2.HTTPError, e:
+    except HTTPError as e:
       response = e
     if (response.code != 302 or
         response.info()["location"] != continue_location):
-      raise urllib2.HTTPError(req.get_full_url(), response.code, response.msg,
-                              response.headers, response.fp)
+      raise HTTPError(req.get_full_url(), response.code, response.msg,
+                      response.headers, response.fp)
     self.authenticated = True
 
   def _Authenticate(self):
@@ -293,7 +369,7 @@ class AbstractRpcServer(object):
         auth_token = self._GetAuthToken(credentials[0], credentials[1])
         if os.getenv("APPENGINE_RPC_USE_SID", "0") == "1":
           return
-      except ClientLoginError, e:
+      except ClientLoginError as e:
 
 
         if e.reason == "CaptchaRequired":
@@ -378,7 +454,7 @@ class AbstractRpcServer(object):
         if kwargs:
 
 
-          url += "?" + urllib.urlencode(sorted(kwargs.items()))
+          url += "?" + urlencode_fn(sorted(kwargs.items()))
         req = self._CreateRequest(url=url, data=payload)
         req.add_header("Content-Type", content_type)
 
@@ -395,7 +471,7 @@ class AbstractRpcServer(object):
           f.close()
 
           return response
-        except urllib2.HTTPError, e:
+        except HTTPError as e:
           logger.debug("Got http error, this is try %d: %s", tries, e)
 
 
@@ -435,7 +511,7 @@ class AbstractRpcServer(object):
       socket.setdefaulttimeout(old_timeout)
 
 
-class ContentEncodingHandler(urllib2.BaseHandler):
+class ContentEncodingHandler(BaseHandler):
   """Request and handle HTTP Content-Encoding."""
 
   def http_request(self, request):
@@ -485,7 +561,7 @@ class ContentEncodingHandler(urllib2.BaseHandler):
 
     fp = resp
     while encodings and encodings[-1].lower() == "gzip":
-      fp = cStringIO.StringIO(fp.read())
+      fp = io.BytesIO(fp.read())
       fp = gzip.GzipFile(fileobj=fp, mode="r")
       encodings.pop()
 
@@ -499,10 +575,10 @@ class ContentEncodingHandler(urllib2.BaseHandler):
 
     msg = resp.msg
     if sys.version_info >= (2, 6):
-      resp = urllib2.addinfourl(fp, headers, resp.url, resp.code)
+      resp = addinfourl_fn(fp, headers, resp.url, resp.code)
     else:
       response_code = resp.code
-      resp = urllib2.addinfourl(fp, headers, resp.url)
+      resp = addinfourl_fn(fp, headers, resp.url)
       resp.code = response_code
     resp.msg = msg
 
@@ -527,7 +603,7 @@ class HttpRpcServer(AbstractRpcServer):
   def _CreateRequest(self, url, data=None):
     """Creates a new urllib request."""
     req = super(HttpRpcServer, self)._CreateRequest(url, data)
-    if self.cert_file_available and fancy_urllib.can_validate_certs():
+    if self.cert_file_available and can_validate_certs():
       req.set_ssl_info(ca_certs=self.certpath)
     return req
 
@@ -544,7 +620,7 @@ class HttpRpcServer(AbstractRpcServer):
 
   def _Authenticate(self):
     """Save the cookie jar after authentication."""
-    if self.cert_file_available and not fancy_urllib.can_validate_certs():
+    if self.cert_file_available and not can_validate_certs():
 
 
       logger.warn("""ssl module not found.
@@ -565,13 +641,13 @@ To learn more, see https://developers.google.com/appengine/kb/general#rpcssl""")
     Returns:
       A urllib2.OpenerDirector object.
     """
-    opener = urllib2.OpenerDirector()
-    opener.add_handler(fancy_urllib.FancyProxyHandler())
-    opener.add_handler(urllib2.UnknownHandler())
-    opener.add_handler(urllib2.HTTPHandler())
-    opener.add_handler(urllib2.HTTPDefaultErrorHandler())
-    opener.add_handler(fancy_urllib.FancyHTTPSHandler())
-    opener.add_handler(urllib2.HTTPErrorProcessor())
+    opener = OpenerDirector()
+    opener.add_handler(ProxyHandler())
+    opener.add_handler(UnknownHandler())
+    opener.add_handler(HTTPHandler())
+    opener.add_handler(HTTPDefaultErrorHandler())
+    opener.add_handler(HTTPSHandler())
+    opener.add_handler(HTTPErrorProcessor())
     opener.add_handler(ContentEncodingHandler())
 
     if self.save_cookies:
@@ -584,7 +660,7 @@ To learn more, see https://developers.google.com/appengine/kb/general#rpcssl""")
           self.authenticated = True
           logger.debug("Loaded authentication cookies from %s",
                        self.cookie_jar.filename)
-        except (OSError, IOError, cookielib.LoadError), e:
+        except (OSError, IOError, LoadError) as e:
 
           logger.debug("Could not load authentication cookies; %s: %s",
                        e.__class__.__name__, e)
@@ -593,13 +669,13 @@ To learn more, see https://developers.google.com/appengine/kb/general#rpcssl""")
 
 
         try:
-          fd = os.open(self.cookie_jar.filename, os.O_CREAT, 0600)
+          fd = os.open(self.cookie_jar.filename, os.O_CREAT, 0o600)
           os.close(fd)
-        except (OSError, IOError), e:
+        except (OSError, IOError) as e:
 
           logger.debug("Could not create authentication cookies file; %s: %s",
                        e.__class__.__name__, e)
           self.cookie_jar.filename = None
 
-    opener.add_handler(urllib2.HTTPCookieProcessor(self.cookie_jar))
+    opener.add_handler(HTTPCookieProcessor(self.cookie_jar))
     return opener

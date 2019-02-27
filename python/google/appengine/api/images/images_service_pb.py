@@ -213,22 +213,14 @@ class ImagesServiceTransform(ProtocolBuffer.ProtocolMessage):
 class Transform(ProtocolBuffer.ProtocolMessage):
   has_width_ = 0
   width_ = 0
-  has_width_set_ = 0
-  width_set_ = 0
   has_height_ = 0
   height_ = 0
-  has_height_set_ = 0
-  height_set_ = 0
   has_crop_to_fit_ = 0
   crop_to_fit_ = 0
   has_crop_offset_x_ = 0
   crop_offset_x_ = 0.5
-  has_crop_offset_x_set_ = 0
-  crop_offset_x_set_ = 0
   has_crop_offset_y_ = 0
   crop_offset_y_ = 0.5
-  has_crop_offset_y_set_ = 0
-  crop_offset_y_set_ = 0
   has_rotate_ = 0
   rotate_ = 0
   has_horizontal_flip_ = 0
@@ -241,16 +233,24 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   crop_top_y_ = 0.0
   has_crop_right_x_ = 0
   crop_right_x_ = 1.0
-  has_crop_right_x_set_ = 0
-  crop_right_x_set_ = 0
   has_crop_bottom_y_ = 0
   crop_bottom_y_ = 1.0
-  has_crop_bottom_y_set_ = 0
-  crop_bottom_y_set_ = 0
   has_autolevels_ = 0
   autolevels_ = 0
   has_allow_stretch_ = 0
   allow_stretch_ = 0
+  has_deprecated_width_set_ = 0
+  deprecated_width_set_ = 0
+  has_deprecated_height_set_ = 0
+  deprecated_height_set_ = 0
+  has_deprecated_crop_offset_x_set_ = 0
+  deprecated_crop_offset_x_set_ = 0
+  has_deprecated_crop_offset_y_set_ = 0
+  deprecated_crop_offset_y_set_ = 0
+  has_deprecated_crop_right_x_set_ = 0
+  deprecated_crop_right_x_set_ = 0
+  has_deprecated_crop_bottom_y_set_ = 0
+  deprecated_crop_bottom_y_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -268,19 +268,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 
   def has_width(self): return self.has_width_
 
-  def width_set(self): return self.width_set_
-
-  def set_width_set(self, x):
-    self.has_width_set_ = 1
-    self.width_set_ = x
-
-  def clear_width_set(self):
-    if self.has_width_set_:
-      self.has_width_set_ = 0
-      self.width_set_ = 0
-
-  def has_width_set(self): return self.has_width_set_
-
   def height(self): return self.height_
 
   def set_height(self, x):
@@ -293,19 +280,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
       self.height_ = 0
 
   def has_height(self): return self.has_height_
-
-  def height_set(self): return self.height_set_
-
-  def set_height_set(self, x):
-    self.has_height_set_ = 1
-    self.height_set_ = x
-
-  def clear_height_set(self):
-    if self.has_height_set_:
-      self.has_height_set_ = 0
-      self.height_set_ = 0
-
-  def has_height_set(self): return self.has_height_set_
 
   def crop_to_fit(self): return self.crop_to_fit_
 
@@ -333,19 +307,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 
   def has_crop_offset_x(self): return self.has_crop_offset_x_
 
-  def crop_offset_x_set(self): return self.crop_offset_x_set_
-
-  def set_crop_offset_x_set(self, x):
-    self.has_crop_offset_x_set_ = 1
-    self.crop_offset_x_set_ = x
-
-  def clear_crop_offset_x_set(self):
-    if self.has_crop_offset_x_set_:
-      self.has_crop_offset_x_set_ = 0
-      self.crop_offset_x_set_ = 0
-
-  def has_crop_offset_x_set(self): return self.has_crop_offset_x_set_
-
   def crop_offset_y(self): return self.crop_offset_y_
 
   def set_crop_offset_y(self, x):
@@ -358,19 +319,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
       self.crop_offset_y_ = 0.5
 
   def has_crop_offset_y(self): return self.has_crop_offset_y_
-
-  def crop_offset_y_set(self): return self.crop_offset_y_set_
-
-  def set_crop_offset_y_set(self, x):
-    self.has_crop_offset_y_set_ = 1
-    self.crop_offset_y_set_ = x
-
-  def clear_crop_offset_y_set(self):
-    if self.has_crop_offset_y_set_:
-      self.has_crop_offset_y_set_ = 0
-      self.crop_offset_y_set_ = 0
-
-  def has_crop_offset_y_set(self): return self.has_crop_offset_y_set_
 
   def rotate(self): return self.rotate_
 
@@ -450,19 +398,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 
   def has_crop_right_x(self): return self.has_crop_right_x_
 
-  def crop_right_x_set(self): return self.crop_right_x_set_
-
-  def set_crop_right_x_set(self, x):
-    self.has_crop_right_x_set_ = 1
-    self.crop_right_x_set_ = x
-
-  def clear_crop_right_x_set(self):
-    if self.has_crop_right_x_set_:
-      self.has_crop_right_x_set_ = 0
-      self.crop_right_x_set_ = 0
-
-  def has_crop_right_x_set(self): return self.has_crop_right_x_set_
-
   def crop_bottom_y(self): return self.crop_bottom_y_
 
   def set_crop_bottom_y(self, x):
@@ -475,19 +410,6 @@ class Transform(ProtocolBuffer.ProtocolMessage):
       self.crop_bottom_y_ = 1.0
 
   def has_crop_bottom_y(self): return self.has_crop_bottom_y_
-
-  def crop_bottom_y_set(self): return self.crop_bottom_y_set_
-
-  def set_crop_bottom_y_set(self, x):
-    self.has_crop_bottom_y_set_ = 1
-    self.crop_bottom_y_set_ = x
-
-  def clear_crop_bottom_y_set(self):
-    if self.has_crop_bottom_y_set_:
-      self.has_crop_bottom_y_set_ = 0
-      self.crop_bottom_y_set_ = 0
-
-  def has_crop_bottom_y_set(self): return self.has_crop_bottom_y_set_
 
   def autolevels(self): return self.autolevels_
 
@@ -515,50 +437,120 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 
   def has_allow_stretch(self): return self.has_allow_stretch_
 
+  def deprecated_width_set(self): return self.deprecated_width_set_
+
+  def set_deprecated_width_set(self, x):
+    self.has_deprecated_width_set_ = 1
+    self.deprecated_width_set_ = x
+
+  def clear_deprecated_width_set(self):
+    if self.has_deprecated_width_set_:
+      self.has_deprecated_width_set_ = 0
+      self.deprecated_width_set_ = 0
+
+  def has_deprecated_width_set(self): return self.has_deprecated_width_set_
+
+  def deprecated_height_set(self): return self.deprecated_height_set_
+
+  def set_deprecated_height_set(self, x):
+    self.has_deprecated_height_set_ = 1
+    self.deprecated_height_set_ = x
+
+  def clear_deprecated_height_set(self):
+    if self.has_deprecated_height_set_:
+      self.has_deprecated_height_set_ = 0
+      self.deprecated_height_set_ = 0
+
+  def has_deprecated_height_set(self): return self.has_deprecated_height_set_
+
+  def deprecated_crop_offset_x_set(self): return self.deprecated_crop_offset_x_set_
+
+  def set_deprecated_crop_offset_x_set(self, x):
+    self.has_deprecated_crop_offset_x_set_ = 1
+    self.deprecated_crop_offset_x_set_ = x
+
+  def clear_deprecated_crop_offset_x_set(self):
+    if self.has_deprecated_crop_offset_x_set_:
+      self.has_deprecated_crop_offset_x_set_ = 0
+      self.deprecated_crop_offset_x_set_ = 0
+
+  def has_deprecated_crop_offset_x_set(self): return self.has_deprecated_crop_offset_x_set_
+
+  def deprecated_crop_offset_y_set(self): return self.deprecated_crop_offset_y_set_
+
+  def set_deprecated_crop_offset_y_set(self, x):
+    self.has_deprecated_crop_offset_y_set_ = 1
+    self.deprecated_crop_offset_y_set_ = x
+
+  def clear_deprecated_crop_offset_y_set(self):
+    if self.has_deprecated_crop_offset_y_set_:
+      self.has_deprecated_crop_offset_y_set_ = 0
+      self.deprecated_crop_offset_y_set_ = 0
+
+  def has_deprecated_crop_offset_y_set(self): return self.has_deprecated_crop_offset_y_set_
+
+  def deprecated_crop_right_x_set(self): return self.deprecated_crop_right_x_set_
+
+  def set_deprecated_crop_right_x_set(self, x):
+    self.has_deprecated_crop_right_x_set_ = 1
+    self.deprecated_crop_right_x_set_ = x
+
+  def clear_deprecated_crop_right_x_set(self):
+    if self.has_deprecated_crop_right_x_set_:
+      self.has_deprecated_crop_right_x_set_ = 0
+      self.deprecated_crop_right_x_set_ = 0
+
+  def has_deprecated_crop_right_x_set(self): return self.has_deprecated_crop_right_x_set_
+
+  def deprecated_crop_bottom_y_set(self): return self.deprecated_crop_bottom_y_set_
+
+  def set_deprecated_crop_bottom_y_set(self, x):
+    self.has_deprecated_crop_bottom_y_set_ = 1
+    self.deprecated_crop_bottom_y_set_ = x
+
+  def clear_deprecated_crop_bottom_y_set(self):
+    if self.has_deprecated_crop_bottom_y_set_:
+      self.has_deprecated_crop_bottom_y_set_ = 0
+      self.deprecated_crop_bottom_y_set_ = 0
+
+  def has_deprecated_crop_bottom_y_set(self): return self.has_deprecated_crop_bottom_y_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_width()): self.set_width(x.width())
-    if (x.has_width_set()): self.set_width_set(x.width_set())
     if (x.has_height()): self.set_height(x.height())
-    if (x.has_height_set()): self.set_height_set(x.height_set())
     if (x.has_crop_to_fit()): self.set_crop_to_fit(x.crop_to_fit())
     if (x.has_crop_offset_x()): self.set_crop_offset_x(x.crop_offset_x())
-    if (x.has_crop_offset_x_set()): self.set_crop_offset_x_set(x.crop_offset_x_set())
     if (x.has_crop_offset_y()): self.set_crop_offset_y(x.crop_offset_y())
-    if (x.has_crop_offset_y_set()): self.set_crop_offset_y_set(x.crop_offset_y_set())
     if (x.has_rotate()): self.set_rotate(x.rotate())
     if (x.has_horizontal_flip()): self.set_horizontal_flip(x.horizontal_flip())
     if (x.has_vertical_flip()): self.set_vertical_flip(x.vertical_flip())
     if (x.has_crop_left_x()): self.set_crop_left_x(x.crop_left_x())
     if (x.has_crop_top_y()): self.set_crop_top_y(x.crop_top_y())
     if (x.has_crop_right_x()): self.set_crop_right_x(x.crop_right_x())
-    if (x.has_crop_right_x_set()): self.set_crop_right_x_set(x.crop_right_x_set())
     if (x.has_crop_bottom_y()): self.set_crop_bottom_y(x.crop_bottom_y())
-    if (x.has_crop_bottom_y_set()): self.set_crop_bottom_y_set(x.crop_bottom_y_set())
     if (x.has_autolevels()): self.set_autolevels(x.autolevels())
     if (x.has_allow_stretch()): self.set_allow_stretch(x.allow_stretch())
+    if (x.has_deprecated_width_set()): self.set_deprecated_width_set(x.deprecated_width_set())
+    if (x.has_deprecated_height_set()): self.set_deprecated_height_set(x.deprecated_height_set())
+    if (x.has_deprecated_crop_offset_x_set()): self.set_deprecated_crop_offset_x_set(x.deprecated_crop_offset_x_set())
+    if (x.has_deprecated_crop_offset_y_set()): self.set_deprecated_crop_offset_y_set(x.deprecated_crop_offset_y_set())
+    if (x.has_deprecated_crop_right_x_set()): self.set_deprecated_crop_right_x_set(x.deprecated_crop_right_x_set())
+    if (x.has_deprecated_crop_bottom_y_set()): self.set_deprecated_crop_bottom_y_set(x.deprecated_crop_bottom_y_set())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_width_ != x.has_width_: return 0
     if self.has_width_ and self.width_ != x.width_: return 0
-    if self.has_width_set_ != x.has_width_set_: return 0
-    if self.has_width_set_ and self.width_set_ != x.width_set_: return 0
     if self.has_height_ != x.has_height_: return 0
     if self.has_height_ and self.height_ != x.height_: return 0
-    if self.has_height_set_ != x.has_height_set_: return 0
-    if self.has_height_set_ and self.height_set_ != x.height_set_: return 0
     if self.has_crop_to_fit_ != x.has_crop_to_fit_: return 0
     if self.has_crop_to_fit_ and self.crop_to_fit_ != x.crop_to_fit_: return 0
     if self.has_crop_offset_x_ != x.has_crop_offset_x_: return 0
     if self.has_crop_offset_x_ and self.crop_offset_x_ != x.crop_offset_x_: return 0
-    if self.has_crop_offset_x_set_ != x.has_crop_offset_x_set_: return 0
-    if self.has_crop_offset_x_set_ and self.crop_offset_x_set_ != x.crop_offset_x_set_: return 0
     if self.has_crop_offset_y_ != x.has_crop_offset_y_: return 0
     if self.has_crop_offset_y_ and self.crop_offset_y_ != x.crop_offset_y_: return 0
-    if self.has_crop_offset_y_set_ != x.has_crop_offset_y_set_: return 0
-    if self.has_crop_offset_y_set_ and self.crop_offset_y_set_ != x.crop_offset_y_set_: return 0
     if self.has_rotate_ != x.has_rotate_: return 0
     if self.has_rotate_ and self.rotate_ != x.rotate_: return 0
     if self.has_horizontal_flip_ != x.has_horizontal_flip_: return 0
@@ -571,16 +563,24 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if self.has_crop_top_y_ and self.crop_top_y_ != x.crop_top_y_: return 0
     if self.has_crop_right_x_ != x.has_crop_right_x_: return 0
     if self.has_crop_right_x_ and self.crop_right_x_ != x.crop_right_x_: return 0
-    if self.has_crop_right_x_set_ != x.has_crop_right_x_set_: return 0
-    if self.has_crop_right_x_set_ and self.crop_right_x_set_ != x.crop_right_x_set_: return 0
     if self.has_crop_bottom_y_ != x.has_crop_bottom_y_: return 0
     if self.has_crop_bottom_y_ and self.crop_bottom_y_ != x.crop_bottom_y_: return 0
-    if self.has_crop_bottom_y_set_ != x.has_crop_bottom_y_set_: return 0
-    if self.has_crop_bottom_y_set_ and self.crop_bottom_y_set_ != x.crop_bottom_y_set_: return 0
     if self.has_autolevels_ != x.has_autolevels_: return 0
     if self.has_autolevels_ and self.autolevels_ != x.autolevels_: return 0
     if self.has_allow_stretch_ != x.has_allow_stretch_: return 0
     if self.has_allow_stretch_ and self.allow_stretch_ != x.allow_stretch_: return 0
+    if self.has_deprecated_width_set_ != x.has_deprecated_width_set_: return 0
+    if self.has_deprecated_width_set_ and self.deprecated_width_set_ != x.deprecated_width_set_: return 0
+    if self.has_deprecated_height_set_ != x.has_deprecated_height_set_: return 0
+    if self.has_deprecated_height_set_ and self.deprecated_height_set_ != x.deprecated_height_set_: return 0
+    if self.has_deprecated_crop_offset_x_set_ != x.has_deprecated_crop_offset_x_set_: return 0
+    if self.has_deprecated_crop_offset_x_set_ and self.deprecated_crop_offset_x_set_ != x.deprecated_crop_offset_x_set_: return 0
+    if self.has_deprecated_crop_offset_y_set_ != x.has_deprecated_crop_offset_y_set_: return 0
+    if self.has_deprecated_crop_offset_y_set_ and self.deprecated_crop_offset_y_set_ != x.deprecated_crop_offset_y_set_: return 0
+    if self.has_deprecated_crop_right_x_set_ != x.has_deprecated_crop_right_x_set_: return 0
+    if self.has_deprecated_crop_right_x_set_ and self.deprecated_crop_right_x_set_ != x.deprecated_crop_right_x_set_: return 0
+    if self.has_deprecated_crop_bottom_y_set_ != x.has_deprecated_crop_bottom_y_set_: return 0
+    if self.has_deprecated_crop_bottom_y_set_ and self.deprecated_crop_bottom_y_set_ != x.deprecated_crop_bottom_y_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -590,72 +590,72 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
-    if (self.has_width_set_): n += 3
     if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
-    if (self.has_height_set_): n += 3
     if (self.has_crop_to_fit_): n += 2
     if (self.has_crop_offset_x_): n += 5
-    if (self.has_crop_offset_x_set_): n += 3
     if (self.has_crop_offset_y_): n += 5
-    if (self.has_crop_offset_y_set_): n += 3
     if (self.has_rotate_): n += 1 + self.lengthVarInt64(self.rotate_)
     if (self.has_horizontal_flip_): n += 2
     if (self.has_vertical_flip_): n += 2
     if (self.has_crop_left_x_): n += 5
     if (self.has_crop_top_y_): n += 5
     if (self.has_crop_right_x_): n += 5
-    if (self.has_crop_right_x_set_): n += 3
     if (self.has_crop_bottom_y_): n += 5
-    if (self.has_crop_bottom_y_set_): n += 3
     if (self.has_autolevels_): n += 2
     if (self.has_allow_stretch_): n += 2
+    if (self.has_deprecated_width_set_): n += 3
+    if (self.has_deprecated_height_set_): n += 3
+    if (self.has_deprecated_crop_offset_x_set_): n += 3
+    if (self.has_deprecated_crop_offset_y_set_): n += 3
+    if (self.has_deprecated_crop_right_x_set_): n += 3
+    if (self.has_deprecated_crop_bottom_y_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
-    if (self.has_width_set_): n += 3
     if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
-    if (self.has_height_set_): n += 3
     if (self.has_crop_to_fit_): n += 2
     if (self.has_crop_offset_x_): n += 5
-    if (self.has_crop_offset_x_set_): n += 3
     if (self.has_crop_offset_y_): n += 5
-    if (self.has_crop_offset_y_set_): n += 3
     if (self.has_rotate_): n += 1 + self.lengthVarInt64(self.rotate_)
     if (self.has_horizontal_flip_): n += 2
     if (self.has_vertical_flip_): n += 2
     if (self.has_crop_left_x_): n += 5
     if (self.has_crop_top_y_): n += 5
     if (self.has_crop_right_x_): n += 5
-    if (self.has_crop_right_x_set_): n += 3
     if (self.has_crop_bottom_y_): n += 5
-    if (self.has_crop_bottom_y_set_): n += 3
     if (self.has_autolevels_): n += 2
     if (self.has_allow_stretch_): n += 2
+    if (self.has_deprecated_width_set_): n += 3
+    if (self.has_deprecated_height_set_): n += 3
+    if (self.has_deprecated_crop_offset_x_set_): n += 3
+    if (self.has_deprecated_crop_offset_y_set_): n += 3
+    if (self.has_deprecated_crop_right_x_set_): n += 3
+    if (self.has_deprecated_crop_bottom_y_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_width()
-    self.clear_width_set()
     self.clear_height()
-    self.clear_height_set()
     self.clear_crop_to_fit()
     self.clear_crop_offset_x()
-    self.clear_crop_offset_x_set()
     self.clear_crop_offset_y()
-    self.clear_crop_offset_y_set()
     self.clear_rotate()
     self.clear_horizontal_flip()
     self.clear_vertical_flip()
     self.clear_crop_left_x()
     self.clear_crop_top_y()
     self.clear_crop_right_x()
-    self.clear_crop_right_x_set()
     self.clear_crop_bottom_y()
-    self.clear_crop_bottom_y_set()
     self.clear_autolevels()
     self.clear_allow_stretch()
+    self.clear_deprecated_width_set()
+    self.clear_deprecated_height_set()
+    self.clear_deprecated_crop_offset_x_set()
+    self.clear_deprecated_crop_offset_y_set()
+    self.clear_deprecated_crop_right_x_set()
+    self.clear_deprecated_crop_bottom_y_set()
 
   def OutputUnchecked(self, out):
     if (self.has_width_):
@@ -700,24 +700,24 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_stretch_):
       out.putVarInt32(112)
       out.putBoolean(self.allow_stretch_)
-    if (self.has_width_set_):
+    if (self.has_deprecated_width_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.width_set_)
-    if (self.has_height_set_):
+      out.putBoolean(self.deprecated_width_set_)
+    if (self.has_deprecated_height_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.height_set_)
-    if (self.has_crop_right_x_set_):
+      out.putBoolean(self.deprecated_height_set_)
+    if (self.has_deprecated_crop_right_x_set_):
       out.putVarInt32(864)
-      out.putBoolean(self.crop_right_x_set_)
-    if (self.has_crop_bottom_y_set_):
+      out.putBoolean(self.deprecated_crop_right_x_set_)
+    if (self.has_deprecated_crop_bottom_y_set_):
       out.putVarInt32(872)
-      out.putBoolean(self.crop_bottom_y_set_)
-    if (self.has_crop_offset_x_set_):
+      out.putBoolean(self.deprecated_crop_bottom_y_set_)
+    if (self.has_deprecated_crop_offset_x_set_):
       out.putVarInt32(896)
-      out.putBoolean(self.crop_offset_x_set_)
-    if (self.has_crop_offset_y_set_):
+      out.putBoolean(self.deprecated_crop_offset_x_set_)
+    if (self.has_deprecated_crop_offset_y_set_):
       out.putVarInt32(904)
-      out.putBoolean(self.crop_offset_y_set_)
+      out.putBoolean(self.deprecated_crop_offset_y_set_)
 
   def OutputPartial(self, out):
     if (self.has_width_):
@@ -762,24 +762,24 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_stretch_):
       out.putVarInt32(112)
       out.putBoolean(self.allow_stretch_)
-    if (self.has_width_set_):
+    if (self.has_deprecated_width_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.width_set_)
-    if (self.has_height_set_):
+      out.putBoolean(self.deprecated_width_set_)
+    if (self.has_deprecated_height_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.height_set_)
-    if (self.has_crop_right_x_set_):
+      out.putBoolean(self.deprecated_height_set_)
+    if (self.has_deprecated_crop_right_x_set_):
       out.putVarInt32(864)
-      out.putBoolean(self.crop_right_x_set_)
-    if (self.has_crop_bottom_y_set_):
+      out.putBoolean(self.deprecated_crop_right_x_set_)
+    if (self.has_deprecated_crop_bottom_y_set_):
       out.putVarInt32(872)
-      out.putBoolean(self.crop_bottom_y_set_)
-    if (self.has_crop_offset_x_set_):
+      out.putBoolean(self.deprecated_crop_bottom_y_set_)
+    if (self.has_deprecated_crop_offset_x_set_):
       out.putVarInt32(896)
-      out.putBoolean(self.crop_offset_x_set_)
-    if (self.has_crop_offset_y_set_):
+      out.putBoolean(self.deprecated_crop_offset_x_set_)
+    if (self.has_deprecated_crop_offset_y_set_):
       out.putVarInt32(904)
-      out.putBoolean(self.crop_offset_y_set_)
+      out.putBoolean(self.deprecated_crop_offset_y_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -827,22 +827,22 @@ class Transform(ProtocolBuffer.ProtocolMessage):
         self.set_allow_stretch(d.getBoolean())
         continue
       if tt == 808:
-        self.set_width_set(d.getBoolean())
+        self.set_deprecated_width_set(d.getBoolean())
         continue
       if tt == 816:
-        self.set_height_set(d.getBoolean())
+        self.set_deprecated_height_set(d.getBoolean())
         continue
       if tt == 864:
-        self.set_crop_right_x_set(d.getBoolean())
+        self.set_deprecated_crop_right_x_set(d.getBoolean())
         continue
       if tt == 872:
-        self.set_crop_bottom_y_set(d.getBoolean())
+        self.set_deprecated_crop_bottom_y_set(d.getBoolean())
         continue
       if tt == 896:
-        self.set_crop_offset_x_set(d.getBoolean())
+        self.set_deprecated_crop_offset_x_set(d.getBoolean())
         continue
       if tt == 904:
-        self.set_crop_offset_y_set(d.getBoolean())
+        self.set_deprecated_crop_offset_y_set(d.getBoolean())
         continue
 
 
@@ -853,25 +853,25 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_width_: res+=prefix+("width: %s\n" % self.DebugFormatInt32(self.width_))
-    if self.has_width_set_: res+=prefix+("width_set: %s\n" % self.DebugFormatBool(self.width_set_))
     if self.has_height_: res+=prefix+("height: %s\n" % self.DebugFormatInt32(self.height_))
-    if self.has_height_set_: res+=prefix+("height_set: %s\n" % self.DebugFormatBool(self.height_set_))
     if self.has_crop_to_fit_: res+=prefix+("crop_to_fit: %s\n" % self.DebugFormatBool(self.crop_to_fit_))
     if self.has_crop_offset_x_: res+=prefix+("crop_offset_x: %s\n" % self.DebugFormatFloat(self.crop_offset_x_))
-    if self.has_crop_offset_x_set_: res+=prefix+("crop_offset_x_set: %s\n" % self.DebugFormatBool(self.crop_offset_x_set_))
     if self.has_crop_offset_y_: res+=prefix+("crop_offset_y: %s\n" % self.DebugFormatFloat(self.crop_offset_y_))
-    if self.has_crop_offset_y_set_: res+=prefix+("crop_offset_y_set: %s\n" % self.DebugFormatBool(self.crop_offset_y_set_))
     if self.has_rotate_: res+=prefix+("rotate: %s\n" % self.DebugFormatInt32(self.rotate_))
     if self.has_horizontal_flip_: res+=prefix+("horizontal_flip: %s\n" % self.DebugFormatBool(self.horizontal_flip_))
     if self.has_vertical_flip_: res+=prefix+("vertical_flip: %s\n" % self.DebugFormatBool(self.vertical_flip_))
     if self.has_crop_left_x_: res+=prefix+("crop_left_x: %s\n" % self.DebugFormatFloat(self.crop_left_x_))
     if self.has_crop_top_y_: res+=prefix+("crop_top_y: %s\n" % self.DebugFormatFloat(self.crop_top_y_))
     if self.has_crop_right_x_: res+=prefix+("crop_right_x: %s\n" % self.DebugFormatFloat(self.crop_right_x_))
-    if self.has_crop_right_x_set_: res+=prefix+("crop_right_x_set: %s\n" % self.DebugFormatBool(self.crop_right_x_set_))
     if self.has_crop_bottom_y_: res+=prefix+("crop_bottom_y: %s\n" % self.DebugFormatFloat(self.crop_bottom_y_))
-    if self.has_crop_bottom_y_set_: res+=prefix+("crop_bottom_y_set: %s\n" % self.DebugFormatBool(self.crop_bottom_y_set_))
     if self.has_autolevels_: res+=prefix+("autolevels: %s\n" % self.DebugFormatBool(self.autolevels_))
     if self.has_allow_stretch_: res+=prefix+("allow_stretch: %s\n" % self.DebugFormatBool(self.allow_stretch_))
+    if self.has_deprecated_width_set_: res+=prefix+("deprecated_width_set: %s\n" % self.DebugFormatBool(self.deprecated_width_set_))
+    if self.has_deprecated_height_set_: res+=prefix+("deprecated_height_set: %s\n" % self.DebugFormatBool(self.deprecated_height_set_))
+    if self.has_deprecated_crop_offset_x_set_: res+=prefix+("deprecated_crop_offset_x_set: %s\n" % self.DebugFormatBool(self.deprecated_crop_offset_x_set_))
+    if self.has_deprecated_crop_offset_y_set_: res+=prefix+("deprecated_crop_offset_y_set: %s\n" % self.DebugFormatBool(self.deprecated_crop_offset_y_set_))
+    if self.has_deprecated_crop_right_x_set_: res+=prefix+("deprecated_crop_right_x_set: %s\n" % self.DebugFormatBool(self.deprecated_crop_right_x_set_))
+    if self.has_deprecated_crop_bottom_y_set_: res+=prefix+("deprecated_crop_bottom_y_set: %s\n" % self.DebugFormatBool(self.deprecated_crop_bottom_y_set_))
     return res
 
 
@@ -879,25 +879,25 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kwidth = 1
-  kwidth_set = 101
   kheight = 2
-  kheight_set = 102
   kcrop_to_fit = 11
   kcrop_offset_x = 12
-  kcrop_offset_x_set = 112
   kcrop_offset_y = 13
-  kcrop_offset_y_set = 113
   krotate = 3
   khorizontal_flip = 4
   kvertical_flip = 5
   kcrop_left_x = 6
   kcrop_top_y = 7
   kcrop_right_x = 8
-  kcrop_right_x_set = 108
   kcrop_bottom_y = 9
-  kcrop_bottom_y_set = 109
   kautolevels = 10
   kallow_stretch = 14
+  kdeprecated_width_set = 101
+  kdeprecated_height_set = 102
+  kdeprecated_crop_offset_x_set = 112
+  kdeprecated_crop_offset_y_set = 113
+  kdeprecated_crop_right_x_set = 108
+  kdeprecated_crop_bottom_y_set = 109
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -915,12 +915,12 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     12: "crop_offset_x",
     13: "crop_offset_y",
     14: "allow_stretch",
-    101: "width_set",
-    102: "height_set",
-    108: "crop_right_x_set",
-    109: "crop_bottom_y_set",
-    112: "crop_offset_x_set",
-    113: "crop_offset_y_set",
+    101: "deprecated_width_set",
+    102: "deprecated_height_set",
+    108: "deprecated_crop_right_x_set",
+    109: "deprecated_crop_bottom_y_set",
+    112: "deprecated_crop_offset_x_set",
+    113: "deprecated_crop_offset_y_set",
   }, 113)
 
   _TYPES = _BuildTagLookupTable({
@@ -956,12 +956,12 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
   content_ = ""
   has_blob_key_ = 0
   blob_key_ = ""
-  has_blob_key_set_ = 0
-  blob_key_set_ = 0
   has_width_ = 0
   width_ = 0
   has_height_ = 0
   height_ = 0
+  has_deprecated_blob_key_set_ = 0
+  deprecated_blob_key_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -992,19 +992,6 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   def has_blob_key(self): return self.has_blob_key_
 
-  def blob_key_set(self): return self.blob_key_set_
-
-  def set_blob_key_set(self, x):
-    self.has_blob_key_set_ = 1
-    self.blob_key_set_ = x
-
-  def clear_blob_key_set(self):
-    if self.has_blob_key_set_:
-      self.has_blob_key_set_ = 0
-      self.blob_key_set_ = 0
-
-  def has_blob_key_set(self): return self.has_blob_key_set_
-
   def width(self): return self.width_
 
   def set_width(self, x):
@@ -1031,14 +1018,27 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   def has_height(self): return self.has_height_
 
+  def deprecated_blob_key_set(self): return self.deprecated_blob_key_set_
+
+  def set_deprecated_blob_key_set(self, x):
+    self.has_deprecated_blob_key_set_ = 1
+    self.deprecated_blob_key_set_ = x
+
+  def clear_deprecated_blob_key_set(self):
+    if self.has_deprecated_blob_key_set_:
+      self.has_deprecated_blob_key_set_ = 0
+      self.deprecated_blob_key_set_ = 0
+
+  def has_deprecated_blob_key_set(self): return self.has_deprecated_blob_key_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_content()): self.set_content(x.content())
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
-    if (x.has_blob_key_set()): self.set_blob_key_set(x.blob_key_set())
     if (x.has_width()): self.set_width(x.width())
     if (x.has_height()): self.set_height(x.height())
+    if (x.has_deprecated_blob_key_set()): self.set_deprecated_blob_key_set(x.deprecated_blob_key_set())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1046,12 +1046,12 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if self.has_content_ and self.content_ != x.content_: return 0
     if self.has_blob_key_ != x.has_blob_key_: return 0
     if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
-    if self.has_blob_key_set_ != x.has_blob_key_set_: return 0
-    if self.has_blob_key_set_ and self.blob_key_set_ != x.blob_key_set_: return 0
     if self.has_width_ != x.has_width_: return 0
     if self.has_width_ and self.width_ != x.width_: return 0
     if self.has_height_ != x.has_height_: return 0
     if self.has_height_ and self.height_ != x.height_: return 0
+    if self.has_deprecated_blob_key_set_ != x.has_deprecated_blob_key_set_: return 0
+    if self.has_deprecated_blob_key_set_ and self.deprecated_blob_key_set_ != x.deprecated_blob_key_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1066,9 +1066,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.content_))
     if (self.has_blob_key_): n += 1 + self.lengthString(len(self.blob_key_))
-    if (self.has_blob_key_set_): n += 3
     if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
     if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
+    if (self.has_deprecated_blob_key_set_): n += 3
     return n + 1
 
   def ByteSizePartial(self):
@@ -1077,17 +1077,17 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.content_))
     if (self.has_blob_key_): n += 1 + self.lengthString(len(self.blob_key_))
-    if (self.has_blob_key_set_): n += 3
     if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
     if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
+    if (self.has_deprecated_blob_key_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_content()
     self.clear_blob_key()
-    self.clear_blob_key_set()
     self.clear_width()
     self.clear_height()
+    self.clear_deprecated_blob_key_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1101,9 +1101,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if (self.has_height_):
       out.putVarInt32(32)
       out.putVarInt32(self.height_)
-    if (self.has_blob_key_set_):
+    if (self.has_deprecated_blob_key_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.blob_key_set_)
+      out.putBoolean(self.deprecated_blob_key_set_)
 
   def OutputPartial(self, out):
     if (self.has_content_):
@@ -1118,9 +1118,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if (self.has_height_):
       out.putVarInt32(32)
       out.putVarInt32(self.height_)
-    if (self.has_blob_key_set_):
+    if (self.has_deprecated_blob_key_set_):
       out.putVarInt32(816)
-      out.putBoolean(self.blob_key_set_)
+      out.putBoolean(self.deprecated_blob_key_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1138,7 +1138,7 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
         self.set_height(d.getVarInt32())
         continue
       if tt == 816:
-        self.set_blob_key_set(d.getBoolean())
+        self.set_deprecated_blob_key_set(d.getBoolean())
         continue
 
 
@@ -1150,9 +1150,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_content_: res+=prefix+("content: %s\n" % self.DebugFormatString(self.content_))
     if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
-    if self.has_blob_key_set_: res+=prefix+("blob_key_set: %s\n" % self.DebugFormatBool(self.blob_key_set_))
     if self.has_width_: res+=prefix+("width: %s\n" % self.DebugFormatInt32(self.width_))
     if self.has_height_: res+=prefix+("height: %s\n" % self.DebugFormatInt32(self.height_))
+    if self.has_deprecated_blob_key_set_: res+=prefix+("deprecated_blob_key_set: %s\n" % self.DebugFormatBool(self.deprecated_blob_key_set_))
     return res
 
 
@@ -1161,9 +1161,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   kcontent = 1
   kblob_key = 2
-  kblob_key_set = 102
   kwidth = 3
   kheight = 4
+  kdeprecated_blob_key_set = 102
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1171,7 +1171,7 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     2: "blob_key",
     3: "width",
     4: "height",
-    102: "blob_key_set",
+    102: "deprecated_blob_key_set",
   }, 102)
 
   _TYPES = _BuildTagLookupTable({
@@ -1203,14 +1203,14 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
 
   has_correct_exif_orientation_ = 0
   correct_exif_orientation_ = 0
-  has_correct_exif_orientation_set_ = 0
-  correct_exif_orientation_set_ = 0
   has_parse_metadata_ = 0
   parse_metadata_ = 0
   has_transparent_substitution_rgb_ = 0
   transparent_substitution_rgb_ = 0
-  has_transparent_substitution_rgb_set_ = 0
-  transparent_substitution_rgb_set_ = 0
+  has_deprecated_correct_exif_orientation_set_ = 0
+  deprecated_correct_exif_orientation_set_ = 0
+  has_deprecated_transparent_substitution_rgb_set_ = 0
+  deprecated_transparent_substitution_rgb_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1227,19 +1227,6 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
       self.correct_exif_orientation_ = 0
 
   def has_correct_exif_orientation(self): return self.has_correct_exif_orientation_
-
-  def correct_exif_orientation_set(self): return self.correct_exif_orientation_set_
-
-  def set_correct_exif_orientation_set(self, x):
-    self.has_correct_exif_orientation_set_ = 1
-    self.correct_exif_orientation_set_ = x
-
-  def clear_correct_exif_orientation_set(self):
-    if self.has_correct_exif_orientation_set_:
-      self.has_correct_exif_orientation_set_ = 0
-      self.correct_exif_orientation_set_ = 0
-
-  def has_correct_exif_orientation_set(self): return self.has_correct_exif_orientation_set_
 
   def parse_metadata(self): return self.parse_metadata_
 
@@ -1267,40 +1254,53 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
 
   def has_transparent_substitution_rgb(self): return self.has_transparent_substitution_rgb_
 
-  def transparent_substitution_rgb_set(self): return self.transparent_substitution_rgb_set_
+  def deprecated_correct_exif_orientation_set(self): return self.deprecated_correct_exif_orientation_set_
 
-  def set_transparent_substitution_rgb_set(self, x):
-    self.has_transparent_substitution_rgb_set_ = 1
-    self.transparent_substitution_rgb_set_ = x
+  def set_deprecated_correct_exif_orientation_set(self, x):
+    self.has_deprecated_correct_exif_orientation_set_ = 1
+    self.deprecated_correct_exif_orientation_set_ = x
 
-  def clear_transparent_substitution_rgb_set(self):
-    if self.has_transparent_substitution_rgb_set_:
-      self.has_transparent_substitution_rgb_set_ = 0
-      self.transparent_substitution_rgb_set_ = 0
+  def clear_deprecated_correct_exif_orientation_set(self):
+    if self.has_deprecated_correct_exif_orientation_set_:
+      self.has_deprecated_correct_exif_orientation_set_ = 0
+      self.deprecated_correct_exif_orientation_set_ = 0
 
-  def has_transparent_substitution_rgb_set(self): return self.has_transparent_substitution_rgb_set_
+  def has_deprecated_correct_exif_orientation_set(self): return self.has_deprecated_correct_exif_orientation_set_
+
+  def deprecated_transparent_substitution_rgb_set(self): return self.deprecated_transparent_substitution_rgb_set_
+
+  def set_deprecated_transparent_substitution_rgb_set(self, x):
+    self.has_deprecated_transparent_substitution_rgb_set_ = 1
+    self.deprecated_transparent_substitution_rgb_set_ = x
+
+  def clear_deprecated_transparent_substitution_rgb_set(self):
+    if self.has_deprecated_transparent_substitution_rgb_set_:
+      self.has_deprecated_transparent_substitution_rgb_set_ = 0
+      self.deprecated_transparent_substitution_rgb_set_ = 0
+
+  def has_deprecated_transparent_substitution_rgb_set(self): return self.has_deprecated_transparent_substitution_rgb_set_
 
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_correct_exif_orientation()): self.set_correct_exif_orientation(x.correct_exif_orientation())
-    if (x.has_correct_exif_orientation_set()): self.set_correct_exif_orientation_set(x.correct_exif_orientation_set())
     if (x.has_parse_metadata()): self.set_parse_metadata(x.parse_metadata())
     if (x.has_transparent_substitution_rgb()): self.set_transparent_substitution_rgb(x.transparent_substitution_rgb())
-    if (x.has_transparent_substitution_rgb_set()): self.set_transparent_substitution_rgb_set(x.transparent_substitution_rgb_set())
+    if (x.has_deprecated_correct_exif_orientation_set()): self.set_deprecated_correct_exif_orientation_set(x.deprecated_correct_exif_orientation_set())
+    if (x.has_deprecated_transparent_substitution_rgb_set()): self.set_deprecated_transparent_substitution_rgb_set(x.deprecated_transparent_substitution_rgb_set())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_correct_exif_orientation_ != x.has_correct_exif_orientation_: return 0
     if self.has_correct_exif_orientation_ and self.correct_exif_orientation_ != x.correct_exif_orientation_: return 0
-    if self.has_correct_exif_orientation_set_ != x.has_correct_exif_orientation_set_: return 0
-    if self.has_correct_exif_orientation_set_ and self.correct_exif_orientation_set_ != x.correct_exif_orientation_set_: return 0
     if self.has_parse_metadata_ != x.has_parse_metadata_: return 0
     if self.has_parse_metadata_ and self.parse_metadata_ != x.parse_metadata_: return 0
     if self.has_transparent_substitution_rgb_ != x.has_transparent_substitution_rgb_: return 0
     if self.has_transparent_substitution_rgb_ and self.transparent_substitution_rgb_ != x.transparent_substitution_rgb_: return 0
-    if self.has_transparent_substitution_rgb_set_ != x.has_transparent_substitution_rgb_set_: return 0
-    if self.has_transparent_substitution_rgb_set_ and self.transparent_substitution_rgb_set_ != x.transparent_substitution_rgb_set_: return 0
+    if self.has_deprecated_correct_exif_orientation_set_ != x.has_deprecated_correct_exif_orientation_set_: return 0
+    if self.has_deprecated_correct_exif_orientation_set_ and self.deprecated_correct_exif_orientation_set_ != x.deprecated_correct_exif_orientation_set_: return 0
+    if self.has_deprecated_transparent_substitution_rgb_set_ != x.has_deprecated_transparent_substitution_rgb_set_: return 0
+    if self.has_deprecated_transparent_substitution_rgb_set_ and self.deprecated_transparent_substitution_rgb_set_ != x.deprecated_transparent_substitution_rgb_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1310,27 +1310,27 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_correct_exif_orientation_): n += 1 + self.lengthVarInt64(self.correct_exif_orientation_)
-    if (self.has_correct_exif_orientation_set_): n += 3
     if (self.has_parse_metadata_): n += 2
     if (self.has_transparent_substitution_rgb_): n += 1 + self.lengthVarInt64(self.transparent_substitution_rgb_)
-    if (self.has_transparent_substitution_rgb_set_): n += 3
+    if (self.has_deprecated_correct_exif_orientation_set_): n += 3
+    if (self.has_deprecated_transparent_substitution_rgb_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_correct_exif_orientation_): n += 1 + self.lengthVarInt64(self.correct_exif_orientation_)
-    if (self.has_correct_exif_orientation_set_): n += 3
     if (self.has_parse_metadata_): n += 2
     if (self.has_transparent_substitution_rgb_): n += 1 + self.lengthVarInt64(self.transparent_substitution_rgb_)
-    if (self.has_transparent_substitution_rgb_set_): n += 3
+    if (self.has_deprecated_correct_exif_orientation_set_): n += 3
+    if (self.has_deprecated_transparent_substitution_rgb_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_correct_exif_orientation()
-    self.clear_correct_exif_orientation_set()
     self.clear_parse_metadata()
     self.clear_transparent_substitution_rgb()
-    self.clear_transparent_substitution_rgb_set()
+    self.clear_deprecated_correct_exif_orientation_set()
+    self.clear_deprecated_transparent_substitution_rgb_set()
 
   def OutputUnchecked(self, out):
     if (self.has_correct_exif_orientation_):
@@ -1342,12 +1342,12 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     if (self.has_transparent_substitution_rgb_):
       out.putVarInt32(24)
       out.putVarInt32(self.transparent_substitution_rgb_)
-    if (self.has_correct_exif_orientation_set_):
+    if (self.has_deprecated_correct_exif_orientation_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.correct_exif_orientation_set_)
-    if (self.has_transparent_substitution_rgb_set_):
+      out.putBoolean(self.deprecated_correct_exif_orientation_set_)
+    if (self.has_deprecated_transparent_substitution_rgb_set_):
       out.putVarInt32(824)
-      out.putBoolean(self.transparent_substitution_rgb_set_)
+      out.putBoolean(self.deprecated_transparent_substitution_rgb_set_)
 
   def OutputPartial(self, out):
     if (self.has_correct_exif_orientation_):
@@ -1359,12 +1359,12 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     if (self.has_transparent_substitution_rgb_):
       out.putVarInt32(24)
       out.putVarInt32(self.transparent_substitution_rgb_)
-    if (self.has_correct_exif_orientation_set_):
+    if (self.has_deprecated_correct_exif_orientation_set_):
       out.putVarInt32(808)
-      out.putBoolean(self.correct_exif_orientation_set_)
-    if (self.has_transparent_substitution_rgb_set_):
+      out.putBoolean(self.deprecated_correct_exif_orientation_set_)
+    if (self.has_deprecated_transparent_substitution_rgb_set_):
       out.putVarInt32(824)
-      out.putBoolean(self.transparent_substitution_rgb_set_)
+      out.putBoolean(self.deprecated_transparent_substitution_rgb_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1379,10 +1379,10 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
         self.set_transparent_substitution_rgb(d.getVarInt32())
         continue
       if tt == 808:
-        self.set_correct_exif_orientation_set(d.getBoolean())
+        self.set_deprecated_correct_exif_orientation_set(d.getBoolean())
         continue
       if tt == 824:
-        self.set_transparent_substitution_rgb_set(d.getBoolean())
+        self.set_deprecated_transparent_substitution_rgb_set(d.getBoolean())
         continue
 
 
@@ -1393,10 +1393,10 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_correct_exif_orientation_: res+=prefix+("correct_exif_orientation: %s\n" % self.DebugFormatInt32(self.correct_exif_orientation_))
-    if self.has_correct_exif_orientation_set_: res+=prefix+("correct_exif_orientation_set: %s\n" % self.DebugFormatBool(self.correct_exif_orientation_set_))
     if self.has_parse_metadata_: res+=prefix+("parse_metadata: %s\n" % self.DebugFormatBool(self.parse_metadata_))
     if self.has_transparent_substitution_rgb_: res+=prefix+("transparent_substitution_rgb: %s\n" % self.DebugFormatInt32(self.transparent_substitution_rgb_))
-    if self.has_transparent_substitution_rgb_set_: res+=prefix+("transparent_substitution_rgb_set: %s\n" % self.DebugFormatBool(self.transparent_substitution_rgb_set_))
+    if self.has_deprecated_correct_exif_orientation_set_: res+=prefix+("deprecated_correct_exif_orientation_set: %s\n" % self.DebugFormatBool(self.deprecated_correct_exif_orientation_set_))
+    if self.has_deprecated_transparent_substitution_rgb_set_: res+=prefix+("deprecated_transparent_substitution_rgb_set: %s\n" % self.DebugFormatBool(self.deprecated_transparent_substitution_rgb_set_))
     return res
 
 
@@ -1404,18 +1404,18 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in range(0, 1+maxtag)])
 
   kcorrect_exif_orientation = 1
-  kcorrect_exif_orientation_set = 101
   kparse_metadata = 2
   ktransparent_substitution_rgb = 3
-  ktransparent_substitution_rgb_set = 103
+  kdeprecated_correct_exif_orientation_set = 101
+  kdeprecated_transparent_substitution_rgb_set = 103
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "correct_exif_orientation",
     2: "parse_metadata",
     3: "transparent_substitution_rgb",
-    101: "correct_exif_orientation_set",
-    103: "transparent_substitution_rgb_set",
+    101: "deprecated_correct_exif_orientation_set",
+    103: "deprecated_transparent_substitution_rgb_set",
   }, 103)
 
   _TYPES = _BuildTagLookupTable({
@@ -2252,8 +2252,8 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
   has_output_ = 0
   has_color_ = 0
   color_ = -1
-  has_color_set_ = 0
-  color_set_ = 0
+  has_deprecated_color_set_ = 0
+  deprecated_color_set_ = 0
 
   def __init__(self, contents=None):
     self.output_ = OutputSettings()
@@ -2306,18 +2306,18 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
 
   def has_color(self): return self.has_color_
 
-  def color_set(self): return self.color_set_
+  def deprecated_color_set(self): return self.deprecated_color_set_
 
-  def set_color_set(self, x):
-    self.has_color_set_ = 1
-    self.color_set_ = x
+  def set_deprecated_color_set(self, x):
+    self.has_deprecated_color_set_ = 1
+    self.deprecated_color_set_ = x
 
-  def clear_color_set(self):
-    if self.has_color_set_:
-      self.has_color_set_ = 0
-      self.color_set_ = 0
+  def clear_deprecated_color_set(self):
+    if self.has_deprecated_color_set_:
+      self.has_deprecated_color_set_ = 0
+      self.deprecated_color_set_ = 0
 
-  def has_color_set(self): return self.has_color_set_
+  def has_deprecated_color_set(self): return self.has_deprecated_color_set_
 
 
   def MergeFrom(self, x):
@@ -2326,7 +2326,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     if (x.has_height()): self.set_height(x.height())
     if (x.has_output()): self.mutable_output().MergeFrom(x.output())
     if (x.has_color()): self.set_color(x.color())
-    if (x.has_color_set()): self.set_color_set(x.color_set())
+    if (x.has_deprecated_color_set()): self.set_deprecated_color_set(x.deprecated_color_set())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2338,8 +2338,8 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     if self.has_output_ and self.output_ != x.output_: return 0
     if self.has_color_ != x.has_color_: return 0
     if self.has_color_ and self.color_ != x.color_: return 0
-    if self.has_color_set_ != x.has_color_set_: return 0
-    if self.has_color_set_ and self.color_set_ != x.color_set_: return 0
+    if self.has_deprecated_color_set_ != x.has_deprecated_color_set_: return 0
+    if self.has_deprecated_color_set_ and self.deprecated_color_set_ != x.deprecated_color_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2365,7 +2365,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.height_)
     n += self.lengthString(self.output_.ByteSize())
     if (self.has_color_): n += 1 + self.lengthVarInt64(self.color_)
-    if (self.has_color_set_): n += 3
+    if (self.has_deprecated_color_set_): n += 3
     return n + 3
 
   def ByteSizePartial(self):
@@ -2380,7 +2380,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.output_.ByteSizePartial())
     if (self.has_color_): n += 1 + self.lengthVarInt64(self.color_)
-    if (self.has_color_set_): n += 3
+    if (self.has_deprecated_color_set_): n += 3
     return n
 
   def Clear(self):
@@ -2388,7 +2388,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     self.clear_height()
     self.clear_output()
     self.clear_color()
-    self.clear_color_set()
+    self.clear_deprecated_color_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -2401,9 +2401,9 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     if (self.has_color_):
       out.putVarInt32(32)
       out.putVarInt32(self.color_)
-    if (self.has_color_set_):
+    if (self.has_deprecated_color_set_):
       out.putVarInt32(832)
-      out.putBoolean(self.color_set_)
+      out.putBoolean(self.deprecated_color_set_)
 
   def OutputPartial(self, out):
     if (self.has_width_):
@@ -2419,9 +2419,9 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     if (self.has_color_):
       out.putVarInt32(32)
       out.putVarInt32(self.color_)
-    if (self.has_color_set_):
+    if (self.has_deprecated_color_set_):
       out.putVarInt32(832)
-      out.putBoolean(self.color_set_)
+      out.putBoolean(self.deprecated_color_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2442,7 +2442,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
         self.set_color(d.getVarInt32())
         continue
       if tt == 832:
-        self.set_color_set(d.getBoolean())
+        self.set_deprecated_color_set(d.getBoolean())
         continue
 
 
@@ -2459,7 +2459,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
       res+=self.output_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_color_: res+=prefix+("color: %s\n" % self.DebugFormatInt32(self.color_))
-    if self.has_color_set_: res+=prefix+("color_set: %s\n" % self.DebugFormatBool(self.color_set_))
+    if self.has_deprecated_color_set_: res+=prefix+("deprecated_color_set: %s\n" % self.DebugFormatBool(self.deprecated_color_set_))
     return res
 
 
@@ -2470,7 +2470,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
   kheight = 2
   koutput = 3
   kcolor = 4
-  kcolor_set = 104
+  kdeprecated_color_set = 104
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -2478,7 +2478,7 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     2: "height",
     3: "output",
     4: "color",
-    104: "color_set",
+    104: "deprecated_color_set",
   }, 104)
 
   _TYPES = _BuildTagLookupTable({

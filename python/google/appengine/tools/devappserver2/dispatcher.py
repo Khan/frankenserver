@@ -18,7 +18,6 @@
 
 import collections
 import logging
-import re
 import socket
 import sys
 import threading
@@ -89,11 +88,6 @@ class Dispatcher(request_info.Dispatcher):
                port,
                auth_domain,
                runtime_stderr_loglevel,
-
-
-
-
-
                php_config,
                python_config,
                java_config,
@@ -124,11 +118,6 @@ class Dispatcher(request_info.Dispatcher):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
-
-
-
-
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
@@ -175,10 +164,6 @@ class Dispatcher(request_info.Dispatcher):
           specified, modules will be launched with SSL.
     """
     self._configuration = configuration
-
-
-
-
     self._php_config = php_config
     self._python_config = python_config
     self._java_config = java_config
@@ -377,11 +362,6 @@ class Dispatcher(request_info.Dispatcher):
         api_port=self._api_port,
         auth_domain=self._auth_domain,
         runtime_stderr_loglevel=self._runtime_stderr_loglevel,
-
-
-
-
-
         php_config=self._php_config,
         python_config=self._python_config,
         custom_config=self._custom_config,
@@ -826,18 +806,8 @@ class Dispatcher(request_info.Dispatcher):
       return self._get_module_with_soft_routing(module_name, None), None
 
     else:
-      def get_port(hostname):
-        # This will first check to see if hostname is an IPv6 address, then it
-        # will fall back on the old-school method of looking for a colon
-        # followed by numbers at the end.
-        PORT_RE = re.compile(
-          r"^\[[0-9a-fA-F:]+\]:(?P<port>[0-9]+)|.*:(?P<port2>[0-9]+)$")
-        matched = PORT_RE.match(hostname)
-        return matched and int(matched.group("port") or matched.group("port2"))
-
-      _port = get_port(hostname)
-      if _port is not None:
-        port = _port
+      if ':' in hostname:
+        port = int(hostname.split(':', 1)[1])
       else:
         port = 80
       try:

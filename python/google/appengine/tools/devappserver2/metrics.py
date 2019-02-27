@@ -106,6 +106,8 @@ GOOGLE_ANALYTICS_DIMENSIONS = {
     'CmdArgs': 'cd13',
     'MultiModule': 'cd14',
     'DispatchConfig': 'cd15',
+    'GRPCImportReport': 'cd16',
+    'JavaMajorVersion': 'cd17',
 }
 
 # Devappserver Google Analytics Custom Metrics.
@@ -141,6 +143,8 @@ class _MetricsLogger(object):
     self._multi_module = None
     self._dispatch_config = None
     self._category = None
+    self._grpc_import_report = None
+    self._java_major_version = None
 
     # Stores events for batch logging once Stop has been called.
     self._log_once_on_stop_events = {}
@@ -148,7 +152,8 @@ class _MetricsLogger(object):
   def Start(self, client_id, user_agent=None, runtimes=None, environment=None,
             support_datastore_emulator=None, datastore_data_type=None,
             use_ssl=False, cmd_args=None, multi_module=None,
-            dispatch_config=None, category=DEVAPPSERVER_CATEGORY):
+            dispatch_config=None, category=DEVAPPSERVER_CATEGORY,
+            grpc_import_report=None, java_major_version=None):
     """Starts a Google Analytics session for the current client.
 
     Args:
@@ -166,6 +171,8 @@ class _MetricsLogger(object):
       multi_module: True if we have more than one module
       dispatch_config: True if we're using dispatch.yaml
       category: A string representing Google Analytics Event Categories.
+      grpc_import_report: A dict reporting result of grpc import attempt.
+      java_major_version: An integer representing java major version.
     """
     self._client_id = client_id
     self._user_agent = user_agent
@@ -179,6 +186,8 @@ class _MetricsLogger(object):
     self._multi_module = multi_module
     self._dispatch_config = dispatch_config
     self._category = category
+    self._grpc_import_report = repr(grpc_import_report)
+    self._java_major_version = java_major_version
     self.Log(DEVAPPSERVER_CATEGORY, START_ACTION)
     self._start_time = Now()
 
@@ -308,6 +317,8 @@ class _MetricsLogger(object):
         GOOGLE_ANALYTICS_DIMENSIONS['CmdArgs']: self._cmd_args,
         GOOGLE_ANALYTICS_DIMENSIONS['MultiModule']: self._multi_module,
         GOOGLE_ANALYTICS_DIMENSIONS['DispatchConfig']: self._dispatch_config,
+        GOOGLE_ANALYTICS_DIMENSIONS['GRPCImportReport']: self._grpc_import_report,  # pylint: disable=line-too-long
+        GOOGLE_ANALYTICS_DIMENSIONS['JavaMajorVersion']: self._java_major_version,  # pylint: disable=line-too-long
         # Required event data
         'ec': category,
         'ea': action

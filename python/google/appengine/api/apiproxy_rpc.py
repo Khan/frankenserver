@@ -27,9 +27,12 @@
 
 
 
+from __future__ import absolute_import
 
 
 import sys
+
+from google.appengine._internal import six_subset
 
 
 class RPC(object):
@@ -85,7 +88,7 @@ class RPC(object):
       raise AssertionError('Cannot clone a call already in progress')
 
     clone = self.__class__()
-    for k, v in self.__dict__.iteritems():
+    for k, v in self.__dict__.items():
       setattr(clone, k, v)
     return clone
 
@@ -129,7 +132,8 @@ class RPC(object):
       Exception of the API call or the callback, if any.
     """
     if self.exception and self._traceback:
-      raise self.exception.__class__, self.exception, self._traceback
+      six_subset.reraise(self.exception.__class__, self.exception,
+                         self._traceback)
     elif self.exception:
       raise self.exception
 

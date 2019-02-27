@@ -14,7 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 """Contains exception class for reporting XML parsing errors."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 
 class AppEngineConfigException(Exception):

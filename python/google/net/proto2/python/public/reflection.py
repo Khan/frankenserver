@@ -38,18 +38,12 @@ this file*.
 
 
 
-from google.net.proto2.python.internal import api_implementation
-from google.net.proto2.python.public import message
-
-
-if api_implementation.Type() == 'cpp':
-  from google.net.proto2.python.internal.cpp import cpp_message as message_impl
-else:
-  from google.net.proto2.python.internal import python_message as message_impl
+from google.net.proto2.python.public import message_factory
+from google.net.proto2.python.public import symbol_database
 
 
 
-GeneratedProtocolMessageType = message_impl.GeneratedProtocolMessageType
+GeneratedProtocolMessageType = message_factory._GENERATED_PROTOCOL_MESSAGE_TYPE
 
 MESSAGE_CLASS_CACHE = {}
 
@@ -79,42 +73,13 @@ def MakeClass(descriptor):
   """Construct a class object for a protobuf described by descriptor.
 
   DEPRECATED: use MessageFactory.GetPrototype() instead.
-  This function will lead to duplicate message classes, which won't play well
-  with extensions. Message factory info is also missing.
-
-  Composite descriptors are handled by defining the new class as a member of the
-  parent class, recursing as deep as necessary.
-  This is the dynamic equivalent to:
-
-  class Parent(message.Message):
-    __metaclass__ = GeneratedProtocolMessageType
-    DESCRIPTOR = descriptor
-    class Child(message.Message):
-      __metaclass__ = GeneratedProtocolMessageType
-      DESCRIPTOR = descriptor.nested_types[0]
-
-  Sample usage:
-    file_descriptor = descriptor_pb2.FileDescriptorProto()
-    file_descriptor.ParseFromString(proto2_string)
-    msg_descriptor = descriptor.MakeDescriptor(file_descriptor.message_type[0])
-    msg_class = reflection.MakeClass(msg_descriptor)
-    msg = msg_class()
 
   Args:
     descriptor: A descriptor.Descriptor object describing the protobuf.
   Returns:
     The Message class object described by the descriptor.
   """
-  if descriptor in MESSAGE_CLASS_CACHE:
-    return MESSAGE_CLASS_CACHE[descriptor]
 
-  attributes = {}
-  for name, nested_type in descriptor.nested_types_by_name.items():
-    attributes[name] = MakeClass(nested_type)
 
-  attributes[GeneratedProtocolMessageType._DESCRIPTOR_KEY] = descriptor
 
-  result = GeneratedProtocolMessageType(
-      str(descriptor.name), (message.Message,), attributes)
-  MESSAGE_CLASS_CACHE[descriptor] = result
-  return result
+  return symbol_database.Default().GetPrototype(descriptor)

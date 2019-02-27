@@ -515,16 +515,18 @@ def mail_message_to_mime_message(protocol_message):
     parts.append(MIMEText.MIMEText(
         protocol_message.textbody(),
         _charset=_GuessCharset(protocol_message.textbody())))
-  if protocol_message.has_htmlbody():
-    parts.append(MIMEText.MIMEText(
-        protocol_message.htmlbody(), _subtype='html',
-        _charset=_GuessCharset(protocol_message.htmlbody())))
   if protocol_message.has_amphtmlbody():
     parts.append(
         MIMEText.MIMEText(
             protocol_message.amphtmlbody(),
             _subtype='x-amp-html',
             _charset=_GuessCharset(protocol_message.amphtmlbody())))
+  if protocol_message.has_htmlbody():
+    parts.append(
+        MIMEText.MIMEText(
+            protocol_message.htmlbody(),
+            _subtype='html',
+            _charset=_GuessCharset(protocol_message.htmlbody())))
 
   if len(parts) == 1:
 

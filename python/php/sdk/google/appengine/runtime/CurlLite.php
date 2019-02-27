@@ -418,7 +418,7 @@ final class CurlLite {
         $this->request->setDeadline($value);
         break;
       case CURLOPT_TIMEOUT_MS:
-        $this->request->setDeadline($value * 1000);
+        $this->request->setDeadline($value / 1000.0);
         break;
       case CURLOPT_CUSTOMREQUEST:
         if (!in_array($value, array_keys(static::$custom_request_map))) {

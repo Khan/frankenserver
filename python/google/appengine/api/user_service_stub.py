@@ -195,8 +195,6 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       response.set_auth_domain(self.__domain)
       response.set_is_admin(self.__is_admin)
       response.set_client_id(self.__client_id)
-      if request.request_writer_permission():
-        response.set_is_project_writer(self.__is_admin)
       for scope in authorized_scopes:
         response.add_scopes(scope)
 

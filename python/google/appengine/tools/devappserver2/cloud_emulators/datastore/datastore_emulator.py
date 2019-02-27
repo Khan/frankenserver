@@ -114,7 +114,7 @@ class DatastoreEmulator(object):
       cmd.extend(start_options)
     port = ParsePortFromOption(start_options or [])
     if not port:
-      port = portpicker.PickUnusedPort()
+      port = portpicker.pick_unused_port()
       cmd.append('--port=%d' % port)
     self._host = 'http://localhost:%d' % port
     cmd.append(tempfile.mkdtemp())
@@ -160,7 +160,7 @@ class DatastoreEmulator(object):
           logging.info(
               'Cloud Datastore emulator responded after %f seconds', Elapsed())
           return True
-      except socket.error:
+      except (socket.error, httplib.ResponseNotReady):
         pass
       if Elapsed() >= deadline:
         # Out of time; give up.

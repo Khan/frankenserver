@@ -20,18 +20,16 @@ The httplib2 module offers some of the features in appengine_rpc, with
 one important one being a simple integration point for OAuth2 integration.
 """
 
+from __future__ import absolute_import
 
 
-
-import cStringIO
+import io
 import logging
 import os
 import random
 import re
 import time
-import types
 import urllib
-import urllib2
 
 import httplib2
 
@@ -39,6 +37,22 @@ from oauth2client import client
 from oauth2client import file as oauth2client_file
 from oauth2client import tools
 from google.appengine.tools.value_mixin import ValueMixin
+from google.appengine._internal import six_subset
+
+
+
+
+
+
+if six_subset.PY3:
+  HTTPError = urllib.error.HTTPError
+  urlencode_fn = urllib.parse.urlencode
+else:
+  import urllib2
+  HTTPError = urllib2.HTTPError
+  urlencode_fn = urllib.urlencode
+
+
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
@@ -73,7 +87,7 @@ class MemoryCache(object):
 def RaiseHttpError(url, response_info, response_body, extra_msg=''):
   """Raise a urllib2.HTTPError based on an httplib2 response tuple."""
   if response_body is not None:
-    stream = cStringIO.StringIO()
+    stream = io.BytesIO()
     stream.write(response_body)
     stream.seek(0)
   else:
@@ -82,7 +96,7 @@ def RaiseHttpError(url, response_info, response_body, extra_msg=''):
     msg = response_info.reason
   else:
     msg = response_info.reason + ' ' + extra_msg
-  raise urllib2.HTTPError(url, response_info.status, msg, response_info, stream)
+  raise HTTPError(url, response_info.status, msg, response_info, stream)
 
 
 class HttpRpcServerHttpLib2(object):
@@ -202,7 +216,7 @@ class HttpRpcServerHttpLib2(object):
     self.http.timeout = timeout
     url = '%s://%s%s' % (self.scheme, self.host, request_path)
     if kwargs:
-      url += '?' + urllib.urlencode(sorted(kwargs.items()))
+      url += '?' + urlencode_fn(sorted(kwargs.items()))
     headers = {}
     if self.extra_headers:
       headers.update(self.extra_headers)
@@ -244,7 +258,7 @@ class HttpRpcServerHttpLib2(object):
       try:
         response_info, response = self.http.request(
             url, method=method, body=payload, headers=headers)
-      except client.AccessTokenRefreshError, e:
+      except client.AccessTokenRefreshError as e:
 
         logger.info('Got access token error', exc_info=1)
         response_info = httplib2.Response({'status': 401})
@@ -478,7 +492,7 @@ def _ScopesToString(scopes):
   """Converts scope value to a string."""
 
 
-  if isinstance(scopes, types.StringTypes):
+  if isinstance(scopes, six_subset.string_types):
     return scopes
   else:
     return ' '.join(scopes)

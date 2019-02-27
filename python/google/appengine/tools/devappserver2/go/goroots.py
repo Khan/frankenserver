@@ -18,8 +18,6 @@
 
 GOROOTS = {
     'go1': 'goroot-1.9',
-    'go1.6': 'goroot-1.6',
-    'go1.8': 'goroot-1.8',
     'go1.9': 'goroot-1.9',
 }
 

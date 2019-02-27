@@ -34,15 +34,9 @@ import json
 import logging
 import os
 import re
+import subprocess
 
-try:
-
-
-
-
-  from googlecloudsdk.third_party.py27 import py27_subprocess as subprocess
-except ImportError:
-  import subprocess
+from google.appengine._internal import six_subset
 
 _REMOTE_URL_PATTERN = r'remote\.(.*)\.url'
 
@@ -400,7 +394,10 @@ def _CallGit(cwd, *args):
     The raw output of the command, or None if the command failed.
   """
   try:
-    return subprocess.check_output(['git'] + list(args), cwd=cwd)
+    output = subprocess.check_output(['git'] + list(args), cwd=cwd)
+    if six_subset.PY3:
+      output = output.decode('utf-8')
+    return output
   except (OSError, subprocess.CalledProcessError) as e:
     logging.debug('Could not call git with args %s: %s', args, e)
     return None

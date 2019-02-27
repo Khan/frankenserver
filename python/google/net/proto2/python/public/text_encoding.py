@@ -19,59 +19,70 @@ import re
 
 from google.appengine._internal import six
 
+_cescape_chr_to_symbol_map = {}
+_cescape_chr_to_symbol_map[9] = r'\t'
+_cescape_chr_to_symbol_map[10] = r'\n'
+_cescape_chr_to_symbol_map[13] = r'\r'
+_cescape_chr_to_symbol_map[34] = r'\"'
+_cescape_chr_to_symbol_map[39] = r"\'"
+_cescape_chr_to_symbol_map[92] = r'\\'
 
-_cescape_utf8_to_str = [chr(i) for i in range(0, 256)]
-_cescape_utf8_to_str[9] = r'\t'
-_cescape_utf8_to_str[10] = r'\n'
-_cescape_utf8_to_str[13] = r'\r'
-_cescape_utf8_to_str[39] = r"\'"
 
-_cescape_utf8_to_str[34] = r'\"'
-_cescape_utf8_to_str[92] = r'\\'
+_cescape_unicode_to_str = [chr(i) for i in range(0, 256)]
+for byte, string in _cescape_chr_to_symbol_map.items():
+  _cescape_unicode_to_str[byte] = string
 
 
 _cescape_byte_to_str = ([r'\%03o' % i for i in range(0, 32)] +
                         [chr(i) for i in range(32, 127)] +
                         [r'\%03o' % i for i in range(127, 256)])
-_cescape_byte_to_str[9] = r'\t'
-_cescape_byte_to_str[10] = r'\n'
-_cescape_byte_to_str[13] = r'\r'
-_cescape_byte_to_str[39] = r"\'"
-
-_cescape_byte_to_str[34] = r'\"'
-_cescape_byte_to_str[92] = r'\\'
+for byte, string in _cescape_chr_to_symbol_map.items():
+  _cescape_byte_to_str[byte] = string
+del byte, string
 
 
 def CEscape(text, as_utf8):
-  """Escape a bytes string for use in an ascii protocol buffer.
 
-  text.encode('string_escape') does not seem to satisfy our needs as it
-  encodes unprintable characters using two-digit hex escapes whereas our
-  C++ unescaping function allows hex escapes to be any length.  So,
-  "\0011".encode('string_escape') ends up being "\\x011", which will be
-  decoded in C++ as a single-character string with char code 0x11.
+  """Escape a bytes string for use in an text protocol buffer.
 
   Args:
-    text: A byte string to be escaped
-    as_utf8: Specifies if result should be returned in UTF-8 encoding
+    text: A byte string to be escaped.
+    as_utf8: Specifies if result may contain non-ASCII characters.
+        In Python 3 this allows unescaped non-ASCII Unicode characters.
+        In Python 2 the return value will be valid UTF-8 rather than only ASCII.
   Returns:
-    Escaped string
+    Escaped string (str).
   """
 
 
-  Ord = ord if isinstance(text, six.string_types) else lambda x: x
+
+
+
+  if six.PY3:
+    text_is_unicode = isinstance(text, str)
+    if as_utf8 and text_is_unicode:
+
+      return text.translate(_cescape_chr_to_symbol_map)
+    ord_ = ord if text_is_unicode else lambda x: x
+  else:
+    ord_ = ord
   if as_utf8:
-    return ''.join(_cescape_utf8_to_str[Ord(c)] for c in text)
-  return ''.join(_cescape_byte_to_str[Ord(c)] for c in text)
+    return ''.join(_cescape_unicode_to_str[ord_(c)] for c in text)
+  return ''.join(_cescape_byte_to_str[ord_(c)] for c in text)
 
 
 _CUNESCAPE_HEX = re.compile(r'(\\+)x([0-9a-fA-F])(?![0-9a-fA-F])')
-_cescape_highbit_to_str = ([chr(i) for i in range(0, 127)] +
-                           [r'\%03o' % i for i in range(127, 256)])
 
 
 def CUnescape(text):
-  """Unescape a text string with C-style escape sequences to UTF-8 bytes."""
+
+  """Unescape a text string with C-style escape sequences to UTF-8 bytes.
+
+  Args:
+    text: The data to parse in a str.
+  Returns:
+    A byte string.
+  """
 
   def ReplaceHex(m):
 
@@ -84,10 +95,9 @@ def CUnescape(text):
 
   result = _CUNESCAPE_HEX.sub(ReplaceHex, text)
 
-  if str is bytes:
+  if six.PY2:
     return result.decode('string_escape')
-  result = ''.join(_cescape_highbit_to_str[ord(c)] for c in result)
-  return (result.encode('ascii')
+  return (result.encode('utf-8')
           .decode('unicode_escape')
 
           .encode('raw_unicode_escape'))

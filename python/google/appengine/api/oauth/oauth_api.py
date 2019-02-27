@@ -133,6 +133,7 @@ def get_oauth_consumer_key():
   """OAuth1 authentication is deprecated and turned down."""
 
 
+
   raise InvalidOAuthParametersError('Two-legged OAuth1 not supported any more')
 
 

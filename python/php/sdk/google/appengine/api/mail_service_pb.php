@@ -125,28 +125,28 @@ namespace google\appengine {
     public function hasContentid() {
       return isset($this->ContentID);
     }
-    public function getContentidSet() {
-      if (!isset($this->ContentID_set)) {
+    public function getDeprecatedContentidSet() {
+      if (!isset($this->DEPRECATED_ContentID_set)) {
         return false;
       }
-      return $this->ContentID_set;
+      return $this->DEPRECATED_ContentID_set;
     }
-    public function setContentidSet($val) {
-      $this->ContentID_set = $val;
+    public function setDeprecatedContentidSet($val) {
+      $this->DEPRECATED_ContentID_set = $val;
       return $this;
     }
-    public function clearContentidSet() {
-      unset($this->ContentID_set);
+    public function clearDeprecatedContentidSet() {
+      unset($this->DEPRECATED_ContentID_set);
       return $this;
     }
-    public function hasContentidSet() {
-      return isset($this->ContentID_set);
+    public function hasDeprecatedContentidSet() {
+      return isset($this->DEPRECATED_ContentID_set);
     }
     public function clear() {
       $this->clearFilename();
       $this->clearData();
       $this->clearContentid();
-      $this->clearContentidSet();
+      $this->clearDeprecatedContentidSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -162,7 +162,7 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->ContentID));
       }
-      if (isset($this->ContentID_set)) {
+      if (isset($this->DEPRECATED_ContentID_set)) {
         $res += 2;
       }
       return $res;
@@ -180,9 +180,9 @@ namespace google\appengine {
         $out->putVarInt32(26);
         $out->putPrefixedString($this->ContentID);
       }
-      if (isset($this->ContentID_set)) {
+      if (isset($this->DEPRECATED_ContentID_set)) {
         $out->putVarInt32(104);
-        $out->putBoolean($this->ContentID_set);
+        $out->putBoolean($this->DEPRECATED_ContentID_set);
       }
     }
     public function tryMerge($d) {
@@ -205,7 +205,7 @@ namespace google\appengine {
             $d->skip($length);
             break;
           case 104:
-            $this->setContentidSet($d->getBoolean());
+            $this->setDeprecatedContentidSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -231,8 +231,8 @@ namespace google\appengine {
       if ($x->hasContentid()) {
         $this->setContentid($x->getContentid());
       }
-      if ($x->hasContentidSet()) {
-        $this->setContentidSet($x->getContentidSet());
+      if ($x->hasDeprecatedContentidSet()) {
+        $this->setDeprecatedContentidSet($x->getDeprecatedContentidSet());
       }
     }
     public function equals($x) {
@@ -243,8 +243,8 @@ namespace google\appengine {
       if (isset($this->Data) && $this->Data !== $x->Data) return false;
       if (isset($this->ContentID) !== isset($x->ContentID)) return false;
       if (isset($this->ContentID) && $this->ContentID !== $x->ContentID) return false;
-      if (isset($this->ContentID_set) !== isset($x->ContentID_set)) return false;
-      if (isset($this->ContentID_set) && $this->ContentID_set !== $x->ContentID_set) return false;
+      if (isset($this->DEPRECATED_ContentID_set) !== isset($x->DEPRECATED_ContentID_set)) return false;
+      if (isset($this->DEPRECATED_ContentID_set) && $this->DEPRECATED_ContentID_set !== $x->DEPRECATED_ContentID_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -258,8 +258,8 @@ namespace google\appengine {
       if (isset($this->ContentID)) {
         $res .= $prefix . "ContentID: " . $this->debugFormatString($this->ContentID) . "\n";
       }
-      if (isset($this->ContentID_set)) {
-        $res .= $prefix . "ContentID_set: " . $this->debugFormatBool($this->ContentID_set) . "\n";
+      if (isset($this->DEPRECATED_ContentID_set)) {
+        $res .= $prefix . "DEPRECATED_ContentID_set: " . $this->debugFormatBool($this->DEPRECATED_ContentID_set) . "\n";
       }
       return $res;
     }

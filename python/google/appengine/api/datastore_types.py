@@ -17,8 +17,6 @@
 
 
 
-
-
 """Higher-level, semantic data types for the datastore. These types
 are expected to be set as attributes of Entities.  See "Supported Data Types"
 in the API Guide.
@@ -42,6 +40,7 @@ The namespace schemas are:
 
 
 
+from __future__ import absolute_import
 
 
 import base64
@@ -49,9 +48,7 @@ import calendar
 import datetime
 import os
 import re
-import string
 import time
-import urlparse
 from xml.sax import saxutils
 
 from google.appengine.datastore import entity_pb
@@ -63,6 +60,8 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import entity_v4_pb
 from google.appengine.datastore import sortable_pb_encoder
+
+from google.appengine._internal import six_subset
 
 if datastore_pbs._CLOUD_DATASTORE_ENABLED:
   from google.appengine.datastore.datastore_pbs import googledatastore
@@ -131,6 +130,12 @@ _EMPTY_NAMESPACE_ID = 1
 
 
 _EPOCH = datetime.datetime.utcfromtimestamp(0)
+
+
+if six_subset.PY2:
+  _PREFERRED_NUM_TYPE = long
+else:
+  _PREFERRED_NUM_TYPE = int
 
 
 
@@ -206,7 +211,7 @@ def ValidateInteger(value,
   """
   if value is None and empty_ok:
     return
-  if not isinstance(value, (int, long)):
+  if not isinstance(value, six_subset.integer_types):
     raise exception('%s should be an integer; received %s (a %s).' %
                     (name, value, typename(value)))
   if not value and not zero_ok:
@@ -374,10 +379,10 @@ class Key(object):
 
         self._str = self._str.rstrip('=')
 
-      except (AssertionError, TypeError), e:
+      except (AssertionError, TypeError) as e:
         raise datastore_errors.BadKeyError(
           'Invalid string key %s. Details: %s' % (encoded, e))
-      except Exception, e:
+      except Exception as e:
 
 
 
@@ -516,7 +521,7 @@ class Key(object):
             (i + 1, kind, typename(kind)))
       elem = path.add_element()
       elem.set_type(kind)
-      if isinstance(id_or_name, (int, long)):
+      if isinstance(id_or_name, six_subset.integer_types):
         elem.set_id(id_or_name)
       elif isinstance(id_or_name, basestring):
         ValidateString(id_or_name, 'name')
@@ -550,7 +555,7 @@ class Key(object):
     """Returns this entity's kind, as a string."""
     if self.__reference.path().element_size() > 0:
       encoded = self.__reference.path().element_list()[-1].type()
-      return unicode(encoded.decode('utf-8'))
+      return six_subset.text_type(encoded.decode('utf-8'))
     else:
       return None
 
@@ -784,7 +789,7 @@ class Key(object):
     return hash(type(args)) ^ hash(tuple(args))
 
 
-class _OverflowDateTime(long):
+class _OverflowDateTime(_PREFERRED_NUM_TYPE):
   """Container for GD_WHEN values that don't fit into a datetime.datetime.
 
   This class only exists to safely round-trip GD_WHEN values that are too large
@@ -814,7 +819,7 @@ def _When(val):
 
 
 
-class Category(unicode):
+class Category(six_subset.text_type):
   """A tag, ie a descriptive word or phrase. Entities may be tagged by users,
   and later returned by a queries for that tag. Tags can also be used for
   ranking results (frequency), photo captions, clustering, activity, etc.
@@ -838,7 +843,7 @@ class Category(unicode):
                                                  saxutils.quoteattr(self))
 
 
-class Link(unicode):
+class Link(six_subset.text_type):
   """A fully qualified URL. Usually http: scheme, but may also be file:, ftp:,
   news:, among others.
 
@@ -855,7 +860,7 @@ class Link(unicode):
     super(Link, self).__init__()
     ValidateString(link, 'link', max_len=_MAX_LINK_PROPERTY_LENGTH)
 
-    scheme, domain, path, params, query, fragment = urlparse.urlparse(link)
+    scheme, domain, path, _, _, _ = six_subset.urlparse_fn(link)
     if (not scheme or (scheme != 'file' and not domain) or
                       (scheme == 'file' and not path)):
       raise datastore_errors.BadValueError('Invalid URL: %s' % link)
@@ -864,7 +869,7 @@ class Link(unicode):
     return u'<link href=%s />' % saxutils.quoteattr(self)
 
 
-class Email(unicode):
+class Email(six_subset.text_type):
   """An RFC2822 email address. Makes no attempt at validation; apart from
   checking MX records, email address validation is a rathole.
 
@@ -962,13 +967,14 @@ class GeoPt(object):
     return 'datastore_types.GeoPt(%r, %r)' % (self.lat, self.lon)
 
   def __unicode__(self):
-    return u'%s,%s' % (unicode(self.lat), unicode(self.lon))
+    return u'%s,%s' % (six_subset.text_type(self.lat),
+                       six_subset.text_type(self.lon))
 
   __str__ = __unicode__
 
   def ToXml(self):
-    return u'<georss:point>%s %s</georss:point>' % (unicode(self.lat),
-                                                    unicode(self.lon))
+    return u'<georss:point>%s %s</georss:point>' % (six_subset.text_type(
+        self.lat), six_subset.text_type(self.lon))
 
 
 class IM(object):
@@ -1062,10 +1068,10 @@ class IM(object):
              saxutils.quoteattr(self.address)))
 
   def __len__(self):
-    return len(unicode(self))
+    return len(six_subset.text_type(self))
 
 
-class PhoneNumber(unicode):
+class PhoneNumber(six_subset.text_type):
   """A human-readable phone number or address.
 
   No validation is performed. Phone numbers have many different formats -
@@ -1087,7 +1093,7 @@ class PhoneNumber(unicode):
     return u'<gd:phoneNumber>%s</gd:phoneNumber>' % saxutils.escape(self)
 
 
-class PostalAddress(unicode):
+class PostalAddress(six_subset.text_type):
   """A human-readable mailing address. Again, mailing address formats vary
   widely, so no validation is performed.
 
@@ -1105,7 +1111,7 @@ class PostalAddress(unicode):
     return u'<gd:postalAddress>%s</gd:postalAddress>' % saxutils.escape(self)
 
 
-class Rating(long):
+class Rating(_PREFERRED_NUM_TYPE):
   """A user-provided integer rating for a piece of content. Normalized to a
   0-100 scale.
 
@@ -1128,20 +1134,21 @@ class Rating(long):
         (rating, typename(rating)))
 
     try:
-      if long(rating) < Rating.MIN or long(rating) > Rating.MAX:
+      if (_PREFERRED_NUM_TYPE(rating) < Rating.MIN
+          or _PREFERRED_NUM_TYPE(rating) > Rating.MAX):
         raise datastore_errors.BadValueError()
     except ValueError:
 
       raise datastore_errors.BadValueError(
-        'Expected int or long; received %s (a %s).' %
-        (rating, typename(rating)))
+          'Expected int or long; received %s (a %s).' %
+          (rating, typename(rating)))
 
   def ToXml(self):
     return (u'<gd:rating value="%d" min="%d" max="%d" />' %
             (self, Rating.MIN, Rating.MAX))
 
 
-class Text(unicode):
+class Text(six_subset.text_type):
   """A long string type.
 
   Strings of any length can be stored in the datastore using this
@@ -1161,13 +1168,13 @@ class Text(unicode):
     """
     if arg is None:
       arg = u''
-    if isinstance(arg, unicode):
+    if isinstance(arg, six_subset.text_type):
       if encoding is not None:
         raise TypeError('Text() with a unicode argument '
                         'should not specify an encoding')
       return super(Text, cls).__new__(cls, arg)
 
-    if isinstance(arg, str):
+    if isinstance(arg, six_subset.string_types):
       if encoding is None:
         encoding = 'ascii'
       return super(Text, cls).__new__(cls, arg, encoding)
@@ -1214,7 +1221,18 @@ class Blob(_BaseByteType):
   This behaves identically to the Python str type, except for the
   constructor, which only accepts str arguments.
   """
-  pass
+
+  def __init__(self, *args, **kwargs):
+    super(Blob, self).__init__(*args, **kwargs)
+    self._meaning_uri = None
+
+  @property
+  def meaning_uri(self):
+    return self._meaning_uri
+
+  @meaning_uri.setter
+  def meaning_uri(self, value):
+    self._meaning_uri = value
 
 
 class EmbeddedEntity(_BaseByteType):
@@ -1290,7 +1308,7 @@ class BlobKey(object):
 
     if type(other) is type(self):
       return cmp(str(self), str(other))
-    elif isinstance(other, basestring):
+    elif isinstance(other, six_subset.string_types):
       return cmp(self.__blob_key, other)
     else:
       return NotImplemented
@@ -1328,30 +1346,30 @@ _PROPERTY_MEANINGS = {
 
 
 _PROPERTY_TYPES = frozenset([
-  Blob,
-  EmbeddedEntity,
-  ByteString,
-  bool,
-  Category,
-  datetime.datetime,
-  _OverflowDateTime,
-  Email,
-  float,
-  GeoPt,
-  IM,
-  int,
-  Key,
-  Link,
-  long,
-  PhoneNumber,
-  PostalAddress,
-  Rating,
-  str,
-  Text,
-  type(None),
-  unicode,
-  users.User,
-  BlobKey,
+    Blob,
+    EmbeddedEntity,
+    ByteString,
+    bool,
+    Category,
+    datetime.datetime,
+    _OverflowDateTime,
+    Email,
+    float,
+    GeoPt,
+    IM,
+    int,
+    Key,
+    Link,
+    _PREFERRED_NUM_TYPE,
+    PhoneNumber,
+    PostalAddress,
+    Rating,
+    str,
+    Text,
+    type(None),
+    six_subset.text_type,
+    users.User,
+    BlobKey,
 ])
 
 
@@ -1388,7 +1406,7 @@ def ValidateStringLength(name, value, max_len):
     OverflowError if the value is larger than the maximum length.
   """
 
-  if isinstance(value, unicode):
+  if isinstance(value, six_subset.text_type):
     value = value.encode('utf-8')
 
   if len(value) > max_len:
@@ -1449,64 +1467,64 @@ def ValidatePropertyKey(name, value):
 
 
 _VALIDATE_PROPERTY_VALUES = {
-  Blob: ValidatePropertyNothing,
-  EmbeddedEntity: ValidatePropertyNothing,
-  ByteString: ValidatePropertyNothing,
-  bool: ValidatePropertyNothing,
-  Category: ValidatePropertyNothing,
-  datetime.datetime: ValidatePropertyNothing,
-  _OverflowDateTime: ValidatePropertyInteger,
-  Email: ValidatePropertyNothing,
-  float: ValidatePropertyNothing,
-  GeoPt: ValidatePropertyNothing,
-  IM: ValidatePropertyNothing,
-  int: ValidatePropertyInteger,
-  Key: ValidatePropertyKey,
-  Link: ValidatePropertyNothing,
-  long: ValidatePropertyInteger,
-  PhoneNumber: ValidatePropertyNothing,
-  PostalAddress: ValidatePropertyNothing,
-  Rating: ValidatePropertyInteger,
-  str: ValidatePropertyNothing,
-  Text: ValidatePropertyNothing,
-  type(None): ValidatePropertyNothing,
-  unicode: ValidatePropertyNothing,
-  users.User: ValidatePropertyNothing,
-  BlobKey: ValidatePropertyNothing,
+    Blob: ValidatePropertyNothing,
+    EmbeddedEntity: ValidatePropertyNothing,
+    ByteString: ValidatePropertyNothing,
+    bool: ValidatePropertyNothing,
+    Category: ValidatePropertyNothing,
+    datetime.datetime: ValidatePropertyNothing,
+    _OverflowDateTime: ValidatePropertyInteger,
+    Email: ValidatePropertyNothing,
+    float: ValidatePropertyNothing,
+    GeoPt: ValidatePropertyNothing,
+    IM: ValidatePropertyNothing,
+    int: ValidatePropertyInteger,
+    Key: ValidatePropertyKey,
+    Link: ValidatePropertyNothing,
+    _PREFERRED_NUM_TYPE: ValidatePropertyInteger,
+    PhoneNumber: ValidatePropertyNothing,
+    PostalAddress: ValidatePropertyNothing,
+    Rating: ValidatePropertyInteger,
+    str: ValidatePropertyNothing,
+    Text: ValidatePropertyNothing,
+    type(None): ValidatePropertyNothing,
+    six_subset.text_type: ValidatePropertyNothing,
+    users.User: ValidatePropertyNothing,
+    BlobKey: ValidatePropertyNothing,
 }
 
 _PROPERTY_TYPE_TO_INDEX_VALUE_TYPE = {
-  basestring: str,
-  Blob: str,
-  EmbeddedEntity: str,
-  ByteString: str,
-  bool: bool,
-  Category: str,
-  datetime.datetime: long,
-  datetime.date: long,
-  datetime.time: long,
-  _OverflowDateTime: long,
-  Email: str,
-  float: float,
-  GeoPt: GeoPt,
-  IM: str,
-  int: long,
-  Key: Key,
-  Link: str,
-  long: long,
-  PhoneNumber: str,
-  PostalAddress: str,
-  Rating: long,
-  str: str,
-  Text: str,
-  type(None): type(None),
-  unicode: str,
-  users.User: users.User,
-  BlobKey: str,
+    six_subset.string_types[0]: str,
+    Blob: str,
+    EmbeddedEntity: str,
+    ByteString: str,
+    bool: bool,
+    Category: str,
+    datetime.datetime: _PREFERRED_NUM_TYPE,
+    datetime.date: _PREFERRED_NUM_TYPE,
+    datetime.time: _PREFERRED_NUM_TYPE,
+    _OverflowDateTime: _PREFERRED_NUM_TYPE,
+    Email: str,
+    float: float,
+    GeoPt: GeoPt,
+    IM: str,
+    int: _PREFERRED_NUM_TYPE,
+    Key: Key,
+    Link: str,
+    _PREFERRED_NUM_TYPE: _PREFERRED_NUM_TYPE,
+    PhoneNumber: str,
+    PostalAddress: str,
+    Rating: _PREFERRED_NUM_TYPE,
+    str: str,
+    Text: str,
+    type(None): type(None),
+    six_subset.text_type: str,
+    users.User: users.User,
+    BlobKey: str,
 }
 
 
-assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
+assert set(_VALIDATE_PROPERTY_VALUES.keys()) == _PROPERTY_TYPES
 
 
 def ValidateProperty(name, values, read_only=False):
@@ -1547,7 +1565,7 @@ def ValidateProperty(name, values, read_only=False):
           'Unsupported type for property %s: %s' % (name, v.__class__))
       prop_validator(name, v)
 
-  except (KeyError, ValueError, TypeError, IndexError, AttributeError), msg:
+  except (KeyError, ValueError, TypeError, IndexError, AttributeError) as msg:
     raise datastore_errors.BadValueError(
       'Error type checking values for property %s: %s' % (name, msg))
 
@@ -1578,7 +1596,7 @@ def PackString(name, value, pbvalue):
     value: A string, unicode, or string-like value instance.
     pbvalue: The entity_pb.PropertyValue to pack this value into.
   """
-  pbvalue.set_stringvalue(unicode(value).encode('utf-8'))
+  pbvalue.set_stringvalue(six_subset.text_type(value).encode('utf-8'))
 
 
 def PackDatetime(name, value, pbvalue):
@@ -1602,7 +1620,8 @@ def DatetimeToTimestamp(value):
   if value.tzinfo:
 
     value = value.astimezone(UTC)
-  return long(calendar.timegm(value.timetuple()) * 1000000L) + value.microsecond
+  return _PREFERRED_NUM_TYPE(
+      calendar.timegm(value.timetuple()) * 1000000) + value.microsecond
 
 
 def PackGeoPt(name, value, pbvalue):
@@ -1700,34 +1719,34 @@ def PackFloat(name, value, pbvalue):
 
 
 _PACK_PROPERTY_VALUES = {
-  Blob: PackBlob,
-  EmbeddedEntity: PackBlob,
-  ByteString: PackBlob,
-  bool: PackBool,
-  Category: PackString,
-  datetime.datetime: PackDatetime,
-  _OverflowDateTime: PackInteger,
-  Email: PackString,
-  float: PackFloat,
-  GeoPt: PackGeoPt,
-  IM: PackString,
-  int: PackInteger,
-  Key: PackKey,
-  Link: PackString,
-  long: PackInteger,
-  PhoneNumber: PackString,
-  PostalAddress: PackString,
-  Rating: PackInteger,
-  str: PackString,
-  Text: PackString,
-  type(None): lambda name, value, pbvalue: None,
-  unicode: PackString,
-  users.User: PackUser,
-  BlobKey: PackString,
+    Blob: PackBlob,
+    EmbeddedEntity: PackBlob,
+    ByteString: PackBlob,
+    bool: PackBool,
+    Category: PackString,
+    datetime.datetime: PackDatetime,
+    _OverflowDateTime: PackInteger,
+    Email: PackString,
+    float: PackFloat,
+    GeoPt: PackGeoPt,
+    IM: PackString,
+    int: PackInteger,
+    Key: PackKey,
+    Link: PackString,
+    _PREFERRED_NUM_TYPE: PackInteger,
+    PhoneNumber: PackString,
+    PostalAddress: PackString,
+    Rating: PackInteger,
+    str: PackString,
+    Text: PackString,
+    type(None): lambda name, value, pbvalue: None,
+    six_subset.text_type: PackString,
+    users.User: PackUser,
+    BlobKey: PackString,
 }
 
 
-assert set(_PACK_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
+assert set(_PACK_PROPERTY_VALUES.keys()) == _PROPERTY_TYPES
 
 
 def ToPropertyPb(name, values):
@@ -1773,6 +1792,9 @@ def ToPropertyPb(name, values):
     meaning = _PROPERTY_MEANINGS.get(v.__class__)
     if meaning is not None:
       pb.set_meaning(meaning)
+
+    if hasattr(v, 'meaning_uri') and v.meaning_uri:
+      pb.set_meaning_uri(v.meaning_uri)
 
     pack_prop = _PACK_PROPERTY_VALUES[v.__class__]
     pbvalue = pack_prop(name, v, pb.mutable_value())
@@ -1861,11 +1883,11 @@ def FromPropertyPb(pb):
   if pbval.has_stringvalue():
     value = pbval.stringvalue()
     if not pb.has_meaning() or meaning not in _NON_UTF8_MEANINGS:
-      value = unicode(value, 'utf-8')
+      value = six_subset.text_type(value, 'utf-8')
   elif pbval.has_int64value():
 
 
-    value = long(pbval.int64value())
+    value = _PREFERRED_NUM_TYPE(pbval.int64value())
   elif pbval.has_booleanvalue():
 
 
@@ -1877,15 +1899,16 @@ def FromPropertyPb(pb):
   elif pbval.has_pointvalue():
     value = GeoPt(pbval.pointvalue().x(), pbval.pointvalue().y())
   elif pbval.has_uservalue():
-    email = unicode(pbval.uservalue().email(), 'utf-8')
-    auth_domain = unicode(pbval.uservalue().auth_domain(), 'utf-8')
+    email = six_subset.text_type(pbval.uservalue().email(), 'utf-8')
+    auth_domain = six_subset.text_type(pbval.uservalue().auth_domain(), 'utf-8')
     obfuscated_gaiaid = pbval.uservalue().obfuscated_gaiaid().decode('utf-8')
-    obfuscated_gaiaid = unicode(pbval.uservalue().obfuscated_gaiaid(), 'utf-8')
+    obfuscated_gaiaid = six_subset.text_type(
+        pbval.uservalue().obfuscated_gaiaid(), 'utf-8')
 
     federated_identity = None
     if pbval.uservalue().has_federated_identity():
-      federated_identity = unicode(pbval.uservalue().federated_identity(),
-                                   'utf-8')
+      federated_identity = six_subset.text_type(
+          pbval.uservalue().federated_identity(), 'utf-8')
 
 
 
@@ -1901,7 +1924,10 @@ def FromPropertyPb(pb):
     if pb.has_meaning() and meaning in _PROPERTY_CONVERSIONS:
       conversion = _PROPERTY_CONVERSIONS[meaning]
       value = conversion(value)
-  except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:
+      if (meaning == entity_pb.Property.BLOB
+          and pb.has_meaning_uri()):
+        value.meaning_uri = pb.meaning_uri()
+  except (KeyError, ValueError, IndexError, TypeError, AttributeError) as msg:
     raise datastore_errors.BadValueError(
       'Error converting pb: %s\nException was: %s' % (pb, msg))
 
@@ -1950,7 +1976,7 @@ def RestoreFromIndexValue(index_value, data_type):
 
 
   if isinstance(index_value, str) and meaning not in _NON_UTF8_MEANINGS:
-    index_value = unicode(index_value, 'utf-8')
+    index_value = six_subset.text_type(index_value, 'utf-8')
 
 
   conv = _PROPERTY_CONVERSIONS.get(meaning)
@@ -1959,7 +1985,7 @@ def RestoreFromIndexValue(index_value, data_type):
 
   try:
     value = conv(index_value)
-  except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:
+  except (KeyError, ValueError, IndexError, TypeError, AttributeError) as msg:
     raise datastore_errors.BadValueError(
       'Error converting value: %r\nException was: %s' % (index_value, msg))
   return value
@@ -1984,7 +2010,7 @@ def PropertyTypeName(value):
     return 'string'
   elif isinstance(value, users.User):
     return 'user'
-  elif isinstance(value, long):
+  elif isinstance(value, _PREFERRED_NUM_TYPE):
     return 'int'
   elif value is None:
     return 'null'
@@ -1993,28 +2019,28 @@ def PropertyTypeName(value):
 
 
 _PROPERTY_TYPE_STRINGS = {
-    'string':           unicode,
-    'bool':             bool,
-    'int':              long,
-    'null':             type(None),
-    'float':            float,
-    'key':              Key,
-    'blob':             Blob,
-    'entity:proto':     EmbeddedEntity,
-    'bytestring':       ByteString,
-    'text':             Text,
-    'user':             users.User,
-    'atom:category':    Category,
-    'atom:link':        Link,
-    'gd:email':         Email,
-    'gd:when':          datetime.datetime,
-    'georss:point':     GeoPt,
-    'gd:im':            IM,
-    'gd:phonenumber':   PhoneNumber,
+    'string': six_subset.text_type,
+    'bool': bool,
+    'int': _PREFERRED_NUM_TYPE,
+    'null': type(None),
+    'float': float,
+    'key': Key,
+    'blob': Blob,
+    'entity:proto': EmbeddedEntity,
+    'bytestring': ByteString,
+    'text': Text,
+    'user': users.User,
+    'atom:category': Category,
+    'atom:link': Link,
+    'gd:email': Email,
+    'gd:when': datetime.datetime,
+    'georss:point': GeoPt,
+    'gd:im': IM,
+    'gd:phonenumber': PhoneNumber,
     'gd:postaladdress': PostalAddress,
-    'gd:rating':        Rating,
-    'blobkey':          BlobKey,
-    }
+    'gd:rating': Rating,
+    'blobkey': BlobKey,
+}
 
 
 def FromPropertyTypeName(type_name):

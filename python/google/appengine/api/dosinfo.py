@@ -23,6 +23,8 @@
 Library for parsing dos.yaml files and working with these in memory.
 """
 
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 
 
@@ -33,7 +35,14 @@ Library for parsing dos.yaml files and working with these in memory.
 import os
 import re
 import google
-import ipaddr
+from google.appengine._internal import six_subset
+
+
+
+if six_subset.PY2:
+  import ipaddr
+else:
+  ipaddr = None
 
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -64,14 +73,17 @@ class SubnetValidator(validation.Validator):
     """Validates a subnet."""
     if value is None:
       raise validation.MissingAttribute('subnet must be specified')
-    if not isinstance(value, basestring):
+    if not isinstance(value, six_subset.string_types):
       raise validation.ValidationError('subnet must be a string, not \'%r\'' %
                                        type(value))
-    try:
-      ipaddr.IPNetwork(value)
-    except ValueError:
-      raise validation.ValidationError('%s is not a valid IPv4 or IPv6 subnet' %
-                                       value)
+
+
+    if ipaddr:
+      try:
+        ipaddr.IPNetwork(value)
+      except ValueError:
+        raise validation.ValidationError(
+            '%s is not a valid IPv4 or IPv6 subnet' % value)
 
 
     parts = value.split('/')

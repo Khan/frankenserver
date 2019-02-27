@@ -570,11 +570,6 @@ class Encoder:
         break
     return
 
-
-
-
-
-
   def putFloat(self, v):
     a = array.array('B')
     a.fromstring(struct.pack("<f", v))

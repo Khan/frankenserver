@@ -132,8 +132,8 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
   data_ = ""
   has_contentid_ = 0
   contentid_ = ""
-  has_contentid_set_ = 0
-  contentid_set_ = 0
+  has_deprecated_contentid_set_ = 0
+  deprecated_contentid_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -177,18 +177,18 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
 
   def has_contentid(self): return self.has_contentid_
 
-  def contentid_set(self): return self.contentid_set_
+  def deprecated_contentid_set(self): return self.deprecated_contentid_set_
 
-  def set_contentid_set(self, x):
-    self.has_contentid_set_ = 1
-    self.contentid_set_ = x
+  def set_deprecated_contentid_set(self, x):
+    self.has_deprecated_contentid_set_ = 1
+    self.deprecated_contentid_set_ = x
 
-  def clear_contentid_set(self):
-    if self.has_contentid_set_:
-      self.has_contentid_set_ = 0
-      self.contentid_set_ = 0
+  def clear_deprecated_contentid_set(self):
+    if self.has_deprecated_contentid_set_:
+      self.has_deprecated_contentid_set_ = 0
+      self.deprecated_contentid_set_ = 0
 
-  def has_contentid_set(self): return self.has_contentid_set_
+  def has_deprecated_contentid_set(self): return self.has_deprecated_contentid_set_
 
 
   def MergeFrom(self, x):
@@ -196,7 +196,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_data()): self.set_data(x.data())
     if (x.has_contentid()): self.set_contentid(x.contentid())
-    if (x.has_contentid_set()): self.set_contentid_set(x.contentid_set())
+    if (x.has_deprecated_contentid_set()): self.set_deprecated_contentid_set(x.deprecated_contentid_set())
 
   def Equals(self, x):
     if x is self: return 1
@@ -206,8 +206,8 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if self.has_data_ and self.data_ != x.data_: return 0
     if self.has_contentid_ != x.has_contentid_: return 0
     if self.has_contentid_ and self.contentid_ != x.contentid_: return 0
-    if self.has_contentid_set_ != x.has_contentid_set_: return 0
-    if self.has_contentid_set_ and self.contentid_set_ != x.contentid_set_: return 0
+    if self.has_deprecated_contentid_set_ != x.has_deprecated_contentid_set_: return 0
+    if self.has_deprecated_contentid_set_ and self.deprecated_contentid_set_ != x.deprecated_contentid_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -227,7 +227,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.filename_))
     n += self.lengthString(len(self.data_))
     if (self.has_contentid_): n += 1 + self.lengthString(len(self.contentid_))
-    if (self.has_contentid_set_): n += 2
+    if (self.has_deprecated_contentid_set_): n += 2
     return n + 2
 
   def ByteSizePartial(self):
@@ -239,14 +239,14 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.data_))
     if (self.has_contentid_): n += 1 + self.lengthString(len(self.contentid_))
-    if (self.has_contentid_set_): n += 2
+    if (self.has_deprecated_contentid_set_): n += 2
     return n
 
   def Clear(self):
     self.clear_filename()
     self.clear_data()
     self.clear_contentid()
-    self.clear_contentid_set()
+    self.clear_deprecated_contentid_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -256,9 +256,9 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if (self.has_contentid_):
       out.putVarInt32(26)
       out.putPrefixedString(self.contentid_)
-    if (self.has_contentid_set_):
+    if (self.has_deprecated_contentid_set_):
       out.putVarInt32(104)
-      out.putBoolean(self.contentid_set_)
+      out.putBoolean(self.deprecated_contentid_set_)
 
   def OutputPartial(self, out):
     if (self.has_filename_):
@@ -270,9 +270,9 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if (self.has_contentid_):
       out.putVarInt32(26)
       out.putPrefixedString(self.contentid_)
-    if (self.has_contentid_set_):
+    if (self.has_deprecated_contentid_set_):
       out.putVarInt32(104)
-      out.putBoolean(self.contentid_set_)
+      out.putBoolean(self.deprecated_contentid_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -287,7 +287,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
         self.set_contentid(d.getPrefixedString())
         continue
       if tt == 104:
-        self.set_contentid_set(d.getBoolean())
+        self.set_deprecated_contentid_set(d.getBoolean())
         continue
 
 
@@ -300,7 +300,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if self.has_filename_: res+=prefix+("FileName: %s\n" % self.DebugFormatString(self.filename_))
     if self.has_data_: res+=prefix+("Data: %s\n" % self.DebugFormatString(self.data_))
     if self.has_contentid_: res+=prefix+("ContentID: %s\n" % self.DebugFormatString(self.contentid_))
-    if self.has_contentid_set_: res+=prefix+("ContentID_set: %s\n" % self.DebugFormatBool(self.contentid_set_))
+    if self.has_deprecated_contentid_set_: res+=prefix+("DEPRECATED_ContentID_set: %s\n" % self.DebugFormatBool(self.deprecated_contentid_set_))
     return res
 
 
@@ -310,14 +310,14 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
   kFileName = 1
   kData = 2
   kContentID = 3
-  kContentID_set = 13
+  kDEPRECATED_ContentID_set = 13
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "FileName",
     2: "Data",
     3: "ContentID",
-    13: "ContentID_set",
+    13: "DEPRECATED_ContentID_set",
   }, 13)
 
   _TYPES = _BuildTagLookupTable({

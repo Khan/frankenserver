@@ -57,6 +57,8 @@ indexes:
 
 
 
+from __future__ import absolute_import
+
 import google
 from google.appengine._internal.ruamel import yaml
 
@@ -812,8 +814,7 @@ def _MatchPostfix(postfix_props, index_props):
       index_group = list(index_group_iter)
       if len(index_group) != len(property_group):
         return None
-      for candidate, spec in itertools.izip(index_group,
-                                            reversed(property_group)):
+      for candidate, spec in zip(index_group, reversed(property_group)):
         if not candidate.Satisfies(spec):
           return None
   remaining = list(index_props_rev)
@@ -904,7 +905,7 @@ def MinimalCompositeIndexForQuery(query, index_defs):
   minimal_props, minimal_ancestor = remaining
   minimal_cost = calc_cost(minimal_props, minimal_ancestor)
   for index_postfix, (props_remaining, ancestor_remaining) in (
-      remaining_dict.iteritems()):
+      remaining_dict.items()):
     cost = calc_cost(props_remaining, ancestor_remaining)
     if cost < minimal_cost:
       minimal_cost = cost

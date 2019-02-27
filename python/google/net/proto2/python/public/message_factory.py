@@ -27,9 +27,18 @@ my_proto_instance = message_classes['some.proto.package.MessageName']()
 
 
 
+from google.net.proto2.python.internal import api_implementation
 from google.net.proto2.python.public import descriptor_pool
 from google.net.proto2.python.public import message
-from google.net.proto2.python.public import reflection
+
+if api_implementation.Type() == 'cpp':
+  from google.net.proto2.python.internal.cpp import cpp_message as message_impl
+else:
+  from google.net.proto2.python.internal import python_message as message_impl
+
+
+
+_GENERATED_PROTOCOL_MESSAGE_TYPE = message_impl.GeneratedProtocolMessageType
 
 
 class MessageFactory(object):
@@ -58,7 +67,7 @@ class MessageFactory(object):
       descriptor_name = descriptor.name
       if str is bytes:
         descriptor_name = descriptor.name.encode('ascii', 'ignore')
-      result_class = reflection.GeneratedProtocolMessageType(
+      result_class = _GENERATED_PROTOCOL_MESSAGE_TYPE(
           descriptor_name,
           (message.Message,),
           {'DESCRIPTOR': descriptor, '__module__': None})

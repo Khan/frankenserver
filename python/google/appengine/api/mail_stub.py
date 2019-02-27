@@ -146,20 +146,20 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
         log_message.append('-----\n' + message.textbody() + '\n-----')
 
 
-    if message.has_htmlbody():
-      log_message.append('  Body:')
-      log_message.append('    Content-type: text/html')
-      log_message.append('    Data length: %d' % len(message.htmlbody()))
-      if self._show_mail_body:
-        log_message.append('-----\n' + message.htmlbody() + '\n-----')
-
-
     if message.has_amphtmlbody():
       log_message.append('  Body:')
       log_message.append('    Content-type: text/x-amp-html')
       log_message.append('    Data length: %d' % len(message.amphtmlbody()))
       if self._show_mail_body:
         log_message.append('-----\n' + message.amphtmlbody() + '\n-----')
+
+
+    if message.has_htmlbody():
+      log_message.append('  Body:')
+      log_message.append('    Content-type: text/html')
+      log_message.append('    Data length: %d' % len(message.htmlbody()))
+      if self._show_mail_body:
+        log_message.append('-----\n' + message.htmlbody() + '\n-----')
 
 
     for attachment in message.attachment_list():

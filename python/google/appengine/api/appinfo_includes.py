@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Used to parse app.yaml files while following builtins/includes directives."""
 
 
@@ -30,6 +28,8 @@
 
 
 
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
 
 import logging
@@ -227,7 +227,7 @@ def _ResolveIncludes(included_from, app_include, basepath, runtime, state=None,
           logging.warning('Nothing to include in %s', inc_path)
 
 
-  return state.aggregate_appinclude, state.includes.keys()
+  return state.aggregate_appinclude, list(state.includes.keys())
 
 
 def _ConvertBuiltinsToIncludes(included_from, app_include, state, runtime):

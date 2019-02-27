@@ -98,7 +98,7 @@ class CapabilitySet(object):
     """Tests whether the capabilities are currently enabled.
 
     Returns:
-      `True` if API calls that require these capabillities will succeed.
+      `True` if API calls that require these capabilities will succeed.
 
     Raises:
       UnknownCapabilityError: If a specified capability was not recognized.
