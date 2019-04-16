@@ -397,6 +397,18 @@ def create_command_line_parser(configuration=None):
   common_group.add_argument(
       '--admin_port', type=PortParser(), default=8000,
       help='port to which the admin server should bind')
+  common_group.add_argument(
+      '--enable_datastore_translator',
+      action=boolean_action.BooleanAction, const=True, default=False,
+      restrict_configuration=[DEV_APPSERVER_CONFIGURATION],
+      help='Run the datastore translator to translate the v1 datastore REST '
+      'API back into App Engine RPCs.')
+  common_group.add_argument(
+      '--datastore_translator_host', default=default_server_host,
+      help='host name to which the datastore translator should bind')
+  common_group.add_argument(
+      '--datastore_translator_port', type=PortParser(), default=8001,
+      help='port to which the datastore translator server should bind')
   # TODO: Change this. Eventually we want a way to associate ports
   # with external modules, with default values. For now we allow only one
   # external module, with a port number that must be passed in here.
