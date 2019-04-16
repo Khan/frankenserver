@@ -38,6 +38,8 @@ from google.appengine.tools.devappserver2 import update_checker
 from google.appengine.tools.devappserver2 import util
 from google.appengine.tools.devappserver2 import wsgi_request_info
 from google.appengine.tools.devappserver2.admin import admin_server
+from google.appengine.tools.devappserver2.datastore_translator import (
+  datastore_translator_server)
 
 # Initialize logging early -- otherwise some library packages may
 # pre-empt our log formatting.  NOTE: the level is provisional; it may
@@ -374,6 +376,14 @@ class DevelopmentServer(object):
                                      options.enable_console)
     admin.start()
     self._running_modules.append(admin)
+
+    if options.enable_datastore_translator:
+      translator = datastore_translator_server.DatastoreTranslatorServer(
+        options.datastore_translator_host, options.datastore_translator_port,
+        options.enable_host_checking)
+      translator.start()
+      self._running_modules.append(translator)
+
     try:
       default = self._dispatcher.get_module_by_name('default')
       apiserver.set_balanced_address(default.balanced_address)
