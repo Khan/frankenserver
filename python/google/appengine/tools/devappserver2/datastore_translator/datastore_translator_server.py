@@ -22,7 +22,8 @@ from . import handlers
 
 
 _ROUTES = [
-    ('/', handlers.PingHandler),
+    ('/', handlers.Ping),
+    ('/v1/projects/([^/:]*):allocateIds', handlers.AllocateIds),
 ]
 
 
