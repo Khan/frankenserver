@@ -20,8 +20,21 @@ from . import handlers
 
 
 _ROUTES = [
-    ('/', handlers.PingHandler),
+    ('/', handlers.Ping),
+    ('/v1/projects/([^/:]*):allocateIds', handlers.AllocateIds),
 ]
+
+
+def get_app(host=None, enable_host_checking=True):
+  """Get the WSGI app.
+
+  Only tests likely need this directly.  host is required if
+  enable_host_checking is set (the default) and ignored otherwise.
+  """
+  translator_app = webapp2.WSGIApplication(_ROUTES, debug=False)
+  if enable_host_checking:
+    translator_app = wsgi_server.WsgiHostCheck([host], translator_app)
+  return translator_app
 
 
 class DatastoreTranslatorServer(wsgi_server.WsgiServer):
@@ -36,15 +49,10 @@ class DatastoreTranslatorServer(wsgi_server.WsgiServer):
   """
   def __init__(self, host, port, enable_host_checking=True):
     self._host = host
-
-    translator_app = webapp2.WSGIApplication(_ROUTES, debug=False)
-    if enable_host_checking:
-      translator_app = wsgi_server.WsgiHostCheck([host], translator_app)
-
-    super(DatastoreTranslatorServer, self).__init__(
-      (host, port), translator_app)
+    app = get_app(host, enable_host_checking)
+    super(DatastoreTranslatorServer, self).__init__((host, port), app)
 
   def start(self):
     super(DatastoreTranslatorServer, self).start()
     logging.info('Starting datastore translator server at: http://%s:%d',
-                 self._host, self.port)
+                 *self.bind_addr)
