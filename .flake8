@@ -1,0 +1,3 @@
+[flake8]
+# These are indentation errors that conflict with Google style.
+ignore = E111,E114,E121
