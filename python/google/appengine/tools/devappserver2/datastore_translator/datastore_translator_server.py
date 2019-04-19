@@ -11,9 +11,7 @@ without trouble.  (Khan folks, see ADR #166 for details.)
 from __future__ import absolute_import
 
 import logging
-import urlparse
 
-import google
 import webapp2
 
 from google.appengine.tools.devappserver2 import wsgi_server
@@ -29,7 +27,7 @@ _ROUTES = [
 
 class DatastoreTranslatorServer(wsgi_server.WsgiServer):
   """The class that devappserver2.py loads to run the datastore translator.
-  
+
   Init args:
     host: A string containing the name of the host that the server should
         bind to e.g. "localhost".
