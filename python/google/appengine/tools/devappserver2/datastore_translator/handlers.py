@@ -72,6 +72,8 @@ class _DatastoreApiHandlerBase(webapp2.RequestHandler):
       except KeyError as e:   # a common case, we just guess it's a bad request
         raise grpc.Error("INVALID_ARGUMENT",
                          "Invalid request: missing key %s." % e)
+      except ValueError as e:  # similarly
+        raise grpc.Error("INVALID_ARGUMENT", "Invalid request: %s." % e)
       except Exception as e:
         raise grpc.Error("UNKNOWN", "Internal server error: %s" % e)
 
