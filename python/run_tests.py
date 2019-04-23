@@ -56,6 +56,9 @@ def main():
   parser = argparse.ArgumentParser(
       description='Run the devappserver2 test suite.')
   parser.add_argument(
+      '--frankenserver', action='store_true',
+      help='Run only tests added by frankenserver -- these should all pass!')
+  parser.add_argument(
       'tests', nargs='*',
       help='The fully qualified names of the tests to run (e.g. '
       'google.appengine.tools.devappserver2.api_server_test). If not given '
@@ -64,7 +67,14 @@ def main():
   args = parser.parse_args()
 
   loader = unittest.TestLoader()
-  if args.tests:
+  if args.frankenserver:
+    # TODO(benkraft): Are there other frankenserver-added tests we should run?
+    tests = loader.discover(
+        os.path.join(
+            DIR_PATH,
+            'google/appengine/tools/devappserver2/datastore_translator'),
+        '*_test.py')
+  elif args.tests:
     tests = loader.loadTestsFromNames(args.tests)
   else:
     tests = loader.discover(

@@ -2,25 +2,18 @@ from __future__ import absolute_import
 
 import cStringIO
 import json
-import os
 import wsgiref.util
 
+from google.appengine.tools.devappserver2 import wsgi_test_utils
 from google.appengine.tools.devappserver2.datastore_translator import (
   datastore_translator_server)
-from google.appengine.tools.devappserver2 import wsgi_test_utils
-from google.appengine.tools.devappserver2 import stub_util
+from google.appengine.tools.devappserver2.datastore_translator import testbase
 
 
-class DatastoreTranslatorHandlerTestBase(wsgi_test_utils.WSGITestCase):
-  maxDiff = None
-
+class DatastoreTranslatorHandlerTestBase(testbase.DatastoreTranslatorTestBase,
+                                         wsgi_test_utils.WSGITestCase):
   def setUp(self):
-    self.app_id = 'dev~myapp'
-    # TODO(benkraft): Clean this environ setting up at end-of-test.
-    # (Many of the devappserver tests don't do this, so it can't be that
-    # important.)
-    os.environ['APPLICATION_ID'] = self.app_id
-    stub_util.setup_test_stubs(app_id=self.app_id)
+    super(DatastoreTranslatorHandlerTestBase, self).setUp()
     self.server = datastore_translator_server.get_app('localhost')
 
   def getJsonResponse(self, relative_url, json_request, expected_status):
@@ -180,48 +173,10 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
       {'keys': []},
       {})
 
-  # TODO(benkraft): Split some of these tests out to a translate_key_test.py.
   def test_no_kind(self):
     self.assertError(
       '/v1/projects/myapp:allocateIds',
       {'keys': [{'path': [{}]}]},
-      400, 'INVALID_ARGUMENT')
-
-  def test_path_with_incomplete_key(self):
-    self.assertError(
-      '/v1/projects/myapp:allocateIds',
-      {'keys': [{
-        'path': [
-          {'kind': 'Foo'},
-          {'kind': 'Bar', 'name': 'asdfgh1234'},
-          {'kind': 'Baz'},
-        ],
-      }]},
-      400, 'INVALID_ARGUMENT')
-
-  def test_path_with_both_name_and_id(self):
-    self.assertError(
-      '/v1/projects/myapp:allocateIds',
-      {'keys': [{
-        'path': [
-          {'kind': 'Foo', 'name': 'asdf', 'id': '123'},
-          {'kind': 'Baz'},
-        ],
-      }]},
-      400, 'INVALID_ARGUMENT')
-
-  def test_path_ending_with_complete_key(self):
-    self.assertError(
-      '/v1/projects/myapp:allocateIds',
-      {'keys': [{
-        'path': [{'kind': 'Foo', 'id': '123'}],
-      }]},
-      400, 'INVALID_ARGUMENT')
-    self.assertError(
-      '/v1/projects/myapp:allocateIds',
-      {'keys': [{
-        'path': [{'kind': 'Foo', 'name': 'asdf'}],
-      }]},
       400, 'INVALID_ARGUMENT')
 
   def test_mismatched_project(self):

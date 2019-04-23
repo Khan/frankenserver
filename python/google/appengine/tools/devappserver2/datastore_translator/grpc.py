@@ -45,11 +45,11 @@ class Error(Exception):
   invalid keys in the JSON).
   """
   def __init__(self, grpc_code, message):
+    super(Error, self).__init__(message)
     if grpc_code in _GRPC_CODE_TO_HTTP_STATUS:
       self.grpc_code = grpc_code
     else:
       self.grpc_code = 'UNKNOWN'
-    self.message = message
 
   @property
   def http_code(self):
