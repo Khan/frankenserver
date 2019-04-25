@@ -15,6 +15,8 @@ from google.appengine.api import datastore
 from google.appengine.tools.devappserver2.datastore_translator import grpc
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
+from google.appengine.tools.devappserver2.datastore_translator import (
+  translate_entity)
 
 
 class Ping(webapp2.RequestHandler):
@@ -92,7 +94,7 @@ class AllocateIds(_DatastoreApiHandlerBase):
   def json_post(self, project_id, json_input):
     keys = json_input.get('keys')
     if not keys:
-      # Strangely, the API returns an empty OK for any missing or empty keys.
+      # Strangely, the API returns an empty OK if .keys is missing or empty.
       return {}
 
     returned_keys = []
@@ -116,5 +118,34 @@ class AllocateIds(_DatastoreApiHandlerBase):
       gae_key._Key__reference.path().element(-1).set_id(start)
 
       returned_keys.append(translate_key.gae_to_rest(gae_key))
-
     return {'keys': returned_keys}
+
+
+class Lookup(_DatastoreApiHandlerBase):
+  """Translate the REST lookup call (to App Engine's Get)."""
+  def json_post(self, project_id, json_input):
+    keys = json_input.get('keys')
+    if not keys:
+      # Strangely, the API returns an empty OK if .keys is missing or empty.
+      return {}
+
+    datastore_keys = [translate_key.rest_to_gae(key, project_id)
+                      for key in keys]
+    datastore_entities = datastore.Get(datastore_keys)
+
+    retval = {}
+
+    found = [
+      translate_entity.gae_to_rest_entity_result(entity)
+      for entity in datastore_entities
+      if entity is not None]
+    if found:
+      retval['found'] = found
+
+    missing = [translate_entity.gae_key_to_rest_entity_result(key)
+               for key, entity in zip(datastore_keys, datastore_entities)
+               if entity is None]
+    if missing:
+      retval['missing'] = missing
+
+    return retval
