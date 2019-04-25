@@ -4,6 +4,7 @@ import cStringIO
 import json
 import wsgiref.util
 
+from google.appengine.ext import db
 from google.appengine.tools.devappserver2 import wsgi_test_utils
 from google.appengine.tools.devappserver2.datastore_translator import (
   datastore_translator_server)
@@ -195,4 +196,178 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
         'partitionId': {'projectId': 'yourapp'},
         'path': [{'kind': 'Foo'}],
       }]},
+      400, 'INVALID_ARGUMENT')
+
+
+class SimpleModel(db.Model):
+  boolean = db.BooleanProperty(indexed=True)
+  integer = db.IntegerProperty(indexed=True)
+  unindexed_string = db.StringProperty(indexed=False)
+  blob = db.BlobProperty(indexed=False)
+
+
+class TestLookup(DatastoreTranslatorHandlerTestBase):
+  def setUp(self):
+    super(TestLookup, self).setUp()
+
+    SimpleModel(
+      key_name='exists',
+      boolean=True,
+      integer=12,
+      unindexed_string=u'\u1111',
+      blob='\x80',
+    ).put()
+
+    SimpleModel(
+      parent=db.Key.from_path('ParentModel', 1),
+      key_name='child',
+      boolean=False,
+      integer=16,
+      unindexed_string=u'\u2222',
+      blob='\x80',
+    ).put()
+
+  def test_success_simple_key(self):
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}]},
+
+      {
+        'found': [{
+          'entity': {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
+            },
+            'properties': {
+              'blob': {
+                'blobValue': 'gA==',
+                'excludeFromIndexes': True,
+                'meaning': 14,
+              },
+              'boolean': {'booleanValue': True},
+              'integer': {'integerValue': '12'},
+              'unindexed_string': {
+                'excludeFromIndexes': True,
+                'stringValue': u'\u1111',
+              },
+            },
+          },
+          'version': '1',
+        }],
+      })
+
+  def test_missing(self):
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'nope'}]}]},
+
+      {
+        'missing': [{
+          'entity': {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              'path': [{'kind': 'SimpleModel', 'name': 'nope'}],
+            },
+          },
+          'version': '1',
+        }],
+      })
+
+  def test_several_keys(self):
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {'keys': [
+        {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+        {'path': [{'kind': 'SimpleModel', 'name': 'nope'}]},
+        {'path': [
+          {'kind': 'ParentModel', 'id': '1'},
+          {'kind': 'SimpleModel', 'name': 'child'},
+        ]},
+      ]},
+
+      {
+        'found': [{
+          'entity': {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
+            },
+            'properties': {
+              'blob': {
+                'blobValue': 'gA==',
+                'excludeFromIndexes': True,
+                'meaning': 14,
+              },
+              'boolean': {'booleanValue': True},
+              'integer': {'integerValue': '12'},
+              'unindexed_string': {
+                'excludeFromIndexes': True,
+                'stringValue': u'\u1111',
+              },
+            },
+          },
+          'version': '1',
+        }, {
+          'entity': {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              'path': [
+                {'kind': 'ParentModel', 'id': '1'},
+                {'kind': 'SimpleModel', 'name': 'child'},
+              ],
+            },
+            'properties': {
+              'blob': {
+                'blobValue': 'gA==',
+                'excludeFromIndexes': True,
+                'meaning': 14,
+              },
+              'boolean': {'booleanValue': False},
+              'integer': {'integerValue': '16'},
+              'unindexed_string': {
+                'excludeFromIndexes': True,
+                'stringValue': u'\u2222',
+              },
+            },
+          },
+          'version': '1',
+        }],
+        'missing': [{
+          'entity': {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              'path': [{'kind': 'SimpleModel', 'name': 'nope'}],
+            },
+          },
+          'version': '1',
+        }],
+      })
+
+  def test_empty_success(self):
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {},
+      {})
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {'keys': []},
+      {})
+
+  def test_errors_if_transaction_requested(self):
+    self.assertError(
+      '/v1/projects/myapp:lookup',
+      {
+        'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}],
+        'readOptions': {'transaction': 'some-transaction'},
+      },
+      501, 'UNIMPLEMENTED')
+
+  def test_errors_on_unknown_option(self):
+    self.assertError(
+      '/v1/projects/myapp:lookup',
+      {
+        'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}],
+        'readOptions': {'garbage': 'yes please'},
+      },
       400, 'INVALID_ARGUMENT')
