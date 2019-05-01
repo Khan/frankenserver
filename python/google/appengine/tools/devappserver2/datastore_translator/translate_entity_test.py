@@ -84,7 +84,7 @@ class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
       expected_rest_entity['properties'] = expected_properties
 
     self.assertEqual(
-      translate_entity._gae_to_rest_entity(db_instance._entity),
+      translate_entity.gae_to_rest_entity(db_instance._entity),
       expected_rest_entity)
 
   def test_empty_model(self):
@@ -109,6 +109,9 @@ class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
         'unindexed_float': {'nullValue': None, 'excludeFromIndexes': True},
       })
 
+  # TODO(benkraft): Consider moving some of the property-type testing to
+  # translate_value_test.py, although it may be harder to test via db/ndb
+  # models at that level.
   def test_string_like_properties(self):
     self._put_and_assert(
       StringsModel(
@@ -238,7 +241,7 @@ class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
     db_key = ndb_key.to_old_key()
     entity = datastore.Get(db_key)
     self.assertEqual(
-      translate_entity._gae_to_rest_entity(entity),
+      translate_entity.gae_to_rest_entity(entity),
       {
         'key': translate_key.gae_to_rest(db_key),
         'properties': {
