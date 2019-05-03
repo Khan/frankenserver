@@ -9,7 +9,9 @@ and used in both entities and queries.
 from __future__ import absolute_import
 
 import base64
+import collections
 import datetime
+import logging
 
 from google.appengine.api import datastore
 from google.appengine.api import datastore_types
@@ -28,6 +30,19 @@ def _datetime_to_iso(dt):
   """Convert python datetime to the ISO-8601 formatted string used by REST."""
   # Datastore times use UTC, but do not explicitly set the tzinfo.
   return dt.isoformat() + 'Z'
+
+
+def _iso_to_datetime(iso_string):
+  """Convert the ISO-8601 formatted string used by REST to python datetime."""
+  # Datastore times use UTC, but do not explicitly set the tzinfo.
+  try:
+    return datetime.datetime.strptime(iso_string, "%Y-%m-%dT%H:%M:%S.%fZ")
+  except ValueError:
+    try:
+      return datetime.datetime.strptime(iso_string, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+      raise grpc.Error("INVALID_ARGUMENT",
+                       "'%s' is not a valid ISO-8601 date." % iso_string)
 
 
 def _entity_proto_to_rest_entity(entity_proto):
@@ -62,7 +77,7 @@ def _user_property_to_rest_entity(user):
   federated_identity, because it's long gone from the datastore.  (Even
   auth_domain may be unused now.)
   """
-  retval = {
+  properties = {
     'email': {
       'stringValue': user.email(),
       'excludeFromIndexes': True,
@@ -73,14 +88,55 @@ def _user_property_to_rest_entity(user):
     },
   }
   if user.user_id() is not None:
-    retval['user_id'] = {
+    properties['user_id'] = {
       'stringValue': user.user_id(),
       'excludeFromIndexes': True,
     }
-  return retval
+  return {'properties': properties}
 
 
-def _geopt_to_rest_value(geopt):
+_REQUIRED_USER_FIELDS = frozenset(['email', 'auth_domain'])
+_POTENTIAL_USER_FIELDS = _REQUIRED_USER_FIELDS | frozenset(
+  # TODO(benkraft): federated_* are not used but I'm not sure if they can still
+  # exist in the datastore.
+  ['user_id', 'federated_identity', 'federated_provider'])
+
+
+def _looks_like_user_value(rest_entity):
+  # Users never have a key -- they're not real entities.
+  if 'key' in rest_entity:
+    return False
+
+  # They always have _REQUIRED_USER_FIELDS, and sometimes
+  # _POTENTIAL_USER_FIELDS, never others.
+  props = set(rest_entity.get('properties', {}))
+  return _REQUIRED_USER_FIELDS <= props <= _POTENTIAL_USER_FIELDS
+
+
+def _rest_entity_or_user_to_gae_value(rest_entity):
+  """Convert a REST-style entityValue to a user or entity.
+
+  Sadly, the REST API doesn't give us any way to tell between a UserProperty
+  and an EmbeddedEntity (i.e. LocalStructuredProperty).  We just have to guess.
+  This method can therefore return either a users.User or a
+  datastore_types.EmbeddedEntity.
+  """
+  if _looks_like_user_value(rest_entity):
+    properties = rest_entity['properties']
+    return users.User(properties['email']['stringValue'],
+                      properties['auth_domain']['stringValue'],
+                      properties.get('user_id', {}).get('stringValue'))
+  else:
+    # TODO(benkraft): Implement this along with put() -- I don't think we use
+    # it for queries.  Once we implement entity-translation from REST to GAE,
+    # the code will simply be:
+    # return datastore_types.EmbeddedEntity(
+    #   datastore.Entity.ToPb(translate_entity.rest_to_gae(rest_entity)))
+    raise grpc.Error("UNIMPLEMENTED",
+                     "TODO(benkraft): Implement this when implementing puts.")
+
+
+def _gae_geopt_to_rest(geopt):
   """Convert a datastore_types.GeoPt to a REST-style geoPointValue."""
   return {
     'latitude': geopt.lat,
@@ -88,44 +144,69 @@ def _geopt_to_rest_value(geopt):
   }
 
 
-# Converters, by type, for the values that datastore gives us.  These are the
-# value types, not the db properties, and roughly match those described here:
-#     https://cloud.google.com/appengine/docs/standard/python/datastore/typesandpropertyclasses#Datastore_Value_Types
-# Many of these methods are cribbed from the implementations of
-# datastore_types.Pack*.
+def _rest_geo_point_value_to_gae(geo_point_value):
+  """Convert a REST-style geoPointValue to a datastore_types.GeoPt."""
+  return datastore_types.GeoPt(geo_point_value['latitude'],
+                               geo_point_value['longitude'])
+
+
+# GAE/REST conversion metadata for a given type.
 #
-# The dict should have as keys a type, and as values a pair
-#   (REST field name, converter)
-# The REST field name is something like 'stringValue' -- see
-#    https://cloud.google.com/datastore/docs/reference/data/rest/v1/projects/runQuery#Value
-# for details.  The converter should accept an instance of the given type, and
-# convert it to whatever the REST API wants for that property type.
-_GAE_TO_REST_PROPERTY_CONVERTERS = {
+# This represents the information we need to convert between REST and GAE value
+# types.  It has the following fields:
+#   gae_types (Tuple[type]): the Python types for the values datastore gives
+#     us.  These are the value types, not the db properties, and roughly match
+#     those described here:
+#         https://cloud.google.com/appengine/docs/standard/python/datastore/typesandpropertyclasses#Datastore_Value_Types
+#     If several types use the same conversion logic, they should all be
+#     included; the first will be the default, although we'll use the meaning
+#     field to disambiguate when available.
+#   rest_field (string): the field-name, in the Value struct, where we should
+#     put this value in REST-land.  (See the module docstring for more
+#     information.)
+#   gae_to_rest (function): a function to convert a value of gae_type to
+#     something which JSONifies to whatever the REST API expects.
+#   rest_to_gae (function): a function to convert whatever the REST API expects
+#     back to a value of gae_type.  (This is normally the inverse of
+#     rest_to_gae.)
+_Converter = collections.namedtuple(
+  '_Converter', ['gae_types', 'rest_field', 'gae_to_rest', 'rest_to_gae'])
+
+_CONVERTERS = [
   # Simple python types.
-  type(None): ('nullValue', _identity),
-  bool: ('booleanValue', _identity),
-  int: ('integerValue', str),
-  long: ('integerValue', str),
-  float: ('doubleValue', _identity),
-  datetime.datetime: ('timestampValue', _datetime_to_iso),
+  _Converter((type(None),), 'nullValue', _identity, _identity),
+  _Converter((bool,), 'booleanValue', _identity, _identity),
+  _Converter((long, int), 'integerValue', str, long),
+  _Converter((float,), 'doubleValue', _identity, _identity),
+  _Converter((datetime.datetime,), 'timestampValue',
+             _datetime_to_iso, _iso_to_datetime),
 
   # String/bytes types.
   # TODO(benkraft): It's unclear to me which of these are actually used in
   # modern datastore, but we implement them all because it's easy to do so.
-  unicode: ('stringValue', _identity),
-  datastore_types.Text: ('stringValue', _identity),
-  str: ('blobValue', base64.b64encode),
-  datastore_types.Blob: ('blobValue', base64.b64encode),
-  datastore_types.ByteString: ('blobValue', base64.b64encode),
+  _Converter((unicode, datastore_types.Text),
+             'stringValue', _identity, _identity),
+  _Converter((str, datastore_types.Blob, datastore_types.ByteString),
+             'blobValue', base64.b64encode, base64.b64decode),
 
   # Fancier datastore types, mostly with bespoke converters.
-  datastore.Key: ('keyValue', translate_key.gae_to_rest),
-  datastore_types.EmbeddedEntity: (    # e.g. LocalStructuredProperty
-    'entityValue', _entity_proto_to_rest_entity),
-  users.User: ('entityValue', _user_property_to_rest_entity),
-  datastore_types.GeoPt: ('geoPointValue', _geopt_to_rest_value),
-}
+  _Converter((datastore.Key,), 'keyValue',
+             translate_key.gae_to_rest, translate_key.rest_to_gae),
+  _Converter((datastore_types.GeoPt,), 'geoPointValue',
+             _gae_geopt_to_rest, _rest_geo_point_value_to_gae),
+  # HACK(benkraft): As described in _rest_entity_or_user_to_gae_value, users
+  # and embedded entities look the same to the REST API.  We just have to guess
+  # when we translate; and that means here we end up with two overlapping
+  # converter entries.
+  # EmbeddedEntity is things like LocalStructuredProperty.
+  _Converter((datastore_types.EmbeddedEntity,), 'entityValue',
+             _entity_proto_to_rest_entity, _rest_entity_or_user_to_gae_value),
+  _Converter((users.User,), 'entityValue',
+             _user_property_to_rest_entity, _rest_entity_or_user_to_gae_value),
+]
 
+_CONVERTERS_BY_GAE_TYPE = {t: c for c in _CONVERTERS for t in c.gae_types}
+_CONVERTERS_BY_REST_FIELD = {c.rest_field: c for c in _CONVERTERS}
 
 # This is just to make explicit which of the types in
 # datastore_types._PROPERTY_TYPES we do not currently handle,
@@ -146,7 +227,7 @@ _UNIMPLEMENTED_CONVERTERS = {
 # Check that we've handled, or decided not to handle, all the types datastore
 # thinks it will give us.
 _PROPERTY_TYPES_HANDLED = (
-  set(_GAE_TO_REST_PROPERTY_CONVERTERS) | _UNIMPLEMENTED_CONVERTERS)
+  set(_CONVERTERS_BY_GAE_TYPE) | _UNIMPLEMENTED_CONVERTERS) - {list}
 assert _PROPERTY_TYPES_HANDLED == datastore_types._PROPERTY_TYPES, (
   _PROPERTY_TYPES_HANDLED.symmetric_difference(
     datastore_types._PROPERTY_TYPES))
@@ -165,6 +246,8 @@ def gae_to_rest(gae_value, indexed=True):
   """
 
   if isinstance(gae_value, list):
+    # NOTE(benkraft): We can't write an ordinary converter for this because it
+    # handles meaning and indexing specially.
     return {
       'arrayValue': {
         'values': [gae_to_rest(item, indexed) for item in gae_value]
@@ -179,12 +262,12 @@ def gae_to_rest(gae_value, indexed=True):
     }
 
   t = type(gae_value)
-  if t not in _GAE_TO_REST_PROPERTY_CONVERTERS:
+  if t not in _CONVERTERS_BY_GAE_TYPE:
     raise grpc.Error(
       "UNKNOWN", "Don't know how to convert property type %s" % t)
 
-  rest_name, converter = _GAE_TO_REST_PROPERTY_CONVERTERS[t]
-  retval = {rest_name: converter(gae_value)}
+  converter = _CONVERTERS_BY_GAE_TYPE[t]
+  retval = {converter.rest_field: converter.gae_to_rest(gae_value)}
 
   # Datastore has a "meaning" field which is used internally to distinguish
   # between the various ways you might interpret a given type -- for example
@@ -213,3 +296,87 @@ def gae_to_rest(gae_value, indexed=True):
     retval['excludeFromIndexes'] = True
 
   return retval
+
+
+def rest_to_gae(rest_value):
+  """Convert a REST Value to the GAE type equivalent.
+
+  This is theoretically the inverse of gae_to_rest (although in practice there
+  may be slight differences.
+
+  Returns: a pair (GAE value, true if this property is indexed).  Note that the
+    latter is ignored if this is a query.
+  """
+  likely_value_fields = set(rest_value) - {'meaning', 'excludeFromIndexes'}
+  if len(likely_value_fields) > 1:
+    value_fields = {f for f in likely_value_fields if f.endswith('Value')}
+    # Something we don't understand -- we'll try to guess if it's nonsensical
+    # or unimplemented.
+    if len(value_fields) > 1:
+      raise grpc.Error("INVALID_ARGUMENT",
+                       "Multiple value fields: %s" % ', '.join(value_fields))
+    else:
+      raise grpc.Error("UNIMPLEMENTED",
+                       "Unknown field(s): %s"
+                       % ', '.join(likely_value_fields - value_fields))
+
+  field = likely_value_fields.pop()
+  unpacked_value = rest_value[field]
+  if field == 'arrayValue':
+    # NOTE(benkraft): We can't write an ordinary converter for this because it
+    # handles meaning and indexing specially.
+    #
+    # As in gae_to_rest, we expect indexing to be marked on the individual
+    # values, but to match for all of them.  (GAE can't represent the case
+    # where they differ; it seems like datastore can represent it but the UI
+    # doesn't really understand that either.)  It's banned at the toplevel in
+    # prod (empirically).
+    if 'excludeFromIndexes' in rest_value:
+      raise grpc.Error("INVALID_ARGUMENT",
+                       "Array values must not set excludeFromIndexes.")
+
+    items = unpacked_value.get('values')
+    if not items:
+      # It's unclear if saying this value is "indexed" is really fair -- in
+      # practice it's unset -- but that's the default, and what the datastore
+      # viewer UI does.  Prod also accepts unset 'values' as an empty array.
+      return [], True
+
+    # It's unclear if meaning is supposed to be set at the toplevel or on each
+    # item; we'll accept either (and handle it in the items themselves).
+    meaning = rest_value.get('meaning')
+    if meaning is not None:
+      for item in items:
+        item.setdefault('meaning', meaning)
+
+    items, is_indexed_values = zip(*map(rest_to_gae, items))
+    is_indexed_values = set(is_indexed_values)
+    is_indexed = is_indexed_values.pop()
+    if is_indexed_values:
+      raise grpc.Error("UNIMPLEMENTED",
+                       "Array values have inconsistent index settings.")
+
+    return items, is_indexed
+
+  if field not in _CONVERTERS_BY_REST_FIELD:
+    raise grpc.Error(
+      "UNKNOWN", "Don't know how to convert %s" % field)
+
+  converter = _CONVERTERS_BY_REST_FIELD[field]
+  gae_value = converter.rest_to_gae(unpacked_value)
+
+  # See gae_to_rest for an explanation of meaning.  Again, here, we do our
+  # best, using it to choose between the types we have.
+  #
+  # HACK(benkraft): Theoretically, the values in _PROPERTY_CONVERSIONS are
+  # conversions (to the expected type).  But all the ones we care about are
+  # type constructors so we can play a bit fast and loose with the difference.
+  type_from_meaning = datastore_types._PROPERTY_CONVERSIONS.get(
+    rest_value.get('meaning'))
+  if type_from_meaning in converter.gae_types:
+    gae_value = type_from_meaning(gae_value)
+  elif type_from_meaning is not None:
+    logging.warning("Unexpected meaning %s for %s",
+                    rest_value.get('meaning'), field)
+
+  return gae_value, not rest_value.get('excludeFromIndexes', False)
