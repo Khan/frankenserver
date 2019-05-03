@@ -165,17 +165,19 @@ class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
         },
         'user': {
           'entityValue': {
-            'auth_domain': {
-              'stringValue': 'gmail.com',
-              'excludeFromIndexes': True,
-            },
-            'email': {
-              'stringValue': 'sal@khanacademy.org',
-              'excludeFromIndexes': True,
-            },
-            'user_id': {
-              'stringValue': '163021881010976161781',
-              'excludeFromIndexes': True,
+            'properties': {
+              'auth_domain': {
+                'stringValue': 'gmail.com',
+                'excludeFromIndexes': True,
+              },
+              'email': {
+                'stringValue': 'sal@khanacademy.org',
+                'excludeFromIndexes': True,
+              },
+              'user_id': {
+                'stringValue': '163021881010976161781',
+                'excludeFromIndexes': True,
+              },
             },
           },
         },
