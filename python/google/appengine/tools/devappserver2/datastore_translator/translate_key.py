@@ -5,14 +5,14 @@ from google.appengine.api import datastore
 from google.appengine.tools.devappserver2.datastore_translator import grpc
 
 
-def rest_to_gae(rest_key, project_id, incomplete=False):
+def rest_to_gae(rest_key, project_id=None, incomplete=False):
   """Translate a REST API style key into a datastore.Key.
 
   Arguments:
     rest_key: The REST API's key object, parsed from JSON.  Documented at:
         https://cloud.google.com/datastore/docs/reference/data/rest/v1/Key
-    project_id: The project ID for this request.  (We validate this against the
-        key's project ID.)
+    project_id: The project ID for this request, or None.  (If set, we validate
+        this against the key's project ID; if not we infer it from environ.)
     incomplete: True if this is an incomplete key, i.e. one to which the
         datastore will assign the ID of the final path item, such as in an
         AllocateIds call.  Note that in REST-land, incomplete keys simply omit
@@ -26,7 +26,7 @@ def rest_to_gae(rest_key, project_id, incomplete=False):
   Raises: grpc.Error, if the key is invalid.
   """
   maybe_project_id = rest_key.get('partitionId', {}).get('projectId')
-  if maybe_project_id and project_id != maybe_project_id:
+  if maybe_project_id and project_id and project_id != maybe_project_id:
     raise grpc.Error("INVALID_ARGUMENT",
                      "mismatched databases within request: %s vs. %s" %
                      (project_id, maybe_project_id))
