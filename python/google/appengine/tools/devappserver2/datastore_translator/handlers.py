@@ -17,6 +17,7 @@ from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_entity)
+from google.appengine.tools.devappserver2.datastore_translator import run_query
 
 
 class Ping(webapp2.RequestHandler):
@@ -77,6 +78,8 @@ class _DatastoreApiHandlerBase(webapp2.RequestHandler):
       except ValueError as e:  # similarly
         raise grpc.Error("INVALID_ARGUMENT", "Invalid request: %s." % e)
       except Exception as e:
+        # In this case, it's useful to log the full stacktrace.
+        logging.exception(e)
         raise grpc.Error("UNKNOWN", "Internal server error: %s" % e)
 
     except grpc.Error as e:
@@ -121,6 +124,39 @@ class AllocateIds(_DatastoreApiHandlerBase):
     return {'keys': returned_keys}
 
 
+_CONSISTENCIES = {
+  None: None,
+  "EVENTUAL": datastore.EVENTUAL_CONSISTENCY,
+  "STRONG": datastore.STRONG_CONSISTENCY,
+}
+
+
+def _parse_read_options(rest_options):
+  """Parse REST-style read options.
+
+  Returns: a datastore read policy (e.g. datastore.STRONG_CONSISTENCY, or None)
+  """
+  if not rest_options:
+    return None
+
+  if rest_options.pop('transaction', None):
+    raise grpc.Error('UNIMPLEMENTED',
+                     'TODO(benkraft): Implement transactions.')
+
+  rest_consistency = rest_options.pop('readConsistency', None)
+  if rest_consistency not in _CONSISTENCIES:
+    raise grpc.Error('INVALID_ARGUMENT',
+                     'Invalid consistency %s' % rest_consistency)
+  gae_consistency = _CONSISTENCIES[rest_consistency]
+
+  # We should have handled all options by now.
+  if rest_options:
+    raise grpc.Error('INVALID_ARGUMENT',
+                     'Invalid options: %s' % ', '.join(rest_options))
+
+  return gae_consistency
+
+
 class Lookup(_DatastoreApiHandlerBase):
   """Translate the REST lookup call (to App Engine's Get)."""
   def json_post(self, project_id, json_input):
@@ -129,21 +165,14 @@ class Lookup(_DatastoreApiHandlerBase):
       # Strangely, the API returns an empty OK if .keys is missing or empty.
       return {}
 
-    options = json_input.get('readOptions')
-    if options:
-      if options.pop('transaction'):
-        raise grpc.Error('UNIMPLEMENTED',
-                         'TODO(benkraft): Implement transactions.')
-      # TODO(benkraft): readConsistency can be set here, but I think it does
-      # nothing for gets.  For now we just ignore it.
-      options.pop('readConsistency')
-      if options:
-        raise grpc.Error('INVALID_ARGUMENT',
-                         'Invalid options: %s' % ', '.join(options))
+    # I'm not sure if consistency does anything for gets (especially in dev),
+    # but it's legal in both REST and GAE so we may as well pass it through.
+    consistency = _parse_read_options(json_input.get('readOptions'))
 
     datastore_keys = [translate_key.rest_to_gae(key, project_id)
                       for key in keys]
-    datastore_entities = datastore.Get(datastore_keys)
+    datastore_entities = datastore.Get(datastore_keys,
+                                       read_policy=consistency)
 
     retval = {}
 
@@ -161,3 +190,19 @@ class Lookup(_DatastoreApiHandlerBase):
       retval['missing'] = missing
 
     return retval
+
+
+class RunQuery(_DatastoreApiHandlerBase):
+  """Translate the REST runQuery call (to App Engine's Query)."""
+  def json_post(self, project_id, json_input):
+    namespace = translate_key.rest_partition_to_gae_namespace(
+      json_input.get('partitionId'), project_id=project_id)
+    consistency = _parse_read_options(json_input.get('readOptions'))
+
+    if 'gqlQuery' in json_input:
+      raise grpc.Error('UNIMPLEMENTED', 'TODO(benkraft): Implement GQL.')
+
+    batch = run_query.translate_and_execute(
+      json_input['query'], namespace, consistency)
+
+    return {'batch': batch}
