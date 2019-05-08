@@ -61,20 +61,23 @@ def _entity_version():
   return _FAKE_ENTITY_VERSION
 
 
-def gae_to_rest_entity_result(gae_entity):
+def gae_to_rest_entity_result(gae_entity, cursor=None):
   """Convert a datastore.Entity to a REST EntityResult.
 
   The REST structure we return is documented here:
     https://cloud.google.com/datastore/docs/reference/data/rest/v1/EntityResult
+  As described there, cursor should be set for query results.
   """
-  return {
+  retval = {
     'entity': gae_to_rest_entity(gae_entity),
     'version': _entity_version(),
-    # TODO(benkraft): Implement cursor, once we implement APIs that use it.
   }
+  if cursor:
+    retval['cursor'] = cursor
+  return retval
 
 
-def gae_key_to_rest_entity_result(gae_key):
+def gae_key_to_rest_entity_result(gae_key, cursor=None):
   """Convert a datastore.Key to a REST KEYS_ONLY EntityResult.
 
   This returns a similar structure to gae_to_rest_entity_result, only it
@@ -82,9 +85,12 @@ def gae_key_to_rest_entity_result(gae_key):
   find, but it basically means the entity consists of only a key.  It's used in
   keys-only queries, and in missing entities from get requests.
   """
-  return {
+  retval = {
     'entity': {
       'key': translate_key.gae_to_rest(gae_key),
     },
     'version': _entity_version(),
   }
+  if cursor:
+    retval['cursor'] = cursor
+  return retval

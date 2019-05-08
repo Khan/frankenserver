@@ -5,6 +5,31 @@ from google.appengine.api import datastore
 from google.appengine.tools.devappserver2.datastore_translator import grpc
 
 
+def rest_partition_to_gae_namespace(partition_id, project_id=None):
+  """Validate a REST PartitionId and extract the namespace.
+
+  REST uses a "PartitionId" structure:
+    https://cloud.google.com/datastore/docs/reference/data/rest/v1/PartitionId
+  which includes both a project ID and an appengine-style namespace ID.  This
+  function extracts the latter (and validates the former, if possible).
+
+  Arguments:
+    partition_id: REST structure as documented above.  May be None, for
+        convenience of callers.
+    project_id: The current project ID, if known; this will be validated
+        against the input.
+  """
+
+  partition_id = partition_id or {}
+  maybe_project_id = partition_id.get('projectId')
+  if maybe_project_id and project_id and project_id != maybe_project_id:
+    raise grpc.Error("INVALID_ARGUMENT",
+                     "mismatched databases within request: %s vs. %s" %
+                     (project_id, maybe_project_id))
+
+  return partition_id.get('namespaceId')
+
+
 def rest_to_gae(rest_key, project_id=None, incomplete=False):
   """Translate a REST API style key into a datastore.Key.
 
@@ -25,11 +50,8 @@ def rest_to_gae(rest_key, project_id=None, incomplete=False):
 
   Raises: grpc.Error, if the key is invalid.
   """
-  maybe_project_id = rest_key.get('partitionId', {}).get('projectId')
-  if maybe_project_id and project_id and project_id != maybe_project_id:
-    raise grpc.Error("INVALID_ARGUMENT",
-                     "mismatched databases within request: %s vs. %s" %
-                     (project_id, maybe_project_id))
+  namespace = rest_partition_to_gae_namespace(
+    rest_key.get('partitionId'), project_id=project_id)
 
   path_components = []
   for i, item in enumerate(rest_key['path']):
@@ -59,7 +81,6 @@ def rest_to_gae(rest_key, project_id=None, incomplete=False):
         raise grpc.Error("INVALID_ARGUMENT",
                          "Key path element must have either id or name.")
 
-  namespace = rest_key.get('partitionId', {}).get('namespaceId')
   return datastore.Key.from_path(*path_components, namespace=namespace)
 
 
