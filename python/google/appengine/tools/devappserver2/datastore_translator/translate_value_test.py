@@ -121,6 +121,10 @@ class ValueConversionTest(testbase.DatastoreTranslatorTestBase):
       {'blobValue': 'AAEC', 'meaning': 16})
     self._test_both_conversions(
       datastore_types.ByteString('\x00\x01\x02'), {'blobValue': 'AAEC'})
+    self._test_both_conversions(
+      '\x80\x81\x82', {'blobValue': 'gIGC'})
+    self._test_both_conversions(
+      datastore_types.ByteString('\x80\x81\x82'), {'blobValue': 'gIGC'})
 
   def test_key(self):
     self._test_both_conversions(

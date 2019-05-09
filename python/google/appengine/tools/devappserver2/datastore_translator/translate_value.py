@@ -5,6 +5,26 @@ types, although some of those are the wrapper classes in datastore_types.  The
 REST version is Value, which is documented here:
     https://cloud.google.com/datastore/docs/reference/data/rest/v1/projects/runQuery#Value
 and used in both entities and queries.
+
+NOTE(benkraft) on string types: datastore understands five different kinds of
+strings: the python (2) builtins str and unicode, as well as the wrapper
+classes datastore_types.Blob(str), datastore_types.ByteString(str), and
+datastore_types.Text(unicode).  As far as I can tell, the underlying
+implementation itself handles four types, which correspond to short (indexable)
+and long (unindexable) byte-strings and unicode-strings.  Sadly, without
+understanding the full datastore REST implementation (and how it decides which
+internal type to use for a given stringValue or blobValue) it's hard to get
+everything perfect.
+
+In particular, when translating GAE values to REST values, we translate str or
+any of its subtypes to blobValue, and unicode or any of its subtypes to
+stringValue.  In the other direction, we use unicode for short stringValues,
+Text for long stringValues, and similarly ByteString and Blob for short and
+long blobValues.  (We avoid str entirely here: it seems that datastore
+sometimes tries to cast it to unicode, which is no good.)  When we have
+information about meaning, we prefer that, but we don't depend on it, since
+REST clients generally don't pass it.  This seems to be enough to make
+everything work well enough for our use cases.
 """
 from __future__ import absolute_import
 
@@ -24,6 +44,23 @@ from google.appengine.tools.devappserver2.datastore_translator import (
 def _identity(val):
   """Trivial converter for values that require no special logic."""
   return val
+
+
+def _decode_unicode(val):
+  """Convert REST stringValue to GAE, per NOTE on strings in file docstring."""
+  if len(val) > 1500:
+    return datastore_types.Text(val)
+  else:
+    return val
+
+
+def _decode_bytes(val):
+  """Convert REST blobValue to GAE, per NOTE on strings in file docstring."""
+  raw = base64.b64decode(val)
+  if len(raw) > 1500:
+    return datastore_types.Blob(raw)
+  else:
+    return datastore_types.ByteString(raw)
 
 
 def _datetime_to_iso(dt):
@@ -159,8 +196,9 @@ def _rest_geo_point_value_to_gae(geo_point_value):
 #     those described here:
 #         https://cloud.google.com/appengine/docs/standard/python/datastore/typesandpropertyclasses#Datastore_Value_Types
 #     If several types use the same conversion logic, they should all be
-#     included; the first will be the default, although we'll use the meaning
-#     field to disambiguate when available.
+#     included -- the rest_to_gae converter should return the best one for a
+#     given value, although the 'meaning' field (see comments below in
+#     the definition of gae_to_rest()) can override it.
 #   rest_field (string): the field-name, in the Value struct, where we should
 #     put this value in REST-land.  (See the module docstring for more
 #     information.)
@@ -181,13 +219,11 @@ _CONVERTERS = [
   _Converter((datetime.datetime,), 'timestampValue',
              _datetime_to_iso, _iso_to_datetime),
 
-  # String/bytes types.
-  # TODO(benkraft): It's unclear to me which of these are actually used in
-  # modern datastore, but we implement them all because it's easy to do so.
+  # String/bytes types -- see NOTE on string types in file docstring.
   _Converter((unicode, datastore_types.Text),
-             'stringValue', _identity, _identity),
+             'stringValue', _identity, _decode_unicode),
   _Converter((str, datastore_types.Blob, datastore_types.ByteString),
-             'blobValue', base64.b64encode, base64.b64decode),
+             'blobValue', base64.b64encode, _decode_bytes),
 
   # Fancier datastore types, mostly with bespoke converters.
   _Converter((datastore.Key,), 'keyValue',
