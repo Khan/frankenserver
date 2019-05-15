@@ -47,6 +47,7 @@ TEST_LIBRARY_PATHS = [
     os.path.join(DIR_PATH, 'lib', 'pyasn1_modules'),
     os.path.join(DIR_PATH, 'lib', 'rsa'),
     os.path.join(DIR_PATH, 'lib', 'portpicker'),
+    os.path.join(DIR_PATH, 'lib', 'grpcio-1.9.1'),
 ]
 
 

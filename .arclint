@@ -4,7 +4,8 @@
       "type": "script-and-regex",
       "script-and-regex.script": "~\/khan\/devtools\/khan-linter\/runlint.py --always-exit-0 --blacklist=yes --propose-arc-fixes",
       "script-and-regex.regex": "\/^((?P<file>[^:]*):(?P<line>\\d+):((?P<char>\\d+):)? (?P<name>((?P<error>E)|(?P<warning>W))\\S+) (?P<message>[^\\x00\n]*)(\\x00(?P<original>[^\\x00]*)\\x00(?P<replacement>[^\\x00]*)\\x00)?)|(?P<ignore>SKIPPING.*)$\/m",
-      "include": "(python/google/appengine/tools/devappserver2/datastore_translator)"
+      "include": "(python/google/appengine/tools/devappserver2/datastore_translator)",
+      "exclude": "(python/google/appengine/tools/devappserver2/datastore_translator/genproto)"
     }
   }
 }
