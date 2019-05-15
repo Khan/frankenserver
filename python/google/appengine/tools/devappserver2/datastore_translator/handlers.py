@@ -10,6 +10,7 @@ import logging
 import os
 
 import webapp2
+import google.protobuf.json_format
 
 from google.appengine.api import datastore
 from google.appengine.tools.devappserver2.datastore_translator import grpc
@@ -18,6 +19,8 @@ from google.appengine.tools.devappserver2.datastore_translator import (
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_entity)
 from google.appengine.tools.devappserver2.datastore_translator import run_query
+# Amusingly, there is no legal way to wrap the following line:
+from google.appengine.tools.devappserver2.datastore_translator.genproto import datastore_pb2  # noqa: E501
 
 
 class Ping(webapp2.RequestHandler):
@@ -28,12 +31,55 @@ class Ping(webapp2.RequestHandler):
     self.response.write('Ok')
 
 
+def _fix_up_for_proto(serializable):
+  """Fix up special cases in the JSON-to-protobuf translation.
+
+  The protobuf-over-HTTP API actually used by REST clients and the documented
+  JSON-over-HTTP API are mostly a straightforward translation using protobuf's
+  json_format.  However, they are not identical (and sadly any differences are
+  not documented explicitly, although they can be inferred by comparing the
+  documentation to the proto files -- see genproto/README.md).  This function
+  fixes up a JSON-serializable response in the style of the documented API
+  in-place into something that is ready to convert to protobuf.
+
+  At present, the only known difference is in the handling of the Value struct
+  when it represents null.  This is represented in JSON as
+    {"nullValue": null}
+  and in protobuf as a protobuf NullValue, which in JSON looks like
+    {"nullValue": "NULL_VALUE"}
+  Additionally, errors are represented differently, but this is handled
+  separately.
+
+  TODO(benkraft): Eventually, we may need a reverse to this function
+  that does the opposite conversion; right now we just handle it in
+  translate_value.py.
+  """
+  if isinstance(serializable, dict):
+    if 'nullValue' in serializable:
+      serializable['nullValue'] = 'NULL_VALUE'
+
+    map(_fix_up_for_proto, serializable.values())  # fix descendants
+  elif isinstance(serializable, list):
+    map(_fix_up_for_proto, serializable)
+
+
 class _DatastoreApiHandlerBase(webapp2.RequestHandler):
   """Base handler for Datastore REST API requests.
 
   Handlers should subclass this, and implement json_post, which should accept
-  and return JSON (or may call self.error() and return nothing to return an
-  error).
+  and return JSON (or may raise grpc.Error).
+
+  NOTE(benkraft): The JSON is a lie!  Our code is structured as to match the
+  JSON-over-HTTP REST API documented at:
+      https://cloud.google.com/datastore/docs/reference/data/rest/
+  However, the actual Google Cloud clients, when they say "HTTP", really mean
+  they implement a REST-like protobuf-over-HTTP API similar to the
+  above-documented one (more information about the protos is in
+  genproto/README.md).  The difference is mostly just the standard protobuf
+  json_format translation (but see _fix_up_for_proto above for differences in
+  the data semantics, and grpc.Error for the differences in the error
+  semantics).  This class also handles the translation between those two, such
+  that we can accept either JSON as documented or protobufs as implemented.
   """
   def json_post(self, project_id, json_input):
     """Extension point for subclasses to implement their logic.
@@ -44,8 +90,46 @@ class _DatastoreApiHandlerBase(webapp2.RequestHandler):
     """
     raise NotImplementedError("Subclasses must implement!")
 
+  # Subclasses must override these to the correct protobuf message types (from
+  # datastore_pb2.py).
+  REQUEST_MESSAGE = None
+  RESPONSE_MESSAGE = None
+
   def post(self, project_id):
+    content_type = self.request.headers.get('content-type')
     try:
+      # Check the content type, deserialize the request, and set the response
+      # content type to match.
+      if content_type == 'application/x-protobuf':
+        self.response.content_type = content_type
+        # For reasons that are surely beyond me, the Java Datastore client
+        # can't handle errors with a charset set, so we explicitly clear it.
+        # (Non-error responses work fine with the charset, as far as I can
+        # tell, but it's not necessary so we just omit it.)
+        self.response.charset = None
+        try:
+          message = self.REQUEST_MESSAGE()
+          message.MergeFromString(self.request.body)
+          json_input = google.protobuf.json_format.MessageToDict(message)
+        except Exception as e:
+          raise grpc.Error("INVALID_ARGUMENT", "Invalid %s: %s"
+                           % (self.REQUEST_MESSAGE.__name__, e))
+
+      elif content_type == 'application/json':
+        self.response.content_type = content_type
+        try:
+          json_input = json.loads(self.request.body)
+        except Exception as e:
+          raise grpc.Error("INVALID_ARGUMENT", "Invalid JSON: %s" % e)
+
+      elif not content_type:
+        self.response.content_type = 'application/json'  # good enough, we hope
+        raise grpc.Error("INVALID_ARGUMENT", "Missing content-type.")
+      else:
+        self.response.content_type = 'application/json'  # good enough, we hope
+        raise grpc.Error("INVALID_ARGUMENT", "Invalid content-type %s."
+                         % content_type)
+
       # Check that the project IDs match (up to dev~ which devappserver adds).
       devappserver_project_id = os.environ.get('APPLICATION_ID')
       if 'dev~%s' % project_id != devappserver_project_id:
@@ -54,22 +138,17 @@ class _DatastoreApiHandlerBase(webapp2.RequestHandler):
                          "devappserver's project ID %s" % (
                              project_id, devappserver_project_id))
 
-      # TODO(benkraft): Assert that project_id matches the project ID this
-      # server was started with (which is the actual one that the App Engine
-      # API will use when talking to the sqlite db).
-      self.response.content_type = 'application/json'
-      if self.request.headers.get('content-type') != 'application/json':
-        raise grpc.Error("INVALID_ARGUMENT", "Missing content-type header.")
-
-      try:
-        json_input = json.loads(self.request.body)
-      except Exception as e:
-        raise grpc.Error("INVALID_ARGUMENT", "Invalid JSON: %s" % e)
-
+      # Now, actually handle the request, and serialize the response.
       try:
         self.response.status_int = 200
         json_output = self.json_post(project_id, json_input)
-        json.dump(json_output, self.response)
+        if content_type == 'application/x-protobuf':
+          _fix_up_for_proto(json_output)
+          message = self.RESPONSE_MESSAGE()
+          google.protobuf.json_format.Parse(json.dumps(json_output), message)
+          self.response.write(message.SerializeToString())
+        else:
+          json.dump(json_output, self.response)
       except grpc.Error:
         raise
       except KeyError as e:   # a common case, we just guess it's a bad request
@@ -84,16 +163,25 @@ class _DatastoreApiHandlerBase(webapp2.RequestHandler):
 
     except grpc.Error as e:
       self.response.status_int = e.http_code
+
       if e.http_code >= 500:
         logging.error(e)
       else:
         logging.debug(e)
-      json.dump(e.as_serializable(), self.response)
-      return
+
+      # The JSON and proto APIs serialize errors somewhat differently; see
+      # grpc.Error for the structure of each.
+      if content_type == 'application/x-protobuf':
+        self.response.write(e.as_proto().SerializeToString())
+      else:
+        json.dump(e.as_json_serializable(), self.response)
 
 
 class AllocateIds(_DatastoreApiHandlerBase):
   """Translate the REST allocateIds call (to App Engine's AllocateIds)."""
+  REQUEST_MESSAGE = datastore_pb2.AllocateIdsRequest
+  RESPONSE_MESSAGE = datastore_pb2.AllocateIdsResponse
+
   def json_post(self, project_id, json_input):
     keys = json_input.get('keys')
     if not keys:
@@ -159,6 +247,9 @@ def _parse_read_options(rest_options):
 
 class Lookup(_DatastoreApiHandlerBase):
   """Translate the REST lookup call (to App Engine's Get)."""
+  REQUEST_MESSAGE = datastore_pb2.LookupRequest
+  RESPONSE_MESSAGE = datastore_pb2.LookupResponse
+
   def json_post(self, project_id, json_input):
     keys = json_input.get('keys')
     if not keys:
@@ -194,6 +285,9 @@ class Lookup(_DatastoreApiHandlerBase):
 
 class RunQuery(_DatastoreApiHandlerBase):
   """Translate the REST runQuery call (to App Engine's Query)."""
+  REQUEST_MESSAGE = datastore_pb2.RunQueryRequest
+  RESPONSE_MESSAGE = datastore_pb2.RunQueryResponse
+
   def json_post(self, project_id, json_input):
     namespace = translate_key.rest_partition_to_gae_namespace(
       json_input.get('partitionId'), project_id=project_id)

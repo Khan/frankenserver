@@ -212,7 +212,11 @@ _Converter = collections.namedtuple(
 
 _CONVERTERS = [
   # Simple python types.
-  _Converter((type(None),), 'nullValue', _identity, _identity),
+  # We ignore the value of nullValue -- it should be something which represents
+  # null no matter what -- so that we don't have to fix up the differences
+  # between the JSON-over-HTTP and protobuf-over-HTTP APIs (see
+  # handlers._fix_up_for_proto).
+  _Converter((type(None),), 'nullValue', _identity, lambda val: None),
   _Converter((bool,), 'booleanValue', _identity, _identity),
   _Converter((long, int), 'integerValue', str, long),
   _Converter((float,), 'doubleValue', _identity, _identity),

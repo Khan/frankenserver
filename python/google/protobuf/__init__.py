@@ -29,14 +29,14 @@ protobuf_paths = []
 
 default_google_path = os.path.join(default_path, 'google')
 for path in google.__path__:
-  if path != default_google_path:
-    protobuf_paths.append(path)
+    if os.path.abspath(path) != os.path.abspath(default_google_path):
+        protobuf_paths.append(path)
 
 for path in sys.path:
-  if path != default_path:
-    protobuf_path = os.path.join(path, 'google')
-    if os.path.exists(protobuf_path):
-      protobuf_paths.append(protobuf_path)
+    if os.path.abspath(path) != os.path.abspath(default_path):
+        protobuf_path = os.path.join(path, 'google')
+        if os.path.exists(protobuf_path):
+            protobuf_paths.append(protobuf_path)
 
 protobuf_file, pathname, description = imp.find_module('protobuf',
                                                        protobuf_paths)

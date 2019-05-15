@@ -1009,3 +1009,6 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
       }},
       entity_key_names[2:3],
       expected_more_results='MORE_RESULTS_AFTER_LIMIT')
+
+# TODO(benkraft): Write unit tests for the proto translation -- the tricky bit
+# is figuring out how to know what the right translations to test with are.
