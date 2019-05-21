@@ -119,12 +119,40 @@ class Paths(object):
     grpc_importable = False
     grpc_path = os.path.join(dir_path, 'lib', 'grpcio-1.9.1')
     if os.path.exists(grpc_path):
-
-
+      # TODO(benkraft): Upstream checks whether grpc is importable (which it
+      # may not be, if the cython extensions are not compiled for our platform
+      # or we don't have the right libpython) before deciding whether to add it
+      # to the path, but it's unclear if this is actually necessary: callers
+      # who don't need it can just avoid importing it.  If we can convince
+      # ourselves it works for everyone, remove the conditionals!
       grpc_importable = not subprocess.call(
           [sys.executable, '-c', 'import grpc'],
           cwd=grpc_path, stderr=subprocess.PIPE)
 
+    # Unlike grpc, protobuf works fine on most platforms: it can just fall back
+    # to the Python implementation if it can't import the C module.  But in
+    # some cases (I suspect a too-old libpython) it still crashes.  We can
+    # avoid this by forcing it to use the python implementation
+    # unconditionally.  (Callers can still override this if they know they want
+    # C extensions by setting PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=cpp.)
+    #
+    # TODO(benkraft): Would a newer or otherwise different protobuf
+    # implementation do better fallback and thus avoid this problem?
+    protobuf_path = os.path.join(dir_path, 'lib', 'protobuf')
+    if subprocess.call(
+        [sys.executable, '-c', 'import google.protobuf.descriptor'],
+        cwd=protobuf_path, stderr=open(os.devnull, 'w'),
+        # Bonus hack: because the protobuf library as vendored into
+        # frankenserver is designed to be imported after other google.*
+        # packages, it doesn't contain an __init__.py.  (And in fact it must
+        # not: such __init__.py might cause conflicts with such packages.)
+        # Instead, we have to import it via frankenserver's shim
+        # google/protobuf/__init__.py -- so we must make sure both are visible
+        # to this script.  (Note that we can't, yet, import most of
+        # frankenserver: the path setup in this file is required in order to do
+        # so!  But the shim will work fine.)
+        env={'PYTHONPATH': dir_path}):
+      os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
 
     self.v1_extra_paths = [
         dir_path,
@@ -253,6 +281,10 @@ class Paths(object):
     ]
     if grpc_importable:
       devappserver2_paths.append(grpc_path)
+    else:
+      # devappserver2's datastore_translator requires protobuf, even if grpc
+      # isn't set up correctly.
+      devappserver2_paths.append(protobuf_path)
 
     php_runtime_paths = [
         dir_path,
