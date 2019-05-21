@@ -9,7 +9,6 @@ handles both.
 from __future__ import absolute_import
 
 from google.appengine.api import datastore
-from google.appengine.datastore import datastore_query
 from google.appengine.tools.devappserver2.datastore_translator import grpc
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_entity)
@@ -112,6 +111,16 @@ def _translate_ordering(ordering):
   return (ordering['property']['name'], direction)
 
 
+def _get_current_rest_cursor(gae_query):
+  """Given a datastore.Query, get the cursor for its current iterator position.
+
+  This is a bit weird: you have to have called gae_query.Run(), which returns
+  an iterable, and then once you have you can call this function and we'll get
+  you the cursor after the last item over which you iterated.
+  """
+  return translate_entity.gae_to_rest_cursor(gae_query.GetCursor())
+
+
 def translate_and_execute(query, namespace, consistency):
   """Translate the given query, execute it, and return the result batch.
 
@@ -149,10 +158,8 @@ def translate_and_execute(query, namespace, consistency):
   offset = int(query.get('offset', 0))
   limit = int(query['limit']) if 'limit' in query else None
 
-  start_cursor = datastore_query.Cursor.from_websafe_string(
-    query['startCursor']) if 'startCursor' in query else None
-  end_cursor = datastore_query.Cursor.from_websafe_string(
-    query['endCursor']) if 'endCursor' in query else None
+  start_cursor = translate_entity.rest_to_gae_cursor(query.get('startCursor'))
+  end_cursor = translate_entity.rest_to_gae_cursor(query.get('endCursor'))
 
   # STEP 2: Build the query, and then get the iterator.
   gae_query = datastore.Query(
@@ -177,7 +184,7 @@ def translate_and_execute(query, namespace, consistency):
 
   if offset:
     batch['skippedResults'] = offset
-    batch['skippedCursor'] = gae_query.GetCursor().urlsafe()
+    batch['skippedCursor'] = _get_current_rest_cursor(gae_query)
 
   if keys_only:
     translator = translate_entity.gae_key_to_rest_entity_result
@@ -192,9 +199,9 @@ def translate_and_execute(query, namespace, consistency):
   # This is where we actually fetch the results.
   for result in iterator:
     batch['entityResults'].append(
-      translator(result, gae_query.GetCursor().urlsafe()))
+      translator(result, _get_current_rest_cursor(gae_query)))
 
-  batch['endCursor'] = gae_query.GetCursor().urlsafe()
+  batch['endCursor'] = _get_current_rest_cursor(gae_query)
 
   # In general, we handle everything as one batch, unless a limit was set, so
   # we never return NOT_FINISHED.  Also, sometimes we just conservatively

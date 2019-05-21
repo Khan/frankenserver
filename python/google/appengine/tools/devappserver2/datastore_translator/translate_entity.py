@@ -12,6 +12,9 @@ The corresponding datastore concept is Entity, described at
 """
 from __future__ import absolute_import
 
+import base64
+
+from google.appengine.datastore import datastore_query
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
 from google.appengine.tools.devappserver2.datastore_translator import (
@@ -59,6 +62,34 @@ def _entity_version():
   it's time to implement this properly.
   """
   return _FAKE_ENTITY_VERSION
+
+
+def gae_to_rest_cursor(gae_cursor):
+  """Convert a datastore_query.Cursor to REST-style base64 string.
+
+  In REST, this is an opaque string; in fact, it appears to be roughly the
+  base64ed version of the GAE cursor as bytes.  It doesn't really need to match
+  the way prod does things, as long as we're consistent: the string is opaque
+  and specific to a query.  But it *does* need to be valid base64, because the
+  protobuf version of the API wants to represent it as bytes.
+  """
+  # You might think we could use gae_cursor.to_urlsafe_string() here, but in
+  # fact we can't: that uses base64.urlsafe_b64encode which is a different
+  # base64 alphabet than proto expects.  So we do it ourselves.
+  return base64.b64encode(gae_cursor.to_bytes())
+
+
+def rest_to_gae_cursor(rest_cursor):
+  """Convert a REST-style base64 string cursor to a datastore_query.Cursor.
+
+  This is the reverse of gae_to_rest_cursor, with one exception: it will pass
+  through None for the convenience of callers (since cursors are not required
+  in requests).
+  """
+  if rest_cursor is None:
+    return None
+  # See gae_to_rest_cursor for why we can't use from_urlsafe_string.
+  return datastore_query.Cursor.from_bytes(base64.b64decode(rest_cursor))
 
 
 def gae_to_rest_entity_result(gae_entity, cursor=None):
