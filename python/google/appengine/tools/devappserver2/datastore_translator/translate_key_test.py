@@ -41,7 +41,7 @@ class RestToGaeTest(testbase.DatastoreTranslatorTestBase):
         {'path': [{'kind': 'Foo'}]},
         self.app_id,
         incomplete=True),
-      datastore.Key.from_path('Foo', 1))
+      datastore.Key.from_path('Foo', -1))
 
   def test_key_with_ancestors(self):
     self.assertEqual(
@@ -70,7 +70,7 @@ class RestToGaeTest(testbase.DatastoreTranslatorTestBase):
       datastore.Key.from_path(
         'Foo', 5629499534213120,
         'Bar', 'asdfgh1234',
-        'Baz', 1))
+        'Baz', -1))
 
   def test_key_with_project(self):
     # Note: we allow either dev~myapp or myapp, but you have to be consistent!
