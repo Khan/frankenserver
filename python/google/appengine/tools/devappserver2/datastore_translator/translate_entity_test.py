@@ -72,7 +72,7 @@ class NdbModel(ndb.Model):
   key = ndb.KeyProperty(indexed=True)
 
 
-class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
+class TranslationTest(testbase.DatastoreTranslatorTestBase):
   def _put_and_assert(self, db_instance, expected_properties):
     # Un-put datastore entities can be a little wonky, so we test on what we
     # get back from the stub rather than the model as created.  (That's what we
@@ -83,9 +83,13 @@ class GaeToRestTest(testbase.DatastoreTranslatorTestBase):
     if expected_properties:
       expected_rest_entity['properties'] = expected_properties
 
+    # We do the assert both ways, as a test of both converters.
     self.assertEqual(
       translate_entity.gae_to_rest_entity(db_instance._entity),
       expected_rest_entity)
+    self.assertEqual(
+      db_instance._entity,
+      translate_entity.rest_to_gae_entity(expected_rest_entity))
 
   def test_empty_model(self):
     self._put_and_assert(EmptyModel(), {})

@@ -24,6 +24,7 @@ _ROUTES = [
     ('/v1/projects/([^/:]*):allocateIds', handlers.AllocateIds),
     ('/v1/projects/([^/:]*):lookup', handlers.Lookup),
     ('/v1/projects/([^/:]*):runQuery', handlers.RunQuery),
+    ('/v1/projects/([^/:]*):commit', handlers.Commit),
 ]
 
 

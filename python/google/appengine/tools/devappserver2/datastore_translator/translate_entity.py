@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import base64
 
+from google.appengine.api import datastore
 from google.appengine.datastore import datastore_query
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
@@ -44,10 +45,34 @@ def gae_to_rest_entity(gae_entity):
   return rest_entity
 
 
+def rest_to_gae_entity(rest_entity, project_id=None, incomplete_key=False):
+  """Convert a REST entity to a datastore.Entity.
+
+  This is the inverse of gae_to_rest_entity.  project_id and incomplete_key are
+  as for translate_key.rest_to_gae.
+  """
+  gae_key = translate_key.rest_to_gae(
+    rest_entity['key'], project_id, incomplete_key)
+
+  gae_entity = datastore.Entity(
+    gae_key.kind(), parent=gae_key.parent(), name=gae_key.name(),
+    id=None if gae_key.id() == -1 else gae_key.id(),
+    namespace=gae_key.namespace())
+
+  unindexed_properties = []
+  for name, rest_value in rest_entity.get('properties', {}).iteritems():
+    gae_entity[name], is_indexed = translate_value.rest_to_gae(rest_value)
+    if not is_indexed:
+      unindexed_properties.append(name)
+
+  gae_entity.set_unindexed_properties(unindexed_properties)
+  return gae_entity
+
+
 _FAKE_ENTITY_VERSION = '1'
 
 
-def _entity_version():
+def entity_version():
   """Return a fake "version" for a REST-style entity.
 
   In the REST datastore API, entities have a version number which is returned
@@ -101,7 +126,7 @@ def gae_to_rest_entity_result(gae_entity, cursor=None):
   """
   retval = {
     'entity': gae_to_rest_entity(gae_entity),
-    'version': _entity_version(),
+    'version': entity_version(),
   }
   if cursor:
     retval['cursor'] = cursor
@@ -120,7 +145,7 @@ def gae_key_to_rest_entity_result(gae_key, cursor=None):
     'entity': {
       'key': translate_key.gae_to_rest(gae_key),
     },
-    'version': _entity_version(),
+    'version': entity_version(),
   }
   if cursor:
     retval['cursor'] = cursor
