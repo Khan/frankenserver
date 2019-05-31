@@ -12,6 +12,9 @@ from google.appengine.tools.devappserver2.datastore_translator import (
 from google.appengine.tools.devappserver2.datastore_translator import testbase
 
 
+# TODO(benkraft): Write unit tests for the proto translation -- we can use the
+# real REST client, but due to frankenserver import madness we may need to do
+# it from a subprocess, which will be a bit of a chore.
 class DatastoreTranslatorHandlerTestBase(testbase.DatastoreTranslatorTestBase,
                                          wsgi_test_utils.WSGITestCase):
   def setUp(self):
@@ -1010,5 +1013,252 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
       entity_key_names[2:3],
       expected_more_results='MORE_RESULTS_AFTER_LIMIT')
 
-# TODO(benkraft): Write unit tests for the proto translation -- the tricky bit
-# is figuring out how to know what the right translations to test with are.
+
+class TestCommit(DatastoreTranslatorHandlerTestBase):
+  def _entity(self, integer_value=12):
+    return {
+      'key': {
+        'partitionId': {'projectId': 'myapp'},
+        'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
+      },
+      'properties': {
+        'byte_string': {
+          'blobValue': 'gA==',
+          'meaning': 16,
+        },
+        'boolean': {'booleanValue': True},
+        'integer': {'integerValue': str(integer_value)},
+        'indexed_string': {'nullValue': None},
+        'unindexed_string': {
+          'excludeFromIndexes': True,
+          'stringValue': u'\u1111',
+        },
+      }
+    }
+
+  def _insert_entity(self, integer_value=12):
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [{'insert': self._entity(integer_value)}]
+      },
+      {'mutationResults': [{'version': '1'}], 'indexUpdates': -1})
+    self._assert_entity_exists(integer_value)
+
+  def _assert_entity_exists(self, expected_integer=12):
+    self.assertOK(
+      '/v1/projects/myapp:lookup',
+      {'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}]},
+      {'found': [{'entity': self._entity(expected_integer), 'version': '1'}]})
+
+  def test_insert(self):
+    self._insert_entity()
+
+  def test_insert_conflict(self):
+    self._insert_entity()
+    self.assertError(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [{'insert': self._entity(12)}]
+      }, 409, 'ALREADY_EXISTS')
+
+  def test_upsert_new(self):
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'upsert': {
+              'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+              'properties': {
+                'byte_string': {
+                  'blobValue': 'gA==',
+                  'meaning': 16,
+                },
+                'boolean': {'booleanValue': True},
+                'integer': {'integerValue': '13'},
+                'indexed_string': {'nullValue': None},
+                'unindexed_string': {
+                  'excludeFromIndexes': True,
+                  'stringValue': u'\u1111',
+                },
+              }
+            }
+          }
+        ]
+      },
+      {
+        'mutationResults': [{'version': '1'}],
+        'indexUpdates': -1,
+      })
+    self._assert_entity_exists(13)
+
+  def test_upsert_existing(self):
+    self._insert_entity(13)
+    self._assert_entity_exists(13)
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'upsert': {
+              'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+              'properties': {
+                'byte_string': {
+                  'blobValue': 'gA==',
+                  'meaning': 16,
+                },
+                'boolean': {'booleanValue': True},
+                'integer': {'integerValue': '14'},
+                'indexed_string': {'nullValue': None},
+                'unindexed_string': {
+                  'excludeFromIndexes': True,
+                  'stringValue': u'\u1111',
+                },
+              }
+            }
+          }
+        ]
+      },
+      {
+        'mutationResults': [{'version': '1'}],
+        'indexUpdates': -1,
+      })
+    self._assert_entity_exists(14)
+
+  def test_update_existing(self):
+    self._insert_entity(13)
+    self._assert_entity_exists(13)
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'update': {
+              'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+              'properties': {
+                'byte_string': {
+                  'blobValue': 'gA==',
+                  'meaning': 16,
+                },
+                'boolean': {'booleanValue': True},
+                'integer': {'integerValue': '14'},
+                'indexed_string': {'nullValue': None},
+                'unindexed_string': {
+                  'excludeFromIndexes': True,
+                  'stringValue': u'\u1111',
+                },
+              }
+            }
+          }
+        ]
+      },
+      {
+        'mutationResults': [{'version': '1'}],
+        'indexUpdates': -1,
+      })
+    self._assert_entity_exists(14)
+
+  def test_update_missing(self):
+    self.assertError(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'update': {
+              'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+              'properties': {
+                'byte_string': {
+                  'blobValue': 'gA==',
+                  'meaning': 16,
+                },
+                'boolean': {'booleanValue': True},
+                'integer': {'integerValue': '14'},
+                'indexed_string': {'nullValue': None},
+                'unindexed_string': {
+                  'excludeFromIndexes': True,
+                  'stringValue': u'\u1111',
+                },
+              }
+            }
+          }
+        ]
+      }, 404, 'NOT_FOUND')
+
+  def test_delete_existing(self):
+    self._insert_entity(13)
+    self._assert_entity_exists(13)
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'delete': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+          }
+        ]
+      },
+      {
+        'mutationResults': [{'version': '1'}],
+        'indexUpdates': -1,
+      })
+
+  def test_delete_missing(self):
+    # Yes, delete is a silent no-op if the key is missing.
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'delete': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
+          }
+        ]
+      },
+      {
+        'mutationResults': [{'version': '1'}],
+        'indexUpdates': -1,
+      })
+
+  def test_several_mutations(self):
+    self.assertOK(
+      '/v1/projects/myapp:commit',
+      {
+        'mode': 'NON_TRANSACTIONAL',
+        'mutations': [
+          {
+            'insert': {
+              # While we're at it, test with an incomplete key.
+              'key': {'path': [{'kind': 'SimpleModel'}]},
+              'properties': {'boolean': {'booleanValue': True}},
+            },
+          },
+          {
+            'upsert': {
+              'key': {'path': [{'kind': 'SimpleModel', 'id': 17}]},
+              'properties': {'boolean': {'booleanValue': True}},
+            },
+          },
+        ]
+      },
+      {
+        'mutationResults': [
+          {
+            'key': {
+              'partitionId': {'projectId': 'myapp'},
+              # This ID is auto-assigned, but seems to be deterministic.
+              # (It's 0x14000000000000, so it's not "that" random.)
+              'path': [{'kind': 'SimpleModel', 'id': '5629499534213120'}],
+            },
+            'version': '1',
+          },
+          {'version': '1'},
+        ],
+        'indexUpdates': -1,
+      })

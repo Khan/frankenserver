@@ -39,6 +39,7 @@ from google.appengine.api import users
 from google.appengine.tools.devappserver2.datastore_translator import grpc
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
+from google.appengine.tools.devappserver2.datastore_translator import util
 
 
 def _identity(val):
@@ -247,6 +248,8 @@ _CONVERTERS = [
 
 _CONVERTERS_BY_GAE_TYPE = {t: c for c in _CONVERTERS for t in c.gae_types}
 _CONVERTERS_BY_REST_FIELD = {c.rest_field: c for c in _CONVERTERS}
+# arrayValue is handled specially.
+_VALID_REST_FIELDS = set(_CONVERTERS_BY_REST_FIELD) | {'arrayValue'}
 
 # This is just to make explicit which of the types in
 # datastore_types._PROPERTY_TYPES we do not currently handle,
@@ -347,22 +350,14 @@ def rest_to_gae(rest_value):
   Returns: a pair (GAE value, true if this property is indexed).  Note that the
     latter is ignored if this is a query.
   """
-  # A valid input should have exactly one of the "fooValue" fields, and
-  # optionally meaning and/or excludeFromIndexes.  We need to find that unique
-  # "fooValue" field (and error if there isn't one).
-  non_option_fields = set(rest_value) - {'meaning', 'excludeFromIndexes'}
-  if not non_option_fields:
-    raise grpc.Error("INVALID_ARGUMENT", "No value passed!")
-  if len(non_option_fields) > 1:
+  field, unpacked_value = util.get_from_union(
+    rest_value, _VALID_REST_FIELDS, "Value", required=True)
+  unknown_fields = set(rest_value) - {field, 'meaning', 'excludeFromIndexes'}
+  if unknown_fields:
     raise grpc.Error("INVALID_ARGUMENT",
-                     # It could either be multiple values (you passed both
-                     # stringValue and integerValue) or an option we don't know
-                     # about (you passed both stringValue and frob).
-                     "Multiple value fields or unknown option: %s"
-                     % ', '.join(non_option_fields))
+                     "Value had unknonwn fields: %s"
+                     % ', '.join(unknown_fields))
 
-  field = non_option_fields.pop()
-  unpacked_value = rest_value[field]
   if field == 'arrayValue':
     # NOTE(benkraft): We can't write an ordinary converter for this because it
     # handles meaning and indexing specially.

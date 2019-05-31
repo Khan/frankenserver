@@ -1,8 +1,30 @@
-"""Translation of keys between REST and App Engine APIs."""
+"""Translation of keys between REST and App Engine APIs.
+
+NOTE(benkraft): One of the most confusing parts of key-translation is the
+handling of incomplete keys, which are keys where the name/ID is omitted, and
+left to be auto-assigned by datastore.  In REST, these are handled
+consistently: the field is omitted when applicable.  But in GAE, they're an
+inconsistent mess.  In particular:
+- datastore.Key.from_path() requires an ID be passed, although any integer is
+  valid, including negative or zero values (which are invalid keys).  (It is
+  possible to construct an invalid Key by constructing the reference
+  (_Key__reference) by hand, like ndb does, but that's more work.)
+- AllocateIds(), which requires an incomplete key (when size is set),
+  explicitly forbids a zero ID but allows any nonzero value.
+- the datastore.Entity constructor checks at construction time that the passed
+  ID is positive, and leaves it unset (None) for incomplete keys.
+Furthermore, Keys are immutable so it's not convenient to fix up a value just
+before passing it to the API.  To allow flexible handling of this mess, we
+represent an incomplete key in GAE as one with a negative ID.  This allows us
+to pass around invalid keys just fine, and to use them for AllocateIds without
+modification, but we can check for the sentinel value when constructing an
+Entity (which requires destructuring the key anyway).
+"""
 from __future__ import absolute_import
 
 from google.appengine.api import datastore
 from google.appengine.tools.devappserver2.datastore_translator import grpc
+from google.appengine.tools.devappserver2.datastore_translator import util
 
 
 def rest_partition_to_gae_namespace(partition_id, project_id=None):
@@ -38,13 +60,10 @@ def rest_to_gae(rest_key, project_id=None, incomplete=False):
         https://cloud.google.com/datastore/docs/reference/data/rest/v1/Key
     project_id: The project ID for this request, or None.  (If set, we validate
         this against the key's project ID; if not we infer it from environ.)
-    incomplete: True if this is an incomplete key, i.e. one to which the
+    incomplete: True if this must be an incomplete key, i.e. one to which the
         datastore will assign the ID of the final path item, such as in an
-        AllocateIds call.  Note that in REST-land, incomplete keys simply omit
-        the 'id' or 'name' value, but in App Engine it is set to a bogus value.
-        TODO(benkraft): Alternately, we could do like ndb does and construct
-        the reference (_Key__reference) by hand, which avoids the bogus value.
-        It's not clear it matters.
+        AllocateIds call; False (default) if it must not be; None if either is
+        allowable.  See top-of-file NOTE for more on how we represent these.
 
   Returns: the corresponding datastore.Key object.
 
@@ -62,24 +81,21 @@ def rest_to_gae(rest_key, project_id=None, incomplete=False):
     # nor name) and simply ignores the value.  Additionally, REST uses
     # string IDs (presumably due to JSON limitations) whereas App Engine
     # uses longs.
-    if incomplete and i == len(rest_key['path']) - 1:   # last item in path
-      if 'name' in item or 'id' in item:
-        raise grpc.Error("INVALID_ARGUMENT",
-                         "Final key path element must not be complete.")
-      path_components.append(1)
+    last_element = (i == len(rest_key['path']) - 1)
+    field, id_or_name = util.get_from_union(
+      item, {'id', 'name'}, 'Key path element',
+      required=(incomplete is False or not last_element))
+    if field is None:
+      # -1 is a sentinel, which some of our code checks, where the appengine
+      # APIs are inconsistent in how they want things.
+      path_components.append(-1)
+    elif incomplete and last_element:
+      raise grpc.Error("INVALID_ARGUMENT",
+                       "Final key path element must not be complete.")
     else:
-      # TODO(benkraft): Build utils to do this kind of schema checking in a
-      # more consistent way.
-      if 'name' in item and 'id' in item:
-        raise grpc.Error("INVALID_ARGUMENT",
-                         "Key path element cannot have both id and name.")
-      elif 'name' in item:
-        path_components.append(item['name'])
-      elif 'id' in item:
-        path_components.append(long(item['id']))
-      else:
-        raise grpc.Error("INVALID_ARGUMENT",
-                         "Key path element must have either id or name.")
+      if field == 'id':
+        id_or_name = long(id_or_name)
+      path_components.append(id_or_name)
 
   return datastore.Key.from_path(*path_components, namespace=namespace)
 

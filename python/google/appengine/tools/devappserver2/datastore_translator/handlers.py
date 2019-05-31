@@ -13,12 +13,14 @@ import webapp2
 import google.protobuf.json_format
 
 from google.appengine.api import datastore
+from google.appengine.api import datastore_errors
 from google.appengine.tools.devappserver2.datastore_translator import grpc
+from google.appengine.tools.devappserver2.datastore_translator import run_query
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_entity)
-from google.appengine.tools.devappserver2.datastore_translator import run_query
+from google.appengine.tools.devappserver2.datastore_translator import util
 # Amusingly, there is no legal way to wrap the following line:
 from google.appengine.tools.devappserver2.datastore_translator.genproto import datastore_pb2  # noqa: E501
 
@@ -302,3 +304,83 @@ class RunQuery(_DatastoreApiHandlerBase):
       json_input['query'], namespace, consistency)
 
     return {'batch': batch}
+
+
+class Commit(_DatastoreApiHandlerBase):
+  """Translate the REST commit call (to App Engine's put, delete, etc.)."""
+  REQUEST_MESSAGE = datastore_pb2.CommitRequest
+  RESPONSE_MESSAGE = datastore_pb2.CommitResponse
+
+  def _entity_exists(self, gae_entity):
+    try:
+      datastore.Get(gae_entity.key())
+      return True
+    except datastore_errors.EntityNotFoundError:
+      return False
+
+  # We use transactions for insert and update to make sure the get-and-put
+  # patterns are atomic, even though the client has not requested a transaction
+  # as such.
+  @datastore.Transactional
+  def _handle_insert(self, rest_entity, project_id):
+    gae_entity = translate_entity.rest_to_gae_entity(rest_entity, project_id,
+                                                     incomplete_key=None)
+    complete_key = gae_entity.key().has_id_or_name()
+
+    if complete_key and self._entity_exists(gae_entity):
+      raise grpc.Error('ALREADY_EXISTS', 'entity with key %s already exists' %
+                       gae_entity.key())
+
+    gae_key = datastore.Put(gae_entity)
+    # REST returns a key iff the passed key was incomplete.
+    if not complete_key:
+      return {'key': translate_key.gae_to_rest(gae_key)}
+
+  def _handle_upsert(self, rest_entity, project_id):
+    datastore.Put(translate_entity.rest_to_gae_entity(rest_entity, project_id))
+
+  @datastore.Transactional
+  def _handle_update(self, rest_entity, project_id):
+    gae_entity = translate_entity.rest_to_gae_entity(rest_entity, project_id)
+    if not self._entity_exists(gae_entity):
+      raise grpc.Error('NOT_FOUND', 'entity with key %s not found' %
+                       gae_entity.key())
+    datastore.Put(gae_entity)
+
+  def _handle_delete(self, rest_key, project_id):
+    datastore.Delete(translate_key.rest_to_gae(rest_key, project_id))
+
+  def json_post(self, project_id, json_input):
+    mode = json_input.get('mode', 'TRANSACTIONAL')
+    if mode != 'NON_TRANSACTIONAL':
+      raise grpc.Error('UNIMPLEMENTED',
+                       'TODO(benkraft): Implement transactions.')
+
+    if 'transaction' in json_input:
+      raise grpc.Error('INVALID_ARGUMENT',
+                       'Non-transactional commit cannot specify a transaction')
+
+    results = []
+    handlers = {
+      'insert': self._handle_insert,
+      'upsert': self._handle_upsert,
+      'update': self._handle_update,
+      'delete': self._handle_delete,
+    }
+    # TODO(benkraft): Do these in parallel.
+    # TODO(benkraft): REST says that if you don't request a transaction, you
+    # can't pass multiple ops affecting the same key (even if they're
+    # compatible, e.g. two updates).  Enforce this.
+    for mutation in json_input.get('mutations', []):
+      field, mutation_request = util.get_from_union(
+        mutation, set(handlers), 'Mutation', required=True)
+      mutation_result = handlers[field](mutation_request, project_id) or {}
+      mutation_result['version'] = translate_entity.entity_version()
+      results.append(mutation_result)
+
+    return {
+      'mutationResults': results,
+      # TODO(benkraft): Fill in the actual number of index updates -- I think
+      # it's somewhere in the put/delete RPC response.
+      'indexUpdates': -1,
+    }

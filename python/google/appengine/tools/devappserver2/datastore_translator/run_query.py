@@ -14,6 +14,7 @@ from google.appengine.tools.devappserver2.datastore_translator import (
   translate_entity)
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_value)
+from google.appengine.tools.devappserver2.datastore_translator import util
 
 
 # Mapping from REST operator name to GAE symbol.
@@ -42,17 +43,14 @@ def _translate_filter(rest_filter):
   if not rest_filter:
     return {}
 
-  property_filter = rest_filter.get('propertyFilter')
-  composite_filter = rest_filter.get('compositeFilter')
-  if not (bool(property_filter) ^ bool(composite_filter)):
-    raise grpc.Error('INVALID_ARGUMENT',
-                     'Must pass exactly one of propertyFilter'
-                     'and compositeFilter')
+  filter_type, filter_value = util.get_from_union(
+    rest_filter, {'propertyFilter', 'compositeFilter'}, "Filter",
+    required=True)
 
-  if property_filter:
-    op = property_filter['op']
-    prop = property_filter['property']['name']
-    val, is_indexed = translate_value.rest_to_gae(property_filter['value'])
+  if filter_type == 'propertyFilter':
+    op = filter_value['op']
+    prop = filter_value['property']['name']
+    val, is_indexed = translate_value.rest_to_gae(filter_value['value'])
     if not is_indexed:
       # This is kind of a bogus error -- we know nothing about whether the
       # actual values in the datastore are indexed, we just know that the
@@ -71,18 +69,18 @@ def _translate_filter(rest_filter):
                          % type(val))
       return {'ancestor': val}
 
-    else:
+    else:   # filter_type == 'compositeFilter'
       if op not in _OPERATORS:
         raise grpc.Error('INVALID_ARGUMENT', 'unknown op %s' % op)
       return {'%s %s' % (prop, _OPERATORS[op]): val}
 
   else:  # composite filter
-    op = composite_filter['op']
+    op = filter_value['op']
     if op != 'AND':   # AND is the only valid op at this time.
       raise grpc.Error('INVALID_ARGUMENT', 'unknown op %s' % op)
 
     retval = {}
-    for subfilter in composite_filter['filters']:
+    for subfilter in filter_value['filters']:
       translated_subfilter = _translate_filter(subfilter)
       common_keys = set(retval) & set(translated_subfilter)
       if common_keys:
