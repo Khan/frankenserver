@@ -246,88 +246,90 @@ class TranslationTest(testbase.DatastoreTranslatorTestBase):
     ndb_key = ndb_model.put()
     db_key = ndb_key.to_old_key()
     entity = datastore.Get(db_key)
-    self.assertEqual(
-      translate_entity.gae_to_rest_entity(entity),
-      {
-        'key': translate_key.gae_to_rest(db_key),
-        'properties': {
-          'integer': {'integerValue': '17'},
-          'unindexed_float': {
-            'doubleValue': 2.71828,
-            'excludeFromIndexes': True,
-          },
-          'repeated_string': {
-            'arrayValue': {
-              'values': [
-                {'stringValue': u'\U0001f44d'},
-                {'stringValue': u'\U0001f44e'},
-              ],
-            },
-          },
-          'unindexed_repeated_string': {
-            'arrayValue': {
-              'values': [
-                # ndb automatically stores unindexed strings as Text.
-                {
-                  'stringValue': u'\U0001f44a',
-                  'meaning': 15,
-                  'excludeFromIndexes': True,
-                },
-                {
-                  'stringValue': u'\U0001f44b',
-                  'meaning': 15,
-                  'excludeFromIndexes': True,
-                },
-              ],
-            },
-          },
-          'local_structured': {
-            'entityValue': {
-              'properties': {
-                'integers': {
-                  'arrayValue': {
-                    'values': [
-                      {'integerValue': '1', 'excludeFromIndexes': True},
-                      {'integerValue': '1', 'excludeFromIndexes': True},
-                      {'integerValue': '2', 'excludeFromIndexes': True},
-                      {'integerValue': '3', 'excludeFromIndexes': True},
-                    ]
-                  },
-                },
-                'string': {
-                  'stringValue': '581321',
-                  'meaning': 15,
-                  'excludeFromIndexes': True,
-                },
-              },
-            },
-            'excludeFromIndexes': True,
-            'meaning': 19,
-          },
-          'structured.integers': {
-            'arrayValue': {
-              'values': [
-                {'integerValue': '1', 'excludeFromIndexes': True},
-                {'integerValue': '1', 'excludeFromIndexes': True},
-                {'integerValue': '2', 'excludeFromIndexes': True},
-                {'integerValue': '3', 'excludeFromIndexes': True},
-              ]
-            },
-          },
-          'structured.string': {
-            'stringValue': '581321',
-            'meaning': 15,
-            'excludeFromIndexes': True,
-          },
-
-          'key': {
-            'keyValue': {
-              'partitionId': {'projectId': u'myapp'},
-              'path': [{'kind': u'FooBar', 'name': u'asdf'}],
-            },
+    expected_rest_entity = {
+      'key': translate_key.gae_to_rest(db_key),
+      'properties': {
+        'integer': {'integerValue': '17'},
+        'unindexed_float': {
+          'doubleValue': 2.71828,
+          'excludeFromIndexes': True,
+        },
+        'repeated_string': {
+          'arrayValue': {
+            'values': [
+              {'stringValue': u'\U0001f44d'},
+              {'stringValue': u'\U0001f44e'},
+            ],
           },
         },
-      })
+        'unindexed_repeated_string': {
+          'arrayValue': {
+            'values': [
+              # ndb automatically stores unindexed strings as Text.
+              {
+                'stringValue': u'\U0001f44a',
+                'meaning': 15,
+                'excludeFromIndexes': True,
+              },
+              {
+                'stringValue': u'\U0001f44b',
+                'meaning': 15,
+                'excludeFromIndexes': True,
+              },
+            ],
+          },
+        },
+        'local_structured': {
+          'entityValue': {
+            'properties': {
+              'integers': {
+                'arrayValue': {
+                  'values': [
+                    {'integerValue': '1', 'excludeFromIndexes': True},
+                    {'integerValue': '1', 'excludeFromIndexes': True},
+                    {'integerValue': '2', 'excludeFromIndexes': True},
+                    {'integerValue': '3', 'excludeFromIndexes': True},
+                  ]
+                },
+              },
+              'string': {
+                'stringValue': '581321',
+                'meaning': 15,
+                'excludeFromIndexes': True,
+              },
+            },
+          },
+          'excludeFromIndexes': True,
+          'meaning': 19,
+        },
+        'structured.integers': {
+          'arrayValue': {
+            'values': [
+              {'integerValue': '1', 'excludeFromIndexes': True},
+              {'integerValue': '1', 'excludeFromIndexes': True},
+              {'integerValue': '2', 'excludeFromIndexes': True},
+              {'integerValue': '3', 'excludeFromIndexes': True},
+            ]
+          },
+        },
+        'structured.string': {
+          'stringValue': '581321',
+          'meaning': 15,
+          'excludeFromIndexes': True,
+        },
+
+        'key': {
+          'keyValue': {
+            'partitionId': {'projectId': u'myapp'},
+            'path': [{'kind': u'FooBar', 'name': u'asdf'}],
+          },
+        },
+      },
+    }
+    self.assertEqual(
+      translate_entity.gae_to_rest_entity(entity), expected_rest_entity)
+    self.assertEqual(
+      entity, translate_entity.rest_to_gae_entity(expected_rest_entity))
 
   def test_entity_result(self):
     db_instance = SimpleModel(

@@ -165,13 +165,28 @@ def _rest_entity_or_user_to_gae_value(rest_entity):
                       properties['auth_domain']['stringValue'],
                       properties.get('user_id', {}).get('stringValue'))
   else:
-    # TODO(benkraft): Implement this along with put() -- I don't think we use
-    # it for queries.  Once we implement entity-translation from REST to GAE,
-    # the code will simply be:
-    # return datastore_types.EmbeddedEntity(
-    #   datastore.Entity.ToPb(translate_entity.rest_to_gae(rest_entity)))
-    raise grpc.Error("UNIMPLEMENTED",
-                     "TODO(benkraft): Implement this when implementing puts.")
+    # HACK(benkraft): Embedded entities can, but need not, have a
+    # key/entity-group.  However, there's no way to construct a
+    # datastore.Entity without one, and constructing an EntityProto directly
+    # seems like a huge pain.  (Amusingly, the fields are even required in
+    # EntityProto, but EmbeddedEntity already calls SerializePartialToString to
+    # work around this.)  So, we construct a datastore.Entity, with a bogus
+    # kind, let datastore do its thing, and then we explicitly clear the key
+    # and entity group if they were not set in the input.
+    #
+    # TODO(benkraft): As in the translation the other direction, is there any
+    # way around this circular import?
+    from google.appengine.tools.devappserver2.datastore_translator import (
+      translate_entity)
+
+    gae_entity = translate_entity.rest_to_gae_entity(
+      rest_entity, default_kind='!!unspecified!!')
+    entity_pb = datastore.Entity.ToPb(gae_entity)
+
+    if 'key' not in rest_entity:
+      entity_pb.clear_key()
+      entity_pb.clear_entity_group()
+    return datastore_types.EmbeddedEntity(entity_pb)
 
 
 def _gae_geopt_to_rest(geopt):

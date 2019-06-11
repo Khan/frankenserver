@@ -16,6 +16,7 @@ import base64
 
 from google.appengine.api import datastore
 from google.appengine.datastore import datastore_query
+from google.appengine.tools.devappserver2.datastore_translator import grpc
 from google.appengine.tools.devappserver2.datastore_translator import (
   translate_key)
 from google.appengine.tools.devappserver2.datastore_translator import (
@@ -45,14 +46,23 @@ def gae_to_rest_entity(gae_entity):
   return rest_entity
 
 
-def rest_to_gae_entity(rest_entity, project_id=None, incomplete_key=False):
+def rest_to_gae_entity(rest_entity, project_id=None, incomplete_key=False,
+                       default_kind=None):
   """Convert a REST entity to a datastore.Entity.
 
   This is the inverse of gae_to_rest_entity.  project_id and incomplete_key are
-  as for translate_key.rest_to_gae.
+  as for translate_key.rest_to_gae.  default_kind may be set to allow
+  translating entities with no key -- they have to have a kind so we'll use it
+  as a default.  (incomplete_key is ignored in this case.)
   """
-  gae_key = translate_key.rest_to_gae(
-    rest_entity['key'], project_id, incomplete_key)
+  if 'key' in rest_entity:
+    gae_key = translate_key.rest_to_gae(
+      rest_entity['key'], project_id, incomplete_key)
+  elif default_kind is not None:
+    # See the NOTE in translate_key.py for more on the -1.
+    gae_key = datastore.Key.from_path(default_kind, -1)
+  else:
+    raise grpc.Error('INVALID_ARGUMENT', 'Entity must have a key!')
 
   gae_entity = datastore.Entity(
     gae_key.kind(), parent=gae_key.parent(), name=gae_key.name(),
