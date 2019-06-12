@@ -235,11 +235,9 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
       if txn:
         lookup = googledatastore.LookupRequest()
         lookup.project_id = req.partition_id.project_id
-        lookup.database_id = req.partition_id.database_id
         lookup.read_options.transaction = txn
         key = lookup.keys.add()
         key.partition_id.CopyFrom(req.partition_id)
-        key.partition_id.database_id = req.database_id
         path = key.path.add()
         path.kind = '__none__'
         path.id = 1
@@ -461,15 +459,15 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
                                                'Cannot insert an entity with a '
                                                'base version greater than zero')
       elif version_cache[key] != _NO_VERSION:
-        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
-                                               'Entity already exists.')
+        raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.ALREADY_EXISTS, 'Entity already exists.')
     elif v1_mutation.HasField('update'):
       if base_version is not None and base_version == _NO_VERSION:
         raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                                'Cannot update an entity with a '
                                                'base version set to zero')
       elif version_cache[key] == _NO_VERSION:
-        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.NOT_FOUND,
                                                'Entity does not exist.')
 
 
