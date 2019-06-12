@@ -48,6 +48,7 @@ TEST_LIBRARY_PATHS = [
     os.path.join(DIR_PATH, 'lib', 'rsa'),
     os.path.join(DIR_PATH, 'lib', 'portpicker'),
     os.path.join(DIR_PATH, 'lib', 'grpcio-1.9.1'),
+    os.path.join(DIR_PATH, 'lib', 'google-cloud-datastore'),
 ]
 
 
@@ -70,11 +71,9 @@ def main():
   loader = unittest.TestLoader()
   if args.frankenserver:
     # TODO(benkraft): Are there other frankenserver-added tests we should run?
-    tests = loader.discover(
-        os.path.join(
-            DIR_PATH,
-            'google/appengine/tools/devappserver2/datastore_translator'),
-        '*_test.py')
+    tests = loader.loadTestsFromNames([
+      'google.appengine.tools.devappserver2.datastore_translator_server_test',
+    ])
   elif args.tests:
     tests = loader.loadTestsFromNames(args.tests)
   else:

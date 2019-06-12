@@ -379,7 +379,7 @@ class DevelopmentServer(object):
       # We do a late import just in case of any problems with importing
       # protobuf (although in theory python/wrapper_util.py's path-munging has
       # handled them all).
-      from google.appengine.tools.devappserver2.datastore_translator import (
+      from google.appengine.tools.devappserver2 import (
         datastore_translator_server)
       translator = datastore_translator_server.DatastoreTranslatorServer(
         options.datastore_translator_host, options.datastore_translator_port,

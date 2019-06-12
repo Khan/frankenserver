@@ -3559,7 +3559,8 @@ class DatastoreStub(object):
 class StubQueryConverter(datastore_pbs._QueryConverter):
   """Converter for v3, v4 and v1 queries suitable for use in stubs."""
 
-  def __init__(self, entity_converter):
+  def __init__(self, entity_converter, id_resolver):
+    self._id_resolver = id_resolver
     super(StubQueryConverter, self).__init__(entity_converter)
 
   def v4_to_v3_compiled_cursor(self, v4_cursor, v3_compiled_cursor):
@@ -3807,7 +3808,12 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
     v3_query.Clear()
 
     if v1_partition_id.project_id:
-      v3_query.set_app(v1_partition_id.project_id)
+      v3_query.set_app(
+        self._id_resolver.resolve_app_id(v1_partition_id.project_id))
+    else:
+      # app ID is optional in v1 but required in v3; we default it based on
+      # environ (which we've already validated against the request's URL).
+      v3_query.set_app(os.environ.get('APPLICATION_ID'))
     if v1_partition_id.namespace_id:
       v3_query.set_name_space(v1_partition_id.namespace_id)
 
@@ -3945,17 +3951,10 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
     if filter_type == 'property_filter':
       v1_property_filter = v1_filter.property_filter
       v1_property_name = v1_property_filter.property.name
-      if (v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT or
-          v1_property_filter.op == googledatastore.PropertyFilter.HAS_ANCESTOR):
-        if v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT:
-          datastore_pbs.check_conversion(
-              v1_property_filter.value.HasField('key_value') or
-              v1_property_filter.value.HasField('null_value'),
-              'HAS_PARENT requires a key value or null')
-        else:
-          datastore_pbs.check_conversion(
-              v1_property_filter.value.HasField('key_value'),
-              'HAS_ANCESTOR requires a key value')
+      if v1_property_filter.op == googledatastore.PropertyFilter.HAS_ANCESTOR:
+        datastore_pbs.check_conversion(
+            v1_property_filter.value.HasField('key_value'),
+            'HAS_ANCESTOR requires a key value')
         datastore_pbs.check_conversion((v1_property_name
                                         == datastore_pbs.PROPERTY_NAME_KEY),
                                        'unsupported property')
@@ -3967,8 +3966,6 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
           self._entity_converter.v1_to_v3_reference(
               v1_property_filter.value.key_value,
               v3_query.mutable_ancestor())
-        if v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT:
-          v3_query.set_shallow(True)
       else:
         v3_filter = v3_query.add_filter()
         property_name = v1_property_name
@@ -3998,16 +3995,18 @@ def get_query_converter(id_resolver=None):
   Returns:
     a StubQueryConverter
   """
-  return StubQueryConverter(datastore_pbs.get_entity_converter(id_resolver))
+  return StubQueryConverter(datastore_pbs.get_entity_converter(id_resolver),
+                            id_resolver)
 
 
 class StubServiceConverter(object):
   """Converter for v3/v4/v1 request/response protos suitable for use in stubs.
   """
 
-  def __init__(self, entity_converter, query_converter):
+  def __init__(self, entity_converter, query_converter, id_resolver):
     self._entity_converter = entity_converter
     self._query_converter = query_converter
+    self._id_resolver = id_resolver
 
   def v1_to_v3_cursor(self, v1_query_handle, v3_cursor):
     """Converts a v1 cursor string to a v3 Cursor.
@@ -4189,7 +4188,8 @@ class StubServiceConverter(object):
 
 
     v1_partition_id = v1_req.partition_id
-    v1_partition_id.project_id = v3_req.app()
+    v1_partition_id.project_id = self._id_resolver.resolve_project_id(
+      v3_req.app())
     if v3_req.name_space():
       v1_partition_id.namespace = v3_req.name_space()
 
@@ -4826,7 +4826,7 @@ def get_service_converter(id_resolver=None):
   """
   query_converter = get_query_converter(id_resolver)
   return StubServiceConverter(query_converter.get_entity_converter(),
-                              query_converter)
+                              query_converter, id_resolver)
 
 
 def ReverseBitsInt64(v):

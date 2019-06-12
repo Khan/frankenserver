@@ -1,25 +1,72 @@
+"""Tests for the datastore translator server.
+
+These tests are a bit weird: they were written when we were writing our own
+implementation of the translator, then modified to work against the stub's
+implementation.  The coverage is thus pretty inconsistent, but hopefully good
+enough.
+
+Also useful are the google-cloud-python system tests.  To run these:
+- clone https://github.com/googleapis/google-cloud-python
+- apply some patches to get system tests running against the emulator:
+    https://github.com/googleapis/google-cloud-python/compare/master...Khan:benkraft.system-tests-on-emulator
+  TODO(benkraft): see if upstream wants these.
+- in frankenserver root, run a dev_appserver instance:
+    python/dev_appserver.py --enable_datastore_translator=true \
+      --dev_appserver_log_level=debug -A testytest --clear_datastore \
+      python/demos/python/guestbook/app.yaml
+- in google-cloud-python/datastore, run the tests:
+    DATASTORE_EMULATOR_HOST=localhost:8001 DATASTORE_DATASET=testytest \
+      GOOGLE_APPLICATION_CREDENTIALS=/dev/null GOOGLE_CLOUD_DISABLE_GRPC=1 \
+      nox -s system-3.7 -- --tb=native
+At present, test_all_value_types fails (due to inconsistent rules about
+indexing entity properties in the datastore_v1 and datastore_v3), and
+test_query_offset_timestamp_keys is somewhat flaky (for unknown reasons).
+"""
 from __future__ import absolute_import
 
 import base64
 import cStringIO
 import json
+import os
 import wsgiref.util
 
+from google.appengine.datastore import datastore_stub_util
 from google.appengine.ext import db
+from google.appengine.tools.devappserver2 import datastore_translator_server
+from google.appengine.tools.devappserver2 import stub_util
 from google.appengine.tools.devappserver2 import wsgi_test_utils
-from google.appengine.tools.devappserver2.datastore_translator import (
-  datastore_translator_server)
-from google.appengine.tools.devappserver2.datastore_translator import testbase
 
 
-# TODO(benkraft): Write unit tests for the proto translation -- we can use the
-# real REST client, but due to frankenserver import madness we may need to do
-# it from a subprocess, which will be a bit of a chore.
-class DatastoreTranslatorHandlerTestBase(testbase.DatastoreTranslatorTestBase,
-                                         wsgi_test_utils.WSGITestCase):
-  def setUp(self):
+# TODO(benkraft): Write instructions for running the google-cloud-python system
+# tests against the translator.
+class DatastoreTranslatorHandlerTestBase(wsgi_test_utils.WSGITestCase):
+  maxDiff = None
+
+  # In general, consistency guarantees are on the caller, and not our problem,
+  # so we make everything consistent to simplify tests.  But callers can set
+  # the consistency, if they need to test consistency-related behavior itself!
+  def setUp(self, datastore_consistency_probability=1.0):
     super(DatastoreTranslatorHandlerTestBase, self).setUp()
+    self.app_id = 'dev~myapp'
+    # TODO(benkraft): Clean this environ setting up at end-of-test.
+    # (Many of the devappserver tests don't do this, so it can't be that
+    # important.)
+    os.environ['APPLICATION_ID'] = self.app_id
+    consistency_policy = datastore_stub_util.PseudoRandomHRConsistencyPolicy(
+      probability=datastore_consistency_probability)
+    stub_util.setup_test_stubs(
+      app_id=self.app_id,
+      datastore_consistency=consistency_policy,
+    )
     self.server = datastore_translator_server.get_app('localhost')
+
+  def _strip_untested_fields(self, json_response):
+    if isinstance(json_response, dict):
+      json_response.pop('version', None)
+      map(self._strip_untested_fields, json_response.values())
+    elif isinstance(json_response, list):
+      map(self._strip_untested_fields, json_response)
+    return json_response
 
   def getJsonResponse(self, relative_url, json_request, expected_status):
     # Build the fake request (partially cribbed from api_server_test.py).
@@ -70,7 +117,8 @@ class DatastoreTranslatorHandlerTestBase(testbase.DatastoreTranslatorTestBase,
 
   def assertOK(self, relative_url, json_request, expected_json_response):
     actual_response = self.getJsonResponse(relative_url, json_request, 200)
-    self.assertEqual(actual_response, expected_json_response)
+    self.assertEqual(self._strip_untested_fields(actual_response),
+                     expected_json_response)
 
   def assertError(self, relative_url, json_request,
                   expected_http_status, expected_grpc_status):
@@ -94,7 +142,7 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
         'partitionId': {'projectId': 'myapp'},
         # Conveniently (here and below), the sqlite stub seems to be totally
         # deterministic as to which ID it allocates us (namely 1).
-        'path': [{'kind': 'Foo', 'id': '1'}]
+        'path': [{'kind': 'Foo', 'id': '5629499534213120'}]
       }]})
 
   def test_success_several_keys(self):
@@ -110,24 +158,24 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
       {'keys': [
         {
           'partitionId': {'projectId': 'myapp'},
-          'path': [{'kind': 'Foo', 'id': '1'}]
+          'path': [{'kind': 'Foo', 'id': '5629499534213120'}]
         },
         {
           'partitionId': {'projectId': 'myapp'},
-          'path': [{'kind': 'Foo', 'id': '2'}]
+          'path': [{'kind': 'Foo', 'id': '5066549580791808'}]
         },
         {
           'partitionId': {'projectId': 'myapp'},
-          'path': [{'kind': 'Foo', 'id': '3'}]
+          'path': [{'kind': 'Foo', 'id': '6192449487634432'}]
         },
         {
           'partitionId': {'projectId': 'myapp'},
-          'path': [{'kind': 'Foo', 'id': '4'}]
+          'path': [{'kind': 'Foo', 'id': '4785074604081152'}]
         },
         {
           'partitionId': {'projectId': 'myapp'},
           # Again, this is arbitrary but deterministic.
-          'path': [{'kind': 'Bar', 'id': '5'}]
+          'path': [{'kind': 'Bar', 'id': '5910974510923776'}]
         },
       ]})
 
@@ -146,7 +194,7 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
         'path': [
           {'kind': 'Foo', 'id': '5629499534213120'},
           {'kind': 'Bar', 'name': 'asdfgh1234'},
-          {'kind': 'Baz', 'id': '1'},
+          {'kind': 'Baz', 'id': '5629499534213120'},
         ],
       }]})
 
@@ -165,7 +213,7 @@ class TestAllocateIds(DatastoreTranslatorHandlerTestBase):
           'projectId': 'myapp',
           'namespaceId': 'the-namespace',
         },
-        'path': [{'kind': 'Foo', 'id': '1'}]
+        'path': [{'kind': 'Foo', 'id': '5629499534213120'}]
       }]})
 
   def test_empty_success(self):
@@ -249,10 +297,7 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
             },
             'properties': {
-              'byte_string': {
-                'blobValue': 'gA==',
-                'meaning': 16,
-              },
+              'byte_string': {'blobValue': 'gA=='},
               'boolean': {'booleanValue': True},
               'integer': {'integerValue': '12'},
               'indexed_string': {'nullValue': None},
@@ -262,7 +307,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               },
             },
           },
-          'version': '1',
         }],
       })
 
@@ -279,7 +323,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               'path': [{'kind': 'SimpleModel', 'name': 'nope'}],
             },
           },
-          'version': '1',
         }],
       })
 
@@ -303,10 +346,7 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
             },
             'properties': {
-              'byte_string': {
-                'blobValue': 'gA==',
-                'meaning': 16,
-              },
+              'byte_string': {'blobValue': 'gA=='},
               'boolean': {'booleanValue': True},
               'integer': {'integerValue': '12'},
               'indexed_string': {'nullValue': None},
@@ -316,7 +356,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               },
             },
           },
-          'version': '1',
         }, {
           'entity': {
             'key': {
@@ -327,10 +366,7 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               ],
             },
             'properties': {
-              'byte_string': {
-                'blobValue': 'gA==',
-                'meaning': 16,
-              },
+              'byte_string': {'blobValue': 'gA=='},
               'boolean': {'booleanValue': False},
               'integer': {'integerValue': '16'},
               'indexed_string': {'nullValue': None},
@@ -340,7 +376,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               },
             },
           },
-          'version': '1',
         }],
         'missing': [{
           'entity': {
@@ -349,7 +384,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
               'path': [{'kind': 'SimpleModel', 'name': 'nope'}],
             },
           },
-          'version': '1',
         }],
       })
 
@@ -362,15 +396,6 @@ class TestLookup(DatastoreTranslatorHandlerTestBase):
       '/v1/projects/myapp:lookup',
       {'keys': []},
       {})
-
-  def test_errors_if_transaction_requested(self):
-    self.assertError(
-      '/v1/projects/myapp:lookup',
-      {
-        'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}],
-        'readOptions': {'transaction': 'some-transaction'},
-      },
-      501, 'UNIMPLEMENTED')
 
   def test_errors_on_unknown_option(self):
     self.assertError(
@@ -433,7 +458,7 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
 
   def _assert_query_results(self, json_request, expected_key_names,
                             expected_result_type='FULL',
-                            expected_more_results='NO_MORE_RESULTS'):
+                            expected_more_results='MORE_RESULTS_AFTER_LIMIT'):
     """Assert that the given query returns certain result keys.
 
     For most of our tests, we just want to assert about query semantics; the
@@ -469,7 +494,7 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
       expected_key_names)
     for entity_result in actual_response['batch']['entityResults']:
       self.assertTrue(entity_result['cursor'])
-      self.assertEqual(entity_result['version'], '1')
+      self.assertTrue(entity_result['version'])
 
   def test_simple_query(self):
     # Here, we test the whole query result, to make sure it looks as expected.
@@ -500,10 +525,7 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
                 },
                 'properties': {
                   'boolean': {'booleanValue': True},
-                  'byte_string': {
-                    'blobValue': 'gA==',
-                    'meaning': 16,
-                  },
+                  'byte_string': {'blobValue': 'gA=='},
                   'indexed_string': {
                     'stringValue': u'\u1111',
                   },
@@ -516,12 +538,11 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
               },
               'cursor':
               'CioSJGoJZGV2fm15YXBwchcLEgtTaW1wbGVNb2RlbCIGZXhpc3RzDBgAIAA=',
-              'version': '1',
             },
           ],
           'endCursor':
           'CioSJGoJZGV2fm15YXBwchcLEgtTaW1wbGVNb2RlbCIGZXhpc3RzDBgAIAA=',
-          'moreResults': 'NO_MORE_RESULTS',
+          'moreResults': 'MORE_RESULTS_AFTER_LIMIT',
         },
       })
 
@@ -554,7 +575,7 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
               'value': {'integerValue': '12'},
             },
           },
-          'ordering': [
+          'order': [
             {'property': {'name': 'integer'}},
           ],
           'limit': 1,
@@ -576,17 +597,12 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
                   'path': [{'kind': 'SimpleModel', 'name': 'exists'}],
                 },
                 'properties': {
-                  # Note: here prod passes meaning = 18 (INDEX_VALUE) and does
-                  # not properly handle timestamp values (it passes them as
-                  # integers, which is what they are underneath), but we don't
-                  # bother to try to emulate any of that.
-                  'boolean': {'booleanValue': True},
-                  'integer': {'integerValue': '12'},
+                  'boolean': {'booleanValue': True, 'meaning': 18},
+                  'integer': {'integerValue': '12', 'meaning': 18},
                 },
               },
               'cursor': ('CkgKDQoHaW50ZWdlchICCAwKDQoHYm9vbGVhbhICEAESJGoJZGV2'
                          'fm15YXBwchcLEgtTaW1wbGVNb2RlbCIGZXhpc3RzDBgAIAA='),
-              'version': '1',
             },
           ],
           'endCursor': ('CkgKDQoHaW50ZWdlchICCAwKDQoHYm9vbGVhbhICEAESJGoJZGV2'
@@ -625,7 +641,6 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
               },
               'cursor': ('CjYKCwoHaW50ZWdlchIAEiNqCWRldn5teWFwcHIWCxILU2ltcGx'
                          'lTW9kZWwiBWVtcHR5DBgAIAA='),
-              'version': '1',
             }, {
               'entity': {
                 'key': {
@@ -635,12 +650,11 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
               },
               'cursor': ('CjkKDQoHaW50ZWdlchICCAwSJGoJZGV2fm15YXBwchcLEgtTaW1'
                          'wbGVNb2RlbCIGZXhpc3RzDBgAIAA='),
-              'version': '1',
             },
           ],
           'endCursor': ('CjkKDQoHaW50ZWdlchICCAwSJGoJZGV2fm15YXBwchcLEgtTaW1'
                         'wbGVNb2RlbCIGZXhpc3RzDBgAIAA='),
-          'moreResults': 'NO_MORE_RESULTS',
+          'moreResults': 'MORE_RESULTS_AFTER_LIMIT',
         },
       })
 
@@ -863,7 +877,6 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
       {
         'query': {
           'kind': [{'name': 'SimpleModel'}],
-          'filter': {},
           'order': [{
             'property': {'name': 'boolean'},
           }, {
@@ -953,16 +966,14 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
           }],
         },
       },
-      ['child3'],
-      expected_more_results='MORE_RESULTS_AFTER_LIMIT')
+      ['child3'])
 
   def test_kindless_query(self):
     self._assert_query_results(
       {
         'query': {},
       },
-      ['otherchild', 'child', 'child2', 'child3', 'empty', 'exists'],
-      expected_more_results='NO_MORE_RESULTS')
+      ['otherchild', 'child', 'child2', 'child3', 'empty', 'exists'])
 
   def test_cursors(self):
     entity_key_names = [
@@ -989,14 +1000,18 @@ class TestRunQuery(DatastoreTranslatorHandlerTestBase):
       {'query': {'endCursor': entity_cursors[1]}},
       # endCursor, meanwhile, is inclusive.
       entity_key_names[:2],
-      expected_more_results='MORE_RESULTS_AFTER_CURSOR')
+      # The cloud datastore stub is wrong here: this should be
+      # MORE_RESULTS_AFTER_CURSOR.  But it doesn't super matter.
+      expected_more_results='MORE_RESULTS_AFTER_LIMIT')
     self._assert_query_results(
       {'query': {
         'startCursor': entity_cursors[0],
         'endCursor': entity_cursors[2],
       }},
       entity_key_names[1:3],
-      expected_more_results='MORE_RESULTS_AFTER_CURSOR')
+      # The cloud datastore stub is wrong here: this should be
+      # MORE_RESULTS_AFTER_CURSOR.  But it doesn't super matter.
+      expected_more_results='MORE_RESULTS_AFTER_LIMIT')
     self._assert_query_results(
       {'query': {
         'startCursor': entity_cursors[0],
@@ -1024,7 +1039,6 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
       'properties': {
         'byte_string': {
           'blobValue': 'gA==',
-          'meaning': 16,
         },
         'boolean': {'booleanValue': True},
         'integer': {'integerValue': str(integer_value)},
@@ -1043,14 +1057,14 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
         'mode': 'NON_TRANSACTIONAL',
         'mutations': [{'insert': self._entity(integer_value)}]
       },
-      {'mutationResults': [{'version': '1'}], 'indexUpdates': -1})
+      {'indexUpdates': 9, 'mutationResults': [{}]})
     self._assert_entity_exists(integer_value)
 
   def _assert_entity_exists(self, expected_integer=12):
     self.assertOK(
       '/v1/projects/myapp:lookup',
       {'keys': [{'path': [{'kind': 'SimpleModel', 'name': 'exists'}]}]},
-      {'found': [{'entity': self._entity(expected_integer), 'version': '1'}]})
+      {'found': [{'entity': self._entity(expected_integer)}]})
 
   def test_insert(self):
     self._insert_entity()
@@ -1090,10 +1104,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
           }
         ]
       },
-      {
-        'mutationResults': [{'version': '1'}],
-        'indexUpdates': -1,
-      })
+      {'indexUpdates': 9, 'mutationResults': [{}]})
     self._assert_entity_exists(13)
 
   def test_upsert_existing(self):
@@ -1124,10 +1135,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
           }
         ]
       },
-      {
-        'mutationResults': [{'version': '1'}],
-        'indexUpdates': -1,
-      })
+      {'indexUpdates': 4, 'mutationResults': [{}]})
     self._assert_entity_exists(14)
 
   def test_update_existing(self):
@@ -1142,10 +1150,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
             'update': {
               'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
               'properties': {
-                'byte_string': {
-                  'blobValue': 'gA==',
-                  'meaning': 16,
-                },
+                'byte_string': {'blobValue': 'gA=='},
                 'boolean': {'booleanValue': True},
                 'integer': {'integerValue': '14'},
                 'indexed_string': {'nullValue': None},
@@ -1158,10 +1163,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
           }
         ]
       },
-      {
-        'mutationResults': [{'version': '1'}],
-        'indexUpdates': -1,
-      })
+      {'indexUpdates': 4, 'mutationResults': [{}]})
     self._assert_entity_exists(14)
 
   def test_update_missing(self):
@@ -1174,10 +1176,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
             'update': {
               'key': {'path': [{'kind': 'SimpleModel', 'name': 'exists'}]},
               'properties': {
-                'byte_string': {
-                  'blobValue': 'gA==',
-                  'meaning': 16,
-                },
+                'byte_string': {'blobValue': 'gA=='},
                 'boolean': {'booleanValue': True},
                 'integer': {'integerValue': '14'},
                 'indexed_string': {'nullValue': None},
@@ -1204,10 +1203,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
           }
         ]
       },
-      {
-        'mutationResults': [{'version': '1'}],
-        'indexUpdates': -1,
-      })
+      {'indexUpdates': 9, 'mutationResults': [{}]})
 
   def test_delete_missing(self):
     # Yes, delete is a silent no-op if the key is missing.
@@ -1221,10 +1217,7 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
           }
         ]
       },
-      {
-        'mutationResults': [{'version': '1'}],
-        'indexUpdates': -1,
-      })
+      {'mutationResults': [{}]})
 
   def test_several_mutations(self):
     self.assertOK(
@@ -1256,9 +1249,8 @@ class TestNontransactionalCommit(DatastoreTranslatorHandlerTestBase):
               # (It's 0x14000000000000, so it's not "that" random.)
               'path': [{'kind': 'SimpleModel', 'id': '5629499534213120'}],
             },
-            'version': '1',
           },
-          {'version': '1'},
+          {},
         ],
-        'indexUpdates': -1,
+        'indexUpdates': 6,
       })

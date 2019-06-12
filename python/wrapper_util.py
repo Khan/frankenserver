@@ -278,6 +278,8 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.1'),
+        os.path.join(dir_path, 'lib', 'oauth2client'),
+        os.path.join(dir_path, 'lib', 'google-cloud-datastore'),
     ]
     if grpc_importable:
       devappserver2_paths.append(grpc_path)

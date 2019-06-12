@@ -397,8 +397,6 @@ class _EntityValidator(object):
     Raises:
       ValidationError: if the key is invalid
     """
-    _assert_condition(key.HasField('partition_id'),
-                      'Key is missing partition id.')
     self.validate_partition_id(constraint, key.partition_id)
     num_key_path_elements = len(key.path)
     _assert_condition(num_key_path_elements, 'Key path is empty.')
@@ -454,6 +452,8 @@ class _EntityValidator(object):
     Raises:
       ValidationError: if the partition ID is invalid
     """
+    if not partition_id:
+      return
     self.validate_project_id(constraint, partition_id.project_id)
     self.validate_partition_id_dimension(constraint,
                                          partition_id.namespace_id,
@@ -469,7 +469,8 @@ class _EntityValidator(object):
     Raises:
       ValidationError: if the partition ID dimension is invalid
     """
-    _assert_condition(project_id, 'The project id is missing')
+    if not project_id:
+      return
     _assert_valid_utf8(project_id, 'project id')
     _assert_string_not_too_long(project_id, datastore_pbs.MAX_DATASET_ID_LENGTH,
                                 'project id')
@@ -765,9 +766,9 @@ class _EntityValidator(object):
                          <= datastore_pbs.MAX_INDEXED_BLOB_BYTES),
                         ('Indexed blob value has more than %d permitted '
                          'bytes.' % datastore_pbs.MAX_INDEXED_BLOB_BYTES))
-    elif value.HasField('entity_value'):
-      _assert_condition(value.meaning,
-                        'Entity value is indexed.')
+    # NOTE(benkraft): Entity values may not be indexed in appengine, but in
+    # REST they can, so for some semblance of compatibility we silently don't
+    # index them instead of complaining here.
 
   def validate_property_name(self, constraint, property_name):
     """Validates a property name.
@@ -924,8 +925,7 @@ class _QueryValidator(object):
       op = filt.property_filter.op
       name = filt.property_filter.property.name
       value = filt.property_filter.value
-      return ((op == googledatastore.PropertyFilter.HAS_ANCESTOR or
-               op == googledatastore.PropertyFilter.HAS_PARENT)
+      return (op == googledatastore.PropertyFilter.HAS_ANCESTOR
               and value.HasField('key_value')
               and name == datastore_pbs.PROPERTY_NAME_KEY)
     if filt.HasField('composite_filter'):
