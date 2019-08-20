@@ -127,7 +127,7 @@ class Paths(object):
       # ourselves it works for everyone, remove the conditionals!
       grpc_importable = not subprocess.call(
           [sys.executable, '-c', 'import grpc'],
-          cwd=grpc_path, stderr=subprocess.PIPE)
+          cwd=grpc_path, stderr=open(os.devnull, 'w'))
 
     # Unlike grpc, protobuf works fine on most platforms: it can just fall back
     # to the Python implementation if it can't import the C module.  But in
