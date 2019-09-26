@@ -30,9 +30,9 @@ from oauth2client.client import AssertionCredentials
 logger = logging.getLogger(__name__)
 
 # URI Template for the endpoint that returns access_tokens.
-META = ('http://metadata.google.internal/0.1/meta-data/service-accounts/'
-        'default/acquire{?scope}')
-
+META = ('http://metadata.google.internal/computeMetadata/v1/instance/'
+        'service-accounts/default/token{?scope}')
+METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
 
 class AppAssertionCredentials(AssertionCredentials):
   """Credentials object for Compute Engine Assertion Grants
@@ -83,7 +83,7 @@ class AppAssertionCredentials(AssertionCredentials):
     """
     query = '?scope=%s' % urllib.parse.quote(self.scope, '')
     uri = META.replace('{?scope}', query)
-    response, content = http_request(uri)
+    response, content = http_request(uri, headers=METADATA_HEADERS)
     if response.status == 200:
       try:
         d = json.loads(content)
