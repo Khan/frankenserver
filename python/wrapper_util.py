@@ -125,7 +125,12 @@ class Paths(object):
       # to the path, but it's unclear if this is actually necessary: callers
       # who don't need it can just avoid importing it.  If we can convince
       # ourselves it works for everyone, remove the conditionals!
-      grpc_importable = not subprocess.call(
+      #
+      # Note this is only needed for frankenserver-proper, not our
+      # tools like fix_sys_path() that import this file.  We have
+      # fix_sys_path() set an envvar to avoid the cost of this call.
+      if not os.getenv("IMPORTING_FRANKENSERVER_FROM_FIX_SYS_PATH"):
+        grpc_importable = not subprocess.call(
           [sys.executable, '-c', 'import grpc'],
           cwd=grpc_path, stderr=open(os.devnull, 'w'))
 
@@ -139,20 +144,23 @@ class Paths(object):
     # TODO(benkraft): Would a newer or otherwise different protobuf
     # implementation do better fallback and thus avoid this problem?
     protobuf_path = os.path.join(dir_path, 'lib', 'protobuf')
-    if subprocess.call(
-        [sys.executable, '-c', 'import google.protobuf.descriptor'],
-        cwd=protobuf_path, stderr=open(os.devnull, 'w'),
-        # Bonus hack: because the protobuf library as vendored into
-        # frankenserver is designed to be imported after other google.*
-        # packages, it doesn't contain an __init__.py.  (And in fact it must
-        # not: such __init__.py might cause conflicts with such packages.)
-        # Instead, we have to import it via frankenserver's shim
-        # google/protobuf/__init__.py -- so we must make sure both are visible
-        # to this script.  (Note that we can't, yet, import most of
-        # frankenserver: the path setup in this file is required in order to do
-        # so!  But the shim will work fine.)
-        env={'PYTHONPATH': dir_path}):
-      os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
+    # Like above, we don't do this if calling from fix_sys_path().
+    if not os.getenv("IMPORTING_FRANKENSERVER_FROM_FIX_SYS_PATH"):
+      if subprocess.call(
+            [sys.executable, '-c', 'import google.protobuf.descriptor'],
+            cwd=protobuf_path, stderr=open(os.devnull, 'w'),
+            # Bonus hack: because the protobuf library as vendored into
+            # frankenserver is designed to be imported after other google.*
+            # packages, it doesn't contain an __init__.py.  (And in fact it
+            # must not: such __init__.py might cause conflicts with such
+            # packages.)  Instead, we have to import it via frankenserver's
+            # shim google/protobuf/__init__.py -- so we must make sure both are
+            # visible to this script.  (Note that we can't, yet, import most of
+            # frankenserver: the path setup in this file is required in order
+            # to do so!  But the shim will work fine.)
+            env={'PYTHONPATH': dir_path}):
+        os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION',
+                              'python')
 
     self.v1_extra_paths = [
         dir_path,
