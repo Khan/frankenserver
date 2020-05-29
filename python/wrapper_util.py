@@ -144,21 +144,22 @@ class Paths(object):
     # TODO(benkraft): Would a newer or otherwise different protobuf
     # implementation do better fallback and thus avoid this problem?
     protobuf_path = os.path.join(dir_path, 'lib', 'protobuf')
-    # Like above, we don't do this if calling from fix_sys_path().
-    if not os.getenv("IMPORTING_FRANKENSERVER_FROM_FIX_SYS_PATH"):
-      if subprocess.call(
-            [sys.executable, '-c', 'import google.protobuf.descriptor'],
-            cwd=protobuf_path, stderr=open(os.devnull, 'w'),
-            # Bonus hack: because the protobuf library as vendored into
-            # frankenserver is designed to be imported after other google.*
-            # packages, it doesn't contain an __init__.py.  (And in fact it
-            # must not: such __init__.py might cause conflicts with such
-            # packages.)  Instead, we have to import it via frankenserver's
-            # shim google/protobuf/__init__.py -- so we must make sure both are
-            # visible to this script.  (Note that we can't, yet, import most of
-            # frankenserver: the path setup in this file is required in order
-            # to do so!  But the shim will work fine.)
-            env={'PYTHONPATH': dir_path}):
+    # Like above, we don't do this if calling from fix_sys_path(), but
+    # just fall back to the (safe) python mode in that case.
+    if (os.getenv("IMPORTING_FRANKENSERVER_FROM_FIX_SYS_PATH") or
+            subprocess.call(
+                [sys.executable, '-c', 'import google.protobuf.descriptor'],
+                cwd=protobuf_path, stderr=open(os.devnull, 'w'),
+                # Bonus hack: because the protobuf library as vendored into
+                # frankenserver is designed to be imported after other google.*
+                # packages, it doesn't contain an __init__.py.  (And in fact it
+                # must not: such __init__.py might cause conflicts with such
+                # packages.)  Instead, we have to import it via frankenserver's
+                # shim google/protobuf/__init__.py -- so we must make sure both
+                # are visible to this script.  (Note that we can't, yet, import
+                # most of frankenserver: the path setup in this file is
+                # required in order to do so!  But the shim will work fine.)
+                env={'PYTHONPATH': dir_path})):
         os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION',
                               'python')
 
@@ -197,7 +198,9 @@ class Paths(object):
     ]
     if grpc_importable:
       self.api_server_extra_paths.append(grpc_path)
-
+    else:
+      # some things may require protobuf, even if grpc isn't set up correctly.
+      self.api_server_extra_paths.append(protobuf_path)
 
 
 
