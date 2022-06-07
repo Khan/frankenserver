@@ -31,6 +31,7 @@ import re
 import time
 import urllib
 
+import httplib
 import httplib2
 
 from oauth2client import client
@@ -262,6 +263,13 @@ class HttpRpcServerHttpLib2(object):
 
         logger.info('Got access token error', exc_info=1)
         response_info = httplib2.Response({'status': 401})
+        response_info.reason = str(e)
+        response = ''
+
+      except httplib.ResponseNotReady as e:
+
+        logger.info('Got response not ready error', exc_info=1)
+        response_info = httplib2.Response({'status': 500})
         response_info.reason = str(e)
         response = ''
 
