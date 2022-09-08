@@ -243,6 +243,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
         key.CopyFrom(precondition.key())
       get_response = datastore_pb.GetResponse()
       self.__call('datastore_v3', 'Get', get_request, get_response)
+      _CanonicalizeGetResponse(get_response)
       entities = get_response.entity_list()
       assert len(entities) == request.precondition_size()
       for precondition, entity in zip(preconditions, entities):
@@ -303,11 +304,61 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
 SERVICE_PB_MAP = remote_api_services.SERVICE_PB_MAP
 
+
+class DatastoreV3GetCanonicalizingStub(apiproxy_stub.APIProxyStub):
+  """A local datastore_v3 stub replacement that canonicalizes entities on Get().
+
+  The real work is delegated to the existing datastore_v3 stub.
+
+  Note that it is not sufficient to canonicalize entities in RemoteDatastoreStub
+  because some user calls flow to datastore_v3 rather than remote_datastore.
+  See calls to datastore_v3 in remote_api_stub.RemoteDatastoreStub.
+
+  Methods are implemented here IFF they appear in the remote_api_services map.
+  """
+
+  def __init__(self, service='datastore_v3'):
+    super(DatastoreV3GetCanonicalizingStub, self).__init__(service)
+    self.__call = apiproxy_stub_map.MakeSyncCall
+
+  def _Dynamic_Get(self, request, response):
+    self.__call('datastore_v3', 'Get', request, response)
+    _CanonicalizeGetResponse(response)
+
+  def _Dynamic_Put(self, request, response):
+    self.__call('datastore_v3', 'Put', request, response)
+
+  def _Dynamic_Delete(self, request, response):
+    self.__call('datastore_v3', 'Delete', request, response)
+
+  def _Dynamic_AllocateIds(self, request, response):
+    self.__call('datastore_v3', 'AllocateIds', request, response)
+
+  def _Dynamic_RunQuery(self, request, response):
+    self.__call('datastore_v3', 'RunQuery', request, response)
+
+  def _Dynamic_Next(self, request, response):
+    self.__call('datastore_v3', 'Next', request, response)
+
+  def _Dynamic_BeginTransaction(self, request, response):
+    self.__call('datastore_v3', 'BeginTransaction', request, response)
+
+  def _Dynamic_Commit(self, request, response):
+    self.__call('datastore_v3', 'Commit', request, response)
+
+  def _Dynamic_Rollback(self, request, response):
+    self.__call('datastore_v3', 'Rollback', request, response)
+
+  def _Dynamic_GetIndices(self, request, response):
+    self.__call('datastore_v3', 'GetIndices', request, response)
+
+
 class ApiCallHandler(webapp.RequestHandler):
   """A webapp handler that accepts API calls over HTTP and executes them."""
 
   LOCAL_STUBS = {
       'remote_datastore': RemoteDatastoreStub('remote_datastore'),
+      'datastore_v3': DatastoreV3GetCanonicalizingStub('datastore_v3'),
   }
 
   OAUTH_SCOPES = [
@@ -443,6 +494,19 @@ class ApiCallHandler(webapp.RequestHandler):
 Point your stubs (google.appengine.ext.remote_api.remote_api_stub) here.</p>
 </body>
 </html>"""
+
+def _CanonicalizeEntity(entity):
+  # Stable sort ensures repeated properties retain their relative order.
+  # Canonicalization is consistent with planned backend canonicalization, so it
+  # will be safe to remove this once that code is deployed.
+  entity.property.sort(key=lambda p: p.name)
+  entity.raw_property.sort(key=lambda p: p.name)
+
+
+def _CanonicalizeGetResponse(get_response):
+  for entity_wrapper in get_response.entity:
+    _CanonicalizeEntity(entity_wrapper.entity)
+
 
 application = webapp.WSGIApplication([('.*', ApiCallHandler)])
 
