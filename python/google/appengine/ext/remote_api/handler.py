@@ -495,17 +495,34 @@ Point your stubs (google.appengine.ext.remote_api.remote_api_stub) here.</p>
 </body>
 </html>"""
 
-def _CanonicalizeEntity(entity):
+def _CopyAndSortProperties(properties):
+  copied_properties = []
+  for prop in properties:
+    copied_prop = entity_pb.Property()
+    copied_prop.CopyFrom(prop)
+    copied_properties.append(copied_prop)
   # Stable sort ensures repeated properties retain their relative order.
-  # Canonicalization is consistent with planned backend canonicalization, so it
-  # will be safe to remove this once that code is deployed.
-  entity.property.sort(key=lambda p: p.name)
-  entity.raw_property.sort(key=lambda p: p.name)
+  copied_properties.sort(key=lambda prop: prop.name())
+  return copied_properties
+
+
+def _CanonicalizeEntity(entity):
+  # Canonicalization is consistent with DBE canonicalization, so it will be
+  # safe to remove this once that code is deployed.
+  # Copy properties lists because the clear call is recursive.
+  sorted_properties = _CopyAndSortProperties(entity.property_list())
+  entity.clear_property()
+  for prop in sorted_properties:
+    entity.add_property().CopyFrom(prop)
+  sorted_raw_properties = _CopyAndSortProperties(entity.raw_property_list())
+  entity.clear_raw_property()
+  for prop in sorted_raw_properties:
+    entity.add_raw_property().CopyFrom(prop)
 
 
 def _CanonicalizeGetResponse(get_response):
-  for entity_wrapper in get_response.entity:
-    _CanonicalizeEntity(entity_wrapper.entity)
+  for entity_wrapper in get_response.entity_list():
+    _CanonicalizeEntity(entity_wrapper.entity())
 
 
 application = webapp.WSGIApplication([('.*', ApiCallHandler)])
