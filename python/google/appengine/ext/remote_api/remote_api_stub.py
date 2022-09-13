@@ -439,7 +439,7 @@ class RemoteDatastoreStub(RemoteStub):
           else:
             new_response.add_entity()
       get_response.CopyFrom(new_response)
-      logging.info('New response %s', get_response)
+      logging.info('New response %s' % get_response)
 
   def _Dynamic_Put(self, put_request, put_response):
     if put_request.has_transaction():
