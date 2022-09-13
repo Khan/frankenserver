@@ -244,6 +244,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       get_response = datastore_pb.GetResponse()
       self.__call('datastore_v3', 'Get', get_request, get_response)
       _CanonicalizeGetResponse(get_response)
+      logging.info('Response was canonicalized')
       entities = get_response.entity_list()
       assert len(entities) == request.precondition_size()
       for precondition, entity in zip(preconditions, entities):
