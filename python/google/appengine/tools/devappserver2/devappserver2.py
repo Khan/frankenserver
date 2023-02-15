@@ -168,7 +168,8 @@ class DevelopmentServer(object):
 
   def _fail_for_using_datastore_emulator_from_legacy_sdk(self):
     """Error out on attempts to use the emulator from the legacy GAE SDK."""
-    if (self._options.support_datastore_emulator and (
+    if (self._options.support_datastore_emulator and
+        os.environ.get('DATASTORE_EMULATOR_HOST') is None and (
         self._options.datastore_emulator_cmd is None
         or not os.path.exists(self._options.datastore_emulator_cmd))):
       raise MissingDatastoreEmulatorError(
